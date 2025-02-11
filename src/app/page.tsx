@@ -1,5 +1,11 @@
 import WikiStream from "@/components/WikiStream";
 import WikiSynth2 from "@/components/WikiSynth2";
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+	title: 'Datasonifier',
+	description: 'Real-time data streams turned into music',
+}
 
 export default function Home() {
 	return (
