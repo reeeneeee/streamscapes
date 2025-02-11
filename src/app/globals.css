@@ -2,15 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Default theme */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --accent: #4f46e5;
+  --secondary: #818cf8;
+}
+
+/* Scale-specific themes */
+:root[data-scale="Major Pentatonic"] {
+  --background: #f0fdf4;
+  --foreground: #14532d;
+  --accent: #22c55e;
+  --secondary: #86efac;
+}
+
+:root[data-scale="Minor Pentatonic"] {
+  --background: #fef2f2;
+  --foreground: #7f1d1d;
+  --accent: #ef4444;
+  --secondary: #fca5a5;
+}
+
+:root[data-scale="Major"] {
+  --background: #eff6ff;
+  --foreground: #1e3a8a;
+  --accent: #3b82f6;
+  --secondary: #93c5fd;
+}
+
+:root[data-scale="Minor"] {
+  --background: #faf5ff;
+  --foreground: #581c87;
+  --accent: #a855f7;
+  --secondary: #d8b4fe;
+}
+
+:root[data-scale="Blues"] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --accent: #64748b;
+  --secondary: #94a3b8;
+}
+
+:root[data-scale="Chromatic"] {
+  --background: #fdf4ff;
+  --foreground: #831843;
+  --accent: #ec4899;
+  --secondary: #f9a8d4;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --accent: #6366f1;
+    --secondary: #a5b4fc;
+  }
+
+  :root[data-scale="Major Pentatonic"] {
+    --background: #052e16;
+    --foreground: #dcfce7;
+    --accent: #22c55e;
+    --secondary: #4ade80;
+  }
+
+  :root[data-scale="Minor Pentatonic"] {
+    --background: #450a0a;
+    --foreground: #fee2e2;
+    --accent: #ef4444;
+    --secondary: #f87171;
+  }
+
+  :root[data-scale="Major"] {
+    --background: #172554;
+    --foreground: #dbeafe;
+    --accent: #3b82f6;
+    --secondary: #60a5fa;
+  }
+
+  :root[data-scale="Minor"] {
+    --background: #3b0764;
+    --foreground: #f3e8ff;
+    --accent: #a855f7;
+    --secondary: #c084fc;
+  }
+
+  :root[data-scale="Blues"] {
+    --background: #020617;
+    --foreground: #f8fafc;
+    --accent: #64748b;
+    --secondary: #94a3b8;
+  }
+
+  :root[data-scale="Chromatic"] {
+    --background: #500724;
+    --foreground: #fce7f3;
+    --accent: #ec4899;
+    --secondary: #f472b6;
   }
 }
 
@@ -18,4 +108,12 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Add smooth transitions */
+body {
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+.sound-button {
+  width: 100px;
 }
