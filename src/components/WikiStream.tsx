@@ -5,13 +5,19 @@ interface WikimediaEventData {
 	title: string;
 	meta: { dt: string };
 	performer?: { user_text: string };
+	server_name?: string; 
+	length?: { old: number, new: number };
+	minor?: boolean;
 	comment?: string;
+	type?: string;
 	parsedcomment?: string;
 	$schema?: string;
 }
 
 interface WikiChange {
 	title: string;
+	oldlength: number;
+	newlength: number;
 	timestamp: string;
 	user: string;
 	comment: string;
@@ -28,19 +34,25 @@ export default function WikiStream() {
 		console.log("Attempting connection to Wikimedia stream");
 		
 		const handleChange = (data: WikimediaEventData) => {
-
-			const newChange = {
-				title: data.title,
-				timestamp: new Date(data.meta.dt).toISOString(),
-				user: data.performer?.user_text || "Anonymous",
-				comment: data.comment || data.parsedcomment || "",
-			};
-			console.log("New change object:", newChange);
-			setChanges((prev) => {
-				const newChanges = [newChange, ...prev].slice(0, 50);
-				console.log("Updated changes array:", newChanges);
-				return newChanges;
-			}); // Keep last 50 changes
+			if (data.server_name === "en.wikipedia.org" &&
+				data.type === "edit" &&
+				data.minor === false) {
+				const newChange = {
+					title: data.title,
+					timestamp: new Date(data.meta.dt).toISOString(),
+					user: data.performer?.user_text || "Anonymous",
+					comment: data.comment || data.parsedcomment || "",
+					oldlength: data.length? data.length.old : 0,
+					newlength: data.length? data.length.new : 0,
+				};
+				// console.log("New change object:", newChange);
+				setChanges((prev) => {
+					const newChanges = [newChange, ...prev].slice(0, 50);
+					//console.log("Updated changes array:", newChanges);
+					return newChanges;
+				}); // Keep last 50 changes
+			}
+			
 		};
 
 		eventSource.onopen = () => {
@@ -56,10 +68,10 @@ export default function WikiStream() {
 		};
 
 		eventSource.onmessage = (event) => {
-			console.log("Raw event data:", event.data);
+			//console.log("Raw event data:", event.data);
 			try {
 				const data: WikimediaEventData = JSON.parse(event.data);
-				console.log("Parsed data:", data);
+				// console.log("Parsed data:", data);
 				handleChange(data);
 			} catch (error) {
 				console.error("Error parsing message:", error, "Raw data:", event.data);

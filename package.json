@@ -12,6 +12,8 @@
     "next": "15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tonal": "^6.4.0",
+    "tone": "^15.0.4",
     "wikimedia-streams": "^3.0.0"
   },
   "devDependencies": {
