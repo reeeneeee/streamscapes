@@ -61,8 +61,8 @@ export default function WikiSynth({ scale }: { scale: string[] }) {
 
       // Play the note
       if (Tone.context.state === "running") {
-        let velocity = 1 / (1 + Math.exp(-length_delta * .2));
-        console.log("Playing note ", frequency, ' for ', data.title, " at ", velocity);
+        let velocity = 1/(1+Math.exp(-length_delta*.2));
+        //console.log("Playing note ", frequency, ' for ', data.title, " at ", velocity);
         synthRef.current.triggerAttackRelease(frequency, '8n', Tone.now() + Math.random(), velocity);
       }
 

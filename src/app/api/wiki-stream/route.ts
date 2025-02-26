@@ -11,7 +11,7 @@ export async function GET() {
       try {
         const response = await fetch('https://stream.wikimedia.org/v2/stream/mediawiki.recentchange', {
           headers: {
-            'User-Agent': 'music-stream-app/1.0 (https://github.com/yourusername/music-stream)',
+            'User-Agent': 'streamscapes/1.0 (https://github.com/reeeneeee/streamscapes)',
           },
         });
 

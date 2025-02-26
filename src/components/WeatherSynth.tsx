@@ -26,11 +26,10 @@ export default function WeatherSynth() {
   const arpeggioRef = useRef<any>(null);
   
   // TODO: make this based on user location, with permission
-  const myLat = 33.44;
-  const myLon = -94.04;
+  const myLat = 40.6711;
+  const myLon = -73.9814;
 
   const weatherApiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
-  console.log("weatherApiKey", weatherApiKey);
   let myWeatherRequest = `https://api.openweathermap.org/data/3.0/onecall?lat=${myLat}&lon=${myLon}&appid=${weatherApiKey}&units=imperial`;
 
   // Initialize synth and arpeggiator only once
@@ -69,13 +68,12 @@ export default function WeatherSynth() {
       try {
         console.log("fetching weather with request", myWeatherRequest);
         const response = await axios.get(myWeatherRequest);
+        const weatherData = response.data.current;
 
         // Get cloud override from URL if it exists
         const urlParams = new URLSearchParams(window.location.search);
         const cloudOverride = urlParams.get('clouds');
         const tempOverride = urlParams.get('feels_like');
-
-        const weatherData = response.data.current;
         if (cloudOverride !== null) {
           weatherData.clouds = parseInt(cloudOverride);
         }
@@ -86,7 +84,7 @@ export default function WeatherSynth() {
         setMyWeather(weatherData);
         if (response.data.current.clouds >= 0) {
             console.log("playing cloud noise");
-            //cloudNoise(response.data.current.clouds);
+            cloudNoise(response.data.current.clouds);
         }
 
         // Update arpeggio pattern with weather-based scale
@@ -108,10 +106,10 @@ export default function WeatherSynth() {
   }, []);
 
   return (
-    <div>
+    <div style={{ margin: 20 }}>
       {myWeather && (
         <h4>
-          Temperature: {myWeather.temp}°F, Feels Like: {myWeather.feels_like}°F, Clouds: {myWeather.clouds}%
+          🌡️: {myWeather.feels_like}°F, ☁️: {myWeather.clouds}%
         </h4>
       )}
     </div>
