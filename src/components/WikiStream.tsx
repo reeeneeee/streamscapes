@@ -12,6 +12,7 @@ interface WikimediaEventData {
 	type?: string;
 	parsedcomment?: string;
 	$schema?: string;
+	notify_url?: string;
 }
 
 interface WikiChange {
@@ -19,6 +20,7 @@ interface WikiChange {
 	oldlength: number;
 	newlength: number;
 	timestamp: string;
+	url: string;
 	user: string;
 	comment: string;
 }
@@ -41,12 +43,12 @@ export default function WikiStream() {
 				const newChange = {
 					title: data.title,
 					timestamp: new Date(data.meta.dt).toISOString(),
+					url: data.notify_url || "",
 					user: data.performer?.user_text || "Anonymous",
 					comment: data.comment || data.parsedcomment || "",
 					oldlength: data.length? data.length.old : 0,
 					newlength: data.length? data.length.new : 0,
 				};
-				// console.log("New change object:", newChange);
 				setChanges((prev) => {
 					const newChanges = [newChange, ...prev].slice(0, 50);
 					return newChanges;
@@ -68,10 +70,8 @@ export default function WikiStream() {
 		};
 
 		eventSource.onmessage = (event) => {
-			//console.log("Raw event data:", event.data);
 			try {
 				const data: WikimediaEventData = JSON.parse(event.data);
-				// console.log("Parsed data:", data);
 				handleChange(data);
 			} catch (error) {
 				console.error("Error parsing message:", error, "Raw data:", event.data);

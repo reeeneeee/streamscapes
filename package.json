@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/p5": "^1.7.6",
     "axios": "^1.7.9",
     "next": "15.1.6",
+    "p5": "^1.11.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tonal": "^6.4.0",

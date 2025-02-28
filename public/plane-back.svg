@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300">
+  <!-- Fuselage with more defined shape -->
+  <ellipse cx="250" cy="150" rx="50" ry="50" fill="black" />
+  <rect x="245" y="100" width="10" height="100" fill="black" />
+  
+  <!-- Windows on back of fuselage -->
+  <circle cx="250" cy="120" r="3" fill="black" stroke="white" stroke-width="1" />
+  <circle cx="250" cy="135" r="3" fill="black" stroke="white" stroke-width="1" />
+  <circle cx="250" cy="150" r="3" fill="black" stroke="white" stroke-width="1" />
+  <circle cx="250" cy="165" r="3" fill="black" stroke="white" stroke-width="1" />
+  <circle cx="250" cy="180" r="3" fill="black" stroke="white" stroke-width="1" />
+  
+  <!-- Main wings with more structure -->
+  <path d="M250 150 L80 180 L60 210 L75 220 L250 190 Z" fill="black" />
+  <path d="M250 150 L420 180 L440 210 L425 220 L250 190 Z" fill="black" />
+  
+  <!-- Wing flaps -->
+  <path d="M190 185 L120 195 L115 210 L190 200 Z" fill="black" stroke="white" stroke-width="0.5" />
+  <path d="M310 185 L380 195 L385 210 L310 200 Z" fill="black" stroke="white" stroke-width="0.5" />
+  
+  <!-- Tail wings with more detail -->
+  <path d="M250 110 L210 60 L220 50 L250 80 Z" fill="black" />
+  <path d="M250 110 L290 60 L280 50 L250 80 Z" fill="black" />
+  
+  <!-- Vertical stabilizer with more shape -->
+  <path d="M250 110 L250 30 L270 50 L250 80 Z" fill="black" />
+  <path d="M250 50 L260 40 L265 45 L250 60 Z" fill="black" stroke="white" stroke-width="0.5" />
+  
+  <!-- Engines on wings with more detail -->
+  <ellipse cx="160" cy="195" rx="30" ry="15" fill="black" />
+  <ellipse cx="160" cy="195" rx="25" ry="12" fill="black" stroke="white" stroke-width="0.5" />
+  <circle cx="160" cy="195" r="10" fill="black" stroke="white" stroke-width="0.5" />
+  
+  <ellipse cx="340" cy="195" rx="30" ry="15" fill="black" />
+  <ellipse cx="340" cy="195" rx="25" ry="12" fill="black" stroke="white" stroke-width="0.5" />
+  <circle cx="340" cy="195" r="10" fill="black" stroke="white" stroke-width="0.5" />
+  
+  <!-- Landing gear hints -->
+  <rect x="230" y="200" width="40" height="15" rx="5" fill="black" />
+  <rect x="140" y="220" width="20" height="10" rx="3" fill="black" />
+  <rect x="340" y="220" width="20" height="10" rx="3" fill="black" />
+</svg>
