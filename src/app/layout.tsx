@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Datasonifier",
+  title: "Streamscapes",
   description: "Real-time data streams turned into sound",
 };
 

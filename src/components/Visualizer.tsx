@@ -109,7 +109,7 @@ const Visualizer = ({
           ...edit,
           age: edit.age + 1
         }))
-        .filter(edit => edit.age < 60); // Remove edits older than 60 seconds
+        .filter(edit => edit.age < 30); // Remove edits older than 30 seconds
       
       // Trigger re-render
       setUpdateTrigger(prev => prev + 1);
@@ -188,18 +188,18 @@ const Visualizer = ({
         currentEdits.forEach(edit => {
           // Calculate size based on edit size and age
           const maxSize = edit.size;
-          const currentSize = maxSize * (1 - edit.age / 60); // Shrink over 60 seconds
+          const currentSize = maxSize * (1 - edit.age / 30); // Shrink over 30 seconds
           
           // Use the pre-calculated position
           const x = edit.position.x;
           const y = edit.position.y;
            
-          // Draw ripple effect
+          // Draw ripple effect with proper alpha transparency
           for (let i = 3; i >= 0; i--) {
             const rippleSize = currentSize * (1 + i * 0.3);
-            const alpha = p.map(i, 0, 3, 0.8, 0.1);
+            const alpha = p.map(i, 0, 3, 200, 25); // Map to 0-255 alpha values
             p.noFill();
-            p.stroke('#5D8736');
+            p.stroke(93, 135, 54, alpha); // #5D8736 with alpha
             p.strokeWeight(2);
             p.ellipse(x, y, rippleSize, rippleSize);
           }
@@ -210,7 +210,7 @@ const Visualizer = ({
           p.ellipse(x, y, currentSize, currentSize);
           
           // Draw title for larger edits
-          if (edit.size > 30 && edit.age < 10) {
+          if (edit.size > 30 && edit.age < 20) {
             p.textSize(15);
             p.textAlign(p.CENTER, p.CENTER);
             // Truncate long titles
@@ -218,11 +218,13 @@ const Visualizer = ({
               ? edit.title.substring(0, 22) + '...' 
               : edit.title;
             
+            // Draw the title with a different color to indicate it's clickable
+            p.fill('#2d2d2d');
             p.text(displayTitle, x, y + currentSize);
             
             // Draw a subtle underline to indicate it's a link
             const textWidth = p.textWidth(displayTitle);
-            p.stroke('#5D8736');
+            p.stroke('#2d2d2d');
             p.strokeWeight(1);
             p.line(x - textWidth/2, y + currentSize + 5, x + textWidth/2, y + currentSize + 5);
           }
@@ -277,10 +279,9 @@ const Visualizer = ({
         p.mouseClicked = () => {
           // Check if click is on any edit title
           for (const edit of currentEdits) {
-            if (edit.size > 30 && edit.age < 10) {
               const x = edit.position.x;
               const y = edit.position.y;
-              const currentSize = edit.size * (1 - edit.age / 60);
+              const currentSize = edit.size * (1 - edit.age / 30);
               
               // Check if mouse is near the title text or circle
               const textY = y + currentSize;
@@ -289,7 +290,6 @@ const Visualizer = ({
                 window.open(edit.url, '_blank');
                 return false; // Prevent default behavior
               }
-            }
           }
           return true;
         };
