@@ -244,20 +244,6 @@ const Visualizer = ({
               }
               p.pop();
               
-              // Draw callsign if available
-              if (flight.callsign) {
-                p.fill('#5C7285');
-                p.textSize(16);
-                p.textAlign(p.CENTER, p.CENTER);
-                p.text(flight.callsign, x, y + size/2 + 15);
-                
-                // Draw a subtle underline to indicate it's a link
-                const textWidth = p.textWidth(flight.callsign);
-                p.stroke('#5C7285');
-                p.strokeWeight(1);
-                p.line(x - textWidth/2, y + size/2 + 22, x + textWidth/2, y + size/2 + 22);
-              }
-              
               // Optionally, draw the distance to the flight
               p.fill('#5C7285');
               p.noStroke();
