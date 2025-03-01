@@ -105,7 +105,11 @@ export default function Main() {
                     ))}
                 </select>
             </div>
-
+            <WeatherSynth 
+                scale={currentScale} 
+                volume={weatherVolume} 
+                onAnalyzerCreated={setWeatherAnalyzer} 
+            />  
             {/* Add visualizers */}
             <div className="mt-8 space-y-6">
                 
@@ -123,6 +127,7 @@ export default function Main() {
                     />
                 )}
             </div>
+
             <div className="p-4 bg-background/50 shadow rounded backdrop-blur-sm">
                 {/* Volume Controls */}
                 <div className="space-y-3">
@@ -169,11 +174,7 @@ export default function Main() {
                     </div>
                 </div>
             </div>
-            <WeatherSynth 
-                scale={currentScale} 
-                volume={weatherVolume} 
-                onAnalyzerCreated={setWeatherAnalyzer} 
-            />  
+            
             <FlightSynth 
                 volume={flightVolume} 
                 onAnalyzerCreated={setFlightAnalyzer}

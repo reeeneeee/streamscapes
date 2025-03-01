@@ -17,6 +17,11 @@ interface ProcessedFlight {
     distance: number;
     frequency: number;
     callsign?: string;
+    vector?: {
+      latPerSecond: number;
+      lonPerSecond: number;
+      lastUpdated: number;
+    };
   }
 
 interface WikiEdit {
@@ -54,8 +59,7 @@ const Visualizer = ({
   const p5Ref = useRef<any | undefined>(undefined);
   const editsRef = useRef<WikiEdit[]>([]);
   const [, setUpdateTrigger] = useState(0); // Only used to trigger re-renders
-  const [planefront, setPlanefront] = useState<any | undefined>(undefined);
-  const [planeback, setPlaneback] = useState<any | undefined>(undefined);
+  const [airplane, setAirplane] = useState<any | undefined>(undefined);
   const imagesLoadedRef = useRef(false);
 
 
@@ -123,8 +127,7 @@ const Visualizer = ({
 
     const sketch = (p: any) => {
       // Preload airplane images
-      const planefront = p.loadImage('/plane-front.svg');
-      const planeback = p.loadImage('/plane-back.svg');
+      const airplane = p.loadImage('/airplane.svg');
       
       p.preload = () => {
         // Load airplane SVGs
@@ -142,46 +145,127 @@ const Visualizer = ({
           height
         );
         canvas.parent(containerRef.current!);
-        setPlanefront(planefront);
-        setPlaneback(planeback);
+        setAirplane(airplane);
       };
 
       p.draw = () => {
         p.background(backgroundColor);
         
-        // NOTE: this is currently a hack and assumes every flight is flying from current location toward the user
-        // TODO: don't show a plane until it's been detected twice and impute flight path from that
-
-        // Draw flights at evenly spaced intervals
+        // Draw distance circles around user's location
+        // Use properly spaced circles with different radii
+        const distanceCircles = [1, 5, 10]; // Miles
+        p.noFill();
+        
+        distanceCircles.forEach(miles => {
+          // Convert miles to lat/lon degrees (approximate)
+          // 1 degree of latitude ≈ 69 miles
+          const latRadius = miles / 69;
+          const lonRadius = miles / 69;
+          
+          // Use the same scale factor as for flights
+          const latScale = p.height * 3;
+          const lonScale = p.width * 3;
+          
+          // Calculate pixel radius
+          const pixelRadiusLat = latRadius * latScale;
+          const pixelRadiusLon = lonRadius * lonScale;
+          
+          // Draw the circle with higher contrast
+          p.stroke('red'); // Red with alpha
+          p.strokeWeight(1.5); // Slightly thinner lines
+          p.ellipse(p.width/2, p.height/2, pixelRadiusLon * 2, pixelRadiusLat * 2);
+        });
+        
+        // Draw user's location
+        p.fill(255, 0, 0);
+        p.noStroke();
+        p.ellipse(p.width/2, p.height/2, 10, 10);
+        p.fill(255, 255, 255);
+        p.textSize(12);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text("You", p.width/2, p.height/2 + 15);
+        
+        // Draw flights based on their actual lat/lon coordinates
         if (flights && flights.length > 0) {
-            // Calculate spacing
-            const numFlights = flights.length;
-            flights.forEach((flight, index) => {
-  
-            const x = p.width/(numFlights+1)*(index+1);
-            const y = p.height/5; 
-              
-            const size = p.map(1/flight.distance, 0, 1, 20, 60);
-              
-            p.fill(0, 255, 0);
-            p.noStroke();
-            const hue = p.map(flight.frequency, 110, 880, 240, 0);
-            p.colorMode(p.HSB, 360, 100, 100);
+          flights.forEach((flight) => {
+            // Calculate relative position from user's location
+            const latDiff = flight.lat - myLat;
+            const lonDiff = flight.lon - myLon;
             
-            p.imageMode(p.CENTER);
-              const img = flight.distance > 0? planefront : planeback; 
-
-             p.image(img, x, y, size, size);
-
+            // Scale factor to convert geo coordinates to pixels
+            const latScale = p.height * 3;
+            const lonScale = p.width * 3;
+            
+            // Calculate canvas position (center of canvas is user's location)
+            const x = p.width/2 + (lonDiff * lonScale);
+            const y = p.height/2 - (latDiff * latScale); // Invert Y since lat increases northward
+            
+            // Size based on distance (closer = bigger)
+            const size = p.map(1/flight.distance, 0, 1, 20, 60);
+            
+            // Only draw planes that are within the visible area (with some margin)
+            const margin = 100; // pixels
+            if (x > -margin && x < p.width + margin && y > -margin && y < p.height + margin) {
+              // Draw the plane
+              p.imageMode(p.CENTER);
+              const img = flight.distance > 0 ? airplane : airplane;
+              
+              // Calculate rotation angle based on flight vector if available
+              let rotation = 0;
+              if (flight.vector) {
+                const { latPerSecond, lonPerSecond } = flight.vector;
+                
+                // Only calculate rotation if vector has meaningful values
+                if (Math.abs(latPerSecond) > 0.00001 || Math.abs(lonPerSecond) > 0.00001) {
+                  // Use atan2 with correct argument order and negate latitude for canvas coordinates
+                  rotation = Math.atan2(-latPerSecond, lonPerSecond);
+                  // Convert to degrees and adjust for p5's rotation system
+                  rotation = p.degrees(rotation) - 90;
+                  
+                  // Draw a line showing the direction vector (for debugging)
+                  p.push();
+                  p.translate(x, y);
+                  p.stroke(255, 255, 0, 200);
+                  p.strokeWeight(2);
+                  const vectorScale = 50; // Scale the vector for visibility
+                  p.line(0, 0, lonPerSecond * vectorScale, -latPerSecond * vectorScale);
+                  p.pop();
+                }
+              }
+              
+              // Apply rotation
+              p.push();
+              p.translate(x, y);
+              p.rotate(rotation);
+              
+              // Only draw the image if it's loaded
+              if (img && img.width > 0) {
+                p.image(img, 0, 0, size, size);
+              }
+              p.pop();
+              
               // Draw callsign if available
               if (flight.callsign) {
                 p.fill('#5C7285');
-                p.textSize(20);
+                p.textSize(16);
                 p.textAlign(p.CENTER, p.CENTER);
                 p.text(flight.callsign, x, y + size/2 + 15);
+                
+                // Draw a subtle underline to indicate it's a link
+                const textWidth = p.textWidth(flight.callsign);
+                p.stroke('#5C7285');
+                p.strokeWeight(1);
+                p.line(x - textWidth/2, y + size/2 + 22, x + textWidth/2, y + size/2 + 22);
               }
-            });
-          }
+              
+              // Optionally, draw the distance to the flight
+              p.fill('#5C7285');
+              p.noStroke();
+              p.textSize(12);
+              p.text(`${Math.round(flight.distance)} mi`, x, y - size/2 - 10);
+            }
+          });
+        }
 
         // Draw edits as shrinking circles
         const currentEdits = editsRef.current;
@@ -219,14 +303,14 @@ const Visualizer = ({
               : edit.title;
             
             // Draw the title with a different color to indicate it's clickable
-            p.fill('#2d2d2d');
+            p.fill('#5C7285');
             p.text(displayTitle, x, y + currentSize);
             
             // Draw a subtle underline to indicate it's a link
             const textWidth = p.textWidth(displayTitle);
-            p.stroke('#2d2d2d');
+            p.stroke('#5C7285');
             p.strokeWeight(1);
-            p.line(x - textWidth/2, y + currentSize + 5, x + textWidth/2, y + currentSize + 5);
+            p.line(x - textWidth/2, y + currentSize + 8, x + textWidth/2, y + currentSize + 8);
           }
         });
         
@@ -275,22 +359,49 @@ const Visualizer = ({
           p.endShape();
         }
 
-        // Add mouseClicked handler to handle clicks on wikipedia edit titles
+        // Update mouseClicked handler to handle both flights and wiki edits
         p.mouseClicked = () => {
+          // Check if click is on any flight callsign or plane
+          if (flights && flights.length > 0) {
+            for (const flight of flights) {
+              if (flight.callsign) {
+                // Calculate position using the same logic as in draw()
+                const latDiff = flight.lat - myLat;
+                const lonDiff = flight.lon - myLon;
+                const latScale = p.height * 3;
+                const lonScale = p.width * 3;
+                const x = p.width/2 + (lonDiff * lonScale);
+                const y = p.height/2 - (latDiff * latScale);
+                const size = p.map(1/flight.distance, 0, 1, 20, 60);
+                
+                // Check if mouse is near the plane
+                if (p.dist(p.mouseX, p.mouseY, x, y) < size/2) {
+                  // Open the ADSB database page in a new tab
+                  window.open(`https://api.adsbdb.com/v0/callsign/${flight.callsign}`, '_blank');
+                  return false; // Prevent default behavior
+                }
+              }
+            }
+          }
+          
           // Check if click is on any edit title
+          const currentEdits = editsRef.current;
           for (const edit of currentEdits) {
+            if (edit.size > 30 && edit.age < 20) {
               const x = edit.position.x;
               const y = edit.position.y;
               const currentSize = edit.size * (1 - edit.age / 30);
               
-              // Check if mouse is near the title text or circle
+              // Check if mouse is near the title text (below the circle)
               const textY = y + currentSize;
-              if (p.dist(p.mouseX, p.mouseY, x, textY) < 50 || p.dist(p.mouseX, p.mouseY, x, y) < currentSize) {
+              if (p.dist(p.mouseX, p.mouseY, x, textY) < 50) {
                 // Open the Wikipedia page in a new tab
                 window.open(edit.url, '_blank');
                 return false; // Prevent default behavior
               }
+            }
           }
+          
           return true;
         };
       };

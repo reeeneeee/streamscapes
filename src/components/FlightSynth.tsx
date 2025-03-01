@@ -16,6 +16,11 @@ interface Flight {
 interface ProcessedFlight extends Flight {
   distance: number;
   frequency: number;
+  lastUpdated: number;
+  vector?: {
+    latPerSecond: number;
+    lonPerSecond: number;
+  };
 }
 
 export default function FlightSynth({ 
@@ -68,7 +73,8 @@ export default function FlightSynth({
     return {
       ...flight,
       distance,
-      frequency
+      frequency,
+      lastUpdated: Date.now()
     };
   };
 
@@ -109,21 +115,41 @@ export default function FlightSynth({
       // If we already have this flight, update it
       if (processedFlightsRef.current.has(flightId)) {
         const existingFlight = processedFlightsRef.current.get(flightId)!;
+        const now = Date.now();
         
-        // Calculate speed in miles per second (for 1-second interval)
-        const flightSpeed = flight.gspeed * 1.15; // knots -> mph
+        // Calculate movement vector if we have a previous position
+        const timeDiff = (now - existingFlight.lastUpdated) / 1000;
         
-        // Decrement distance according to flight speed (mph / 3600 = miles per second)
-        // console.log("decrementing distance for flight", flightId, "by", flightSpeed/3600.0);
-        existingFlight.distance -= flightSpeed/3600.0;
+        if (timeDiff > 0) {
+          // Calculate movement per second
+          const latPerSecond = (flight.lat - existingFlight.lat) / timeDiff;
+          const lonPerSecond = (flight.lon - existingFlight.lon) / timeDiff;
+          
+          // Only update vector if there's actual movement
+          if (Math.abs(latPerSecond) > 0.00001 || Math.abs(lonPerSecond) > 0.00001) {
+            existingFlight.vector = {
+              latPerSecond,
+              lonPerSecond
+            };
+            
+            // Log vector for debugging
+            console.log(`Flight ${flightId} vector: lat=${latPerSecond.toFixed(6)}/s, lon=${lonPerSecond.toFixed(6)}/s`);
+          }
+        }
         
-        // Update other properties from the new flight data
-        existingFlight.lat = flight.lat-(myLat-flight.lat);
-        existingFlight.lon = flight.lon-(myLon-flight.lon);
+        // Update flight properties
+        existingFlight.lat = flight.lat;
+        existingFlight.lon = flight.lon;
         existingFlight.gspeed = flight.gspeed;
         existingFlight.callsign = flight.callsign;
+        existingFlight.lastUpdated = now;
         
-        // Recalculate frequency based on updated distance
+        // Recalculate distance and frequency
+        existingFlight.distance = Math.sqrt(
+          Math.pow(flight.lat - myLat, 2) + 
+          Math.pow(flight.lon - myLon, 2)
+        )*69;
+        
         const maxDist = 10.0;
         const minFreq = 110.0;
         const maxFreq = 880.0;
@@ -250,7 +276,58 @@ export default function FlightSynth({
     flightsDataRef.current = flightsInArea;
   }, [flightsInArea]);
 
-  // Fetch data effect
+  // Modify the predictFlightPositions function to ensure vectors are used
+  const predictFlightPositions = () => {
+    const now = Date.now();
+    
+    processedFlightsRef.current.forEach((flight) => {
+      // Only predict if we have a vector
+      if (flight.vector) {
+        const { latPerSecond, lonPerSecond } = flight.vector;
+        
+        // Time since last update in seconds
+        const timeSinceUpdate = (now - flight.lastUpdated) / 1000;
+        
+        // Use smaller time steps for smoother updates
+        // Instead of updating the full time difference at once, update in smaller increments
+        const maxTimeStep = 1.0; // Maximum 1 second per update
+        const timeStep = Math.min(timeSinceUpdate, maxTimeStep);
+        
+        // Don't predict too far into the future (max 5 minutes)
+        if (timeStep > 0 && timeSinceUpdate < 300) {
+          // Predict new position with smaller time step
+          flight.lat += latPerSecond * timeStep;
+          flight.lon += lonPerSecond * timeStep;
+          
+          // Update distance and frequency
+          flight.distance = Math.sqrt(
+            Math.pow(flight.lat - myLat, 2) + 
+            Math.pow(flight.lon - myLon, 2)
+          )*69;
+          
+          const maxDist = 10.0;
+          const minFreq = 110.0;
+          const maxFreq = 880.0;
+          flight.frequency = minFreq * Math.pow(maxFreq/minFreq, 
+            Math.max(0, maxDist - Math.abs(flight.distance)) / maxDist
+          );
+          
+          // Only partially update the lastUpdated time for smoother continuous updates
+          flight.lastUpdated += timeStep * 1000;
+        }
+      }
+    });
+    
+    // Update processed flights array for UI
+    setProcessedFlights(Array.from(processedFlightsRef.current.values()));
+    
+    // Notify parent component about updated flights
+    if (onFlightsUpdated) {
+      onFlightsUpdated(Array.from(processedFlightsRef.current.values()));
+    }
+  };
+
+  // Fetch data effect with initial double fetch
   useEffect(() => {
     const fetchFlights = async () => {
       try {
@@ -263,17 +340,26 @@ export default function FlightSynth({
       }
     };
 
-    // Fetch flights every minute
-    const fetchInterval = setInterval(fetchFlights, 60000);
-    // Update synths every second
+    // Initial double fetch to establish flight paths
+    fetchFlights();
+    
+    // Second fetch after 2 seconds to establish vectors
+    const initialSecondFetch = setTimeout(fetchFlights, 2000);
+    
+    // Then fetch flights every few minutes
+    const fetchInterval = setInterval(fetchFlights, 3 * 60 * 1000); // Every 3 minutes
+    
+    // Update synths and predict positions more frequently
     const updateInterval = setInterval(updateSynths, 100);
     
-    // Initial fetch
-    fetchFlights();
+    // Predict flight positions between API calls
+    const predictionInterval = setInterval(predictFlightPositions, 5000); // Every 5 seconds
 
     return () => {
+        clearTimeout(initialSecondFetch);
         clearInterval(fetchInterval);
         clearInterval(updateInterval);
+        clearInterval(predictionInterval);
         // Cleanup synths
         synthsRef.current.forEach(({ synth, lfo }) => {
             synth.dispose();
@@ -282,20 +368,6 @@ export default function FlightSynth({
         synthsRef.current.clear();
     };
   }, []);
-
-  
-
-  // Update synths when flights data changes
-  useEffect(() => {
-    if (flightsInArea) {
-      updateSynths();
-      
-      // Notify parent component about updated flights
-      if (onFlightsUpdated) {
-        onFlightsUpdated(Array.from(processedFlightsRef.current.values()));
-      }
-    }
-  }, [flightsInArea, onFlightsUpdated]);
 
   return (<div></div>
     // <div style={{ color: 'blue', margin: 20 }}>
