@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone'
 import { Chord, Interval, Note, Scale} from 'tonal';
 import axios from "axios";
+import { useUserLocation } from '../hooks/useUserLocation';
 
 interface Flight {
   fr24_id: string;
@@ -40,10 +41,13 @@ export default function FlightSynth({
   const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
   let currentFlightIds = new Set<string>();
   const analyzerRef = useRef<Tone.Analyser | null>(null);
+  const { location, loading } = useUserLocation();
 
-  // TODO: make this based on user location, with permission
-  const myLat = 40.6711;
-  const myLon = -73.9814;
+  // Remove the hardcoded coordinates and use location from hook
+  const myLat = location.lat;
+  const myLon = location.lon;
+  
+  // Update bounds calculation
   const myBounds = `${myLat+0.07},${myLat-0.07},${myLon-0.07},${myLon+0.07}`;
   const flightradar24ApiKey = process.env.NEXT_PUBLIC_FLIGHTRADAR24_API_KEY;
   let config = {
@@ -369,59 +373,13 @@ export default function FlightSynth({
     };
   }, []);
 
-  return (<div></div>
-    // <div style={{ color: 'blue', margin: 20 }}>
-    //   {processedFlights.length > 0 && (
-    //     <div>
-    //       {/* <h4> ✈️ Flights in my area ✈️ </h4> */}
-    //       <div style={{ 
-    //         display: 'flex', 
-    //         flexDirection: 'row', 
-    //         flexWrap: 'wrap', 
-    //         gap: '10px',
-    //         justifyContent: 'center'
-    //       }}>
-    //         {processedFlights.map((flight) => {
-    //           // Calculate emoji size based on distance (closer = bigger)
-    //           // Assuming distance ranges from 0-100 miles, adjust as needed
-    //           const minSize = 1.0;  // Minimum size multiplier
-    //           const maxSize = 2.5;  // Maximum size multiplier
-    //           const maxDistance = 100; // Maximum expected distance
-    //           const sizeMultiplier = 1/Math.max(1, Math.abs(flight.distance/10));
-              
-    //           return (
-    //             <div key={flight.fr24_id} style={{ 
-    //               padding: '12px',
-    //               border: '1px solid #ccc',
-    //               borderRadius: '8px',
-    //               backgroundColor: '#f8f9fa',
-    //               minWidth: '180px',
-    //               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    //               display: 'flex',
-    //               flexDirection: 'column',
-    //               alignItems: 'center'
-    //             }}>
-    //               <div style={{ 
-    //                 fontSize: `${sizeMultiplier * 2}rem`, 
-    //                 marginBottom: '8px' 
-    //               }}>
-    //                 ✈️
-    //               </div>
-    //               <div style={{ fontWeight: 'bold' }}>
-    //                 {flight.callsign || `Flight ${flight.fr24_id}`}
-    //               </div>
-    //               <div style={{ fontSize: '0.9rem', color: '#555' }}>
-    //                 {flight.distance.toFixed(1)} miles • {flight.frequency.toFixed(0)} Hz
-    //               </div>
-    //               <div style={{ fontSize: '0.9rem', color: '#555' }}>
-    //                 {(flight.gspeed * 1.15).toFixed(0)} mph
-    //               </div>
-    //             </div>
-    //           );
-    //         })}
-    //       </div>
-    //     </div>
-    //   )}
-    // </div>
+  // You might want to show a loading state
+  if (loading) {
+    return <div>Loading location data...</div>;
+  }
+
+  return (
+    <div>
+    </div>
   );
 }

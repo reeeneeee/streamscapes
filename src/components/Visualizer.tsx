@@ -41,8 +41,8 @@ interface VisualizerProps {
   myLat: number;
   myLon: number;
   wikiAnalyzer: Tone.Analyser | null;
-  height?: number;
   backgroundColor?: string;
+  scale: string[];
 }
 
 const Visualizer = ({
@@ -52,8 +52,8 @@ const Visualizer = ({
     myLat,
     myLon,
     wikiAnalyzer,
-    height = 300,
-    backgroundColor = "#111111"
+    backgroundColor,
+    scale
 }: VisualizerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5Ref = useRef<any | undefined>(undefined);
@@ -80,7 +80,7 @@ const Visualizer = ({
           const seed = data.title.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
           const containerWidth = containerRef.current?.clientWidth || 400;
           const x = (seed % 1000) / 1000 * (containerWidth - 100) + 50;
-          const y = ((seed % 500) / 500) * (height - 100) + 50;
+          const y = ((seed % 500) / 500) * (containerWidth - 100) + 50;
           
           // Add new edit with timestamp and fixed position
           const newEdit = {
@@ -103,7 +103,7 @@ const Visualizer = ({
     return () => {
       eventSource.close();
     };
-  }, [height]);
+  }, []);
   
   // Update edit ages every second
   useEffect(() => {
@@ -142,7 +142,7 @@ const Visualizer = ({
       p.setup = () => {
         const canvas = p.createCanvas(
           containerRef.current?.clientWidth || 400,
-          height
+          containerRef.current?.clientWidth || 400
         );
         canvas.parent(containerRef.current!);
         setAirplane(airplane);
@@ -180,10 +180,6 @@ const Visualizer = ({
         p.fill(255, 0, 0);
         p.noStroke();
         p.ellipse(p.width/2, p.height/2, 10, 10);
-        p.fill(255, 255, 255);
-        p.textSize(12);
-        p.textAlign(p.CENTER, p.CENTER);
-        p.text("You", p.width/2, p.height/2 + 15);
         
         // Draw flights based on their actual lat/lon coordinates
         if (flights && flights.length > 0) {
@@ -258,7 +254,7 @@ const Visualizer = ({
         currentEdits.forEach(edit => {
           // Calculate size based on edit size and age
           const maxSize = edit.size;
-          const currentSize = maxSize * (1 - edit.age / 30); // Shrink over 30 seconds
+          const currentSize = maxSize * (1 - edit.age / 60); // Shrink over 30 seconds
           
           // Use the pre-calculated position
           const x = edit.position.x;
@@ -269,15 +265,15 @@ const Visualizer = ({
             const rippleSize = currentSize * (1 + i * 0.3);
             const alpha = p.map(i, 0, 3, 200, 25); // Map to 0-255 alpha values
             p.noFill();
-            p.stroke(93, 135, 54, alpha); // #5D8736 with alpha
+            p.stroke(77, 108, 129, alpha); // #4d6c81 with alpha
             p.strokeWeight(2);
             p.ellipse(x, y, rippleSize, rippleSize);
           }
           
           // Draw main circle
-          p.fill('#5D8736');
+          p.fill('#4d6c81');
           p.noStroke();
-          p.ellipse(x, y, currentSize, currentSize);
+          p.ellipse(x, y, 10, 10);//currentSize, currentSize);
           
           // Draw title for larger edits
           if (edit.size > 30 && edit.age < 20) {
@@ -303,7 +299,7 @@ const Visualizer = ({
         // Draw wiki waveform if analyzer is available
         if (wikiAnalyzer) {
           const data = wikiAnalyzer.getValue() as Float32Array;
-          p.stroke('#5D8736');
+          p.stroke('#4d6c81');
           p.strokeWeight(2);
           p.noFill();
           p.beginShape();
@@ -373,15 +369,13 @@ const Visualizer = ({
           // Check if click is on any edit title
           const currentEdits = editsRef.current;
           for (const edit of currentEdits) {
-            if (edit.size > 30 && edit.age < 20) {
-              const x = edit.position.x;
-              const y = edit.position.y;
-              const currentSize = edit.size * (1 - edit.age / 30);
-              
-              // Check if mouse is near the title text (below the circle)
-              const textY = y + currentSize;
-              if (p.dist(p.mouseX, p.mouseY, x, textY) < 50) {
-                // Open the Wikipedia page in a new tab
+            const x = edit.position.x;
+            const y = edit.position.y;
+            
+            // Check if mouse is near the circle
+            if (p.dist(p.mouseX, p.mouseY, x, y) < 20) {
+              // Open the Wikipedia page in a new tab
+              if (edit.url) {
                 window.open(edit.url, '_blank');
                 return false; // Prevent default behavior
               }
@@ -396,7 +390,7 @@ const Visualizer = ({
         if (containerRef.current) {
           p.resizeCanvas(
             containerRef.current.clientWidth,
-            height
+            containerRef.current.clientWidth,
           );
         }
       };
@@ -419,12 +413,12 @@ const Visualizer = ({
         }
       }
     };
-  }, [weatherAnalyzer, flights, flightAnalyzer, myLat, myLon, wikiAnalyzer, height, backgroundColor]);
+  }, [weatherAnalyzer, flights, flightAnalyzer, myLat, myLon, wikiAnalyzer, backgroundColor]);
 
   return (
     <div className="w-full mb-4">
       <h4 className="mb-2 text-sm font-medium"></h4>
-      <div ref={containerRef} className="w-full rounded-lg overflow-hidden" style={{ height }} />
+      <div ref={containerRef} className="w-full max-w-lg mx-auto rounded-lg overflow-hidden" />
     </div>
   );
 };

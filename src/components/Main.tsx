@@ -122,8 +122,8 @@ export default function Main() {
                         myLat={40.6711}
                         myLon={-73.9814}
                         wikiAnalyzer={wikiAnalyzer}
-                        height={500}
                         backgroundColor="#f5f5f5"
+                        scale={currentScale}
                     />
                 )}
             </div>

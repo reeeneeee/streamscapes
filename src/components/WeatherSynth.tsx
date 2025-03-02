@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone'
 import { Chord, Interval, Note, Scale} from 'tonal';
 import axios from "axios";
+import { useUserLocation } from '../hooks/useUserLocation';
 
 function cloudNoise(coverPercentage: number, volume: number) {
     const noise = new Tone.Noise("brown").start();
@@ -39,9 +40,11 @@ export default function WeatherSynth({
   const arpeggioRef = useRef<any>(null);
   const analyzerRef = useRef<Tone.Analyser | null>(null);
   
-  // TODO: make this based on user location, with permission
-  const myLat = 40.6711;
-  const myLon = -73.9814;
+  const { location, loading } = useUserLocation();
+  
+  // Remove the hardcoded coordinates and use location from hook
+  const myLat = location.lat;
+  const myLon = location.lon;
 
   const weatherApiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
   let myWeatherRequest = `https://api.openweathermap.org/data/3.0/onecall?lat=${myLat}&lon=${myLon}&appid=${weatherApiKey}&units=imperial`;
@@ -183,11 +186,17 @@ export default function WeatherSynth({
     console.log("Scale changed to:", scale);
   }, [scale]);
 
+  // You might want to show a loading state
+  if (loading) {
+    return <div>Loading location data...</div>;
+  }
+
   return (
-    <div style={{ fontSize: '20px', textAlign: 'center', margin: 20 }}>
+    <div style={{ fontSize: '16px', textAlign: 'center', margin: 20 }}>
       {myWeather && (
         <h4>
-          🌡️: {myWeather.feels_like}°F, ☁️: {myWeather.clouds}%
+          📍 {location.lat.toFixed(4)}, {location.lon.toFixed(4)} <br/>
+          🌡️: {Math.trunc(myWeather.feels_like)}°F, ☁️: {myWeather.clouds}%
         </h4>
       )}
     </div>
