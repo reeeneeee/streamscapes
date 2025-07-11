@@ -1,10 +1,6 @@
-# Streamscapes
-
-**Real-time data streams turned into sound**
+# Streamscapes 🎶🌥️🌡️✈️💻🎶
 
 Streamscapes is an interactive web application that transforms live data streams into generative music and visualizations. It creates an ambient soundscape by sonifying real-time weather data, flight information, and Wikipedia edits happening around your location.
-
-## 🎵 Features
 
 ### Multi-Stream Sonification
 - **Weather Synth**: Converts local weather conditions into musical patterns
@@ -35,11 +31,11 @@ Streamscapes is an interactive web application that transforms live data streams
 - **Choose a Scale**: Select your preferred musical scale from the dropdown
 - **Adjust Mix**: Use the volume sliders to balance the three data streams
    
-## 🛠️ Technology Stack
+## Tech stack
 
 - **Frontend**: Next.js, React, TypeScript
 - **Audio**: Tone.js, Tonal.js
-- **Visualization**: P5.js for real-time graphics
+- **Visualization**: P5.js
 - **Styling**: Tailwind CSS
 - **APIs**: 
   - OpenWeatherMap API (weather data)
