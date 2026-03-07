@@ -144,8 +144,17 @@ export default function WeatherSynth({
     const fetchWeather = async () => {
       try {
         const response = await fetch(myWeatherRequest);
+        if (!response.ok) {
+          console.error('Weather API failed:', response.status);
+          return;
+        }
         const data = await response.json();
-        const weatherData = data.current;
+
+        // Normalize response shape (2.5 API uses different structure than 3.0)
+        const weatherData = {
+          feels_like: data.current?.feels_like ?? data.main?.feels_like ?? 60,
+          clouds: data.current?.clouds ?? data.clouds?.all ?? 0,
+        };
 
         setMyWeather(weatherData);
         if (weatherData.clouds >= 0) {

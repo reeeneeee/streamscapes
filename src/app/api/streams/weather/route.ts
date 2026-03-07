@@ -14,12 +14,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Weather API key not configured' }, { status: 500 });
   }
 
-  const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=imperial`;
+  // Use the free 2.5 weather API (One Call 3.0 requires paid subscription)
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=imperial`;
 
   const response = await fetch(url);
   if (!response.ok) {
+    const body = await response.text();
+    console.error(`Weather API error ${response.status}: ${body}`);
     return NextResponse.json(
-      { error: 'Failed to fetch weather data' },
+      { error: 'Failed to fetch weather data', status: response.status, detail: body },
       { status: response.status }
     );
   }
