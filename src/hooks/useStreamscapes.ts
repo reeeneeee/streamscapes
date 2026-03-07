@@ -80,6 +80,7 @@ export function useStreamscapes(lat: number, lon: number) {
   }, [channels, isPlaying]);
 
   const startAudio = async () => {
+    if (useStore.getState().isPlaying) return;
     if (Tone.context.state === 'suspended') {
       await Tone.start();
     }
@@ -92,17 +93,6 @@ export function useStreamscapes(lat: number, lon: number) {
         title: 'Streamscapes',
         artist: 'Real-time data sonification',
       });
-    }
-
-    // Connect all enabled streams
-    const manager = managerRef.current;
-    if (manager) {
-      const chs = useStore.getState().channels;
-      for (const [streamId, config] of Object.entries(chs)) {
-        if (config.enabled) {
-          manager.connectStream(streamId);
-        }
-      }
     }
   };
 

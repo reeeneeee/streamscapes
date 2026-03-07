@@ -120,7 +120,20 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
               </div>
 
               {/* Mute / Solo */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 mb-1">
+                <button
+                  onClick={() => updateChannel(id, { enabled: !config.enabled })}
+                  className="btn-toggle"
+                  data-active={config.enabled}
+                  title="Audible on/off"
+                  style={{
+                    minWidth: 22,
+                    background: config.enabled ? '#4ade80' : '#333',
+                    color: config.enabled ? '#000' : '#999',
+                  }}
+                >
+                  A
+                </button>
                 <button
                   onClick={() => updateChannel(id, { mute: !config.mute })}
                   className="btn-toggle mute"
@@ -135,6 +148,9 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
                 >
                   S
                 </button>
+              </div>
+              <div className="text-[9px] text-gray-500">
+                {config.enabled ? 'Audible' : 'Silent'}
               </div>
             </div>
           );

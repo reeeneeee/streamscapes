@@ -27,8 +27,8 @@ export class StreamManager {
     const plugin = this.plugins.get(streamId);
     if (!plugin) return;
 
-    // Disconnect if already running
-    this.disconnectStream(streamId);
+    // Idempotent connect: avoid overlapping stream loops.
+    if (this.abortControllers.has(streamId)) return;
 
     const controller = new AbortController();
     this.abortControllers.set(streamId, controller);
@@ -47,6 +47,11 @@ export class StreamManager {
       if (controller.signal.aborted) return;
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.store.setStreamState(streamId, { status: 'error', error: message });
+    } finally {
+      const current = this.abortControllers.get(streamId);
+      if (current === controller) {
+        this.abortControllers.delete(streamId);
+      }
     }
   }
 

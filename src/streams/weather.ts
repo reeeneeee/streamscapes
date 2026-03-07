@@ -10,7 +10,7 @@ export function createWeatherPlugin(lat: number, lon: number): StreamPlugin {
     async *connect(signal: AbortSignal): AsyncIterable<DataPoint> {
       while (!signal.aborted) {
         try {
-          const response = await fetch(`/api/streams/weather?lat=${lat}&lon=${lon}`);
+          const response = await fetch(`/api/streams/weather?lat=${lat}&lon=${lon}`, { signal });
           if (response.ok) {
             const data = await response.json();
 

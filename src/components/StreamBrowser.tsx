@@ -2,6 +2,7 @@
 
 import { useStore } from '@/store';
 import type { StreamPlugin } from '@/types/stream';
+import { genericChannelPatch } from '@/lib/generic-settings';
 
 const STREAM_COLORS: Record<string, string> = {
   weather: '#7C444F',
@@ -20,7 +21,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) {
   const channels = useStore((s) => s.channels);
+  const selectedChannelId = useStore((s) => s.selectedChannelId);
   const updateChannel = useStore((s) => s.updateChannel);
+  const setSelectedChannel = useStore((s) => s.setSelectedChannel);
   const activeStreams = useStore((s) => s.activeStreams);
 
   // Group by category
@@ -39,18 +42,18 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
           </div>
           {streams.map((plugin) => {
             const config = channels[plugin.id];
+            if (!config) return null;
             const enabled = config?.enabled ?? false;
             const status = activeStreams[plugin.id]?.status;
             const color = STREAM_COLORS[plugin.id] ?? '#888';
 
             return (
-              <button
+              <div
                 key={plugin.id}
-                onClick={() => updateChannel(plugin.id, { enabled: !enabled })}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm mb-0.5 transition-colors"
                 style={{
-                  background: enabled ? `${color}22` : 'transparent',
-                  color: enabled ? '#eee' : '#666',
+                  background: selectedChannelId === plugin.id ? `${color}22` : 'transparent',
+                  color: selectedChannelId === plugin.id ? '#eee' : '#666',
                 }}
               >
                 {/* Status dot */}
@@ -63,11 +66,33 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
                       : enabled ? color : '#444',
                   }}
                 />
-                <span className="flex-1 truncate">{plugin.name}</span>
+                <button
+                  onClick={() => setSelectedChannel(plugin.id)}
+                  className="flex-1 truncate text-left hover:text-white"
+                >
+                  {plugin.name}
+                </button>
                 <span className="text-[10px] text-gray-500">
-                  {enabled ? 'ON' : 'OFF'}
+                  {selectedChannelId === plugin.id ? 'WORKING' : enabled ? 'HEARD' : 'OFF'}
                 </span>
-              </button>
+                <button
+                  onClick={() => updateChannel(plugin.id, genericChannelPatch(plugin.id, config))}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-[#333] text-gray-300 hover:text-white"
+                  title="Choose Generic Setting"
+                >
+                  Generic
+                </button>
+                <button
+                  onClick={() => updateChannel(plugin.id, { enabled: !enabled })}
+                  className="text-[10px] px-1.5 py-0.5 rounded"
+                  style={{
+                    background: enabled ? '#4ade80' : '#333',
+                    color: enabled ? '#000' : '#999',
+                  }}
+                >
+                  Hear
+                </button>
+              </div>
             );
           })}
         </div>

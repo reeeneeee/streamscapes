@@ -47,6 +47,16 @@ const STREAM_COLORS = {
   wiki: '#4d6c81',
 };
 
+function hash32(input: string): number {
+  // FNV-1a 32-bit hash for stable deterministic placement.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 function lerp(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
   return outMin + ((value - inMin) / (inMax - inMin)) * (outMax - outMin);
 }
@@ -66,6 +76,7 @@ const Visualizer = ({
   const flightsRef = useRef<ProcessedFlight[]>(flights);
   const airplaneImgRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number>(0);
+  const lastFrameMsRef = useRef<number>(0);
 
   flightsRef.current = flights;
 
@@ -85,11 +96,12 @@ const Visualizer = ({
       const title = String(f.title ?? '');
       const absLen = typeof f.absLengthDelta === 'number' ? f.absLengthDelta : 10;
       const editSize = Math.min(100, Math.max(10, absLen));
-      const seed = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const w = containerRef.current?.clientWidth || 400;
       const h = containerRef.current?.clientHeight || 400;
-      const x = (seed % 1000) / 1000 * (w - 100) + 50;
-      const y = ((seed % 500) / 500) * (h - 100) + 50;
+      const hx = hash32(`${title}|x`);
+      const hy = hash32(`${title}|y`);
+      const x = (hx / 0xffffffff) * (w - 100) + 50;
+      const y = (hy / 0xffffffff) * (h - 100) + 50;
       const url = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
 
       editsRef.current = [{
@@ -140,6 +152,12 @@ const Visualizer = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const now = performance.now();
+    if (now - lastFrameMsRef.current < 1000 / 45) {
+      rafRef.current = requestAnimationFrame(draw);
+      return;
+    }
+    lastFrameMsRef.current = now;
 
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.width / dpr;
@@ -280,6 +298,7 @@ const Visualizer = ({
 
   // Animation loop
   useEffect(() => {
+    lastFrameMsRef.current = 0;
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);

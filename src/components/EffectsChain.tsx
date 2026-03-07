@@ -28,8 +28,8 @@ export default function EffectsChain() {
   const selectedId = useStore((s) => s.selectedChannelId);
   const updateChannel = useStore((s) => s.updateChannel);
 
-  const channelIds = Object.keys(channels).filter((id) => channels[id].enabled);
-  const activeId = selectedId && channels[selectedId]?.enabled ? selectedId : channelIds[0];
+  const channelIds = Object.keys(channels);
+  const activeId = selectedId && channels[selectedId] ? selectedId : channelIds[0];
   const config = channels[activeId];
   if (!config) return null;
 

@@ -24,13 +24,18 @@ export function createFlightPlugin(lat: number, lon: number): StreamPlugin {
 
     async *connect(signal: AbortSignal): AsyncIterable<DataPoint> {
       const bounds = `${lat + 0.07},${lat - 0.07},${lon - 0.07},${lon + 0.07}`;
+      let consecutiveFailures = 0;
 
       while (!signal.aborted) {
         try {
-          const response = await fetch(`/api/streams/flights?bounds=${bounds}`);
+          const response = await fetch(`/api/streams/flights?bounds=${bounds}`, {
+            signal,
+            cache: 'no-store',
+          });
           if (response.ok) {
             const data = await response.json();
             const flights: FlightPosition[] = data.data ?? [];
+            consecutiveFailures = 0;
 
             for (const flight of flights) {
               const distance = coordDistanceMiles(lat, lon, flight.lat, flight.lon);
@@ -57,10 +62,16 @@ export function createFlightPlugin(lat: number, lon: number): StreamPlugin {
                 },
               };
             }
+          } else {
+            consecutiveFailures += 1;
           }
         } catch (error) {
           if (signal.aborted) return;
-          console.error('Flight fetch error:', error);
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+          consecutiveFailures += 1;
+          if (consecutiveFailures === 1 || consecutiveFailures % 10 === 0) {
+            console.warn(`Flights stream fetch failed (x${consecutiveFailures}). Retrying...`);
+          }
         }
 
         // Wait before next fetch (every 10 seconds for smoother updates)

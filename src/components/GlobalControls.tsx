@@ -23,6 +23,7 @@ const SCALES = [
 export default function GlobalControls() {
   const global = useStore((s) => s.global);
   const updateGlobal = useStore((s) => s.updateGlobal);
+  const resetAudioConfig = useStore((s) => s.resetAudioConfig);
 
   // Parse rootNote into note + octave (e.g. "C4" → "C", "4")
   const noteName = global.rootNote.replace(/\d+$/, '');
@@ -89,6 +90,18 @@ export default function GlobalControls() {
           className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
           style={{ accentColor: 'var(--accent)' }}
         />
+      </div>
+
+      <div className="mt-3 pt-2 border-t border-white/10">
+        <button
+          onClick={() => {
+            if (!window.confirm('Reset all audio settings to defaults?')) return;
+            resetAudioConfig();
+          }}
+          className="w-full text-[11px] px-2 py-1 rounded bg-[#3a2323] text-red-300 hover:text-red-200 hover:bg-[#4a2a2a]"
+        >
+          Factory Reset Audio Config
+        </button>
       </div>
     </div>
   );

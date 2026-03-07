@@ -155,6 +155,38 @@ describe('applyMappings', () => {
     });
   });
 
+  // --- Row controls ---
+  describe('row-level controls', () => {
+    it('applies output quantization', () => {
+      const mapping = makeMapping({ quantizeStep: 0.2 });
+      const result = applyMappings(makeDataPoint({ value: 63 }), [mapping], GLOBAL);
+      expect(result.frequency).toBeCloseTo(0.6);
+    });
+
+    it('applies hysteresis deadband with state', () => {
+      const mapping = makeMapping({ hysteresis: 0.2 });
+      const state = new Map<string, { lastOutput: number; lastUpdatedMs: number }>();
+      const r1 = applyMappings(makeDataPoint({ value: 50 }), [mapping], GLOBAL, { state, nowMs: 0 });
+      const r2 = applyMappings(makeDataPoint({ value: 60 }), [mapping], GLOBAL, { state, nowMs: 100 });
+      const r3 = applyMappings(makeDataPoint({ value: 80 }), [mapping], GLOBAL, { state, nowMs: 200 });
+      expect(r1.frequency).toBeCloseTo(0.5);
+      expect(r2.frequency).toBeCloseTo(0.5);
+      expect(r3.frequency).toBeCloseTo(0.8);
+    });
+
+    it('applies smoothing over time with state', () => {
+      const mapping = makeMapping({ smoothingMs: 1000 });
+      const state = new Map<string, { lastOutput: number; lastUpdatedMs: number }>();
+      const r1 = applyMappings(makeDataPoint({ value: 0 }), [mapping], GLOBAL, { state, nowMs: 0 });
+      const r2 = applyMappings(makeDataPoint({ value: 100 }), [mapping], GLOBAL, { state, nowMs: 250 });
+      const r3 = applyMappings(makeDataPoint({ value: 100 }), [mapping], GLOBAL, { state, nowMs: 1000 });
+      expect(r1.frequency).toBeCloseTo(0);
+      expect(r2.frequency).toBeCloseTo(0.25);
+      expect(r3.frequency).toBeGreaterThan(r2.frequency ?? 0);
+      expect(r3.frequency).toBeLessThanOrEqual(1);
+    });
+  });
+
   // --- Edge cases ---
   describe('edge cases', () => {
     it('skips non-numeric fields', () => {
@@ -192,8 +224,7 @@ describe('applyMappings', () => {
     it('handles equal input range without NaN', () => {
       const mapping = makeMapping({ inputRange: [50, 50] });
       const result = applyMappings(makeDataPoint({ value: 50 }), [mapping], GLOBAL);
-      // Division by zero → NaN, but should clamp. Let's check it doesn't crash.
-      expect(typeof result.frequency === 'number' || result.frequency === undefined).toBe(true);
+      expect(result.frequency).toBeCloseTo(0);
     });
   });
 });
