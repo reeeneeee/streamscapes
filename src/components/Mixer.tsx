@@ -75,11 +75,11 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
                   onChange={(e) => updateChannel(id, { volume: parseFloat(e.target.value) })}
                   className="vertical-slider"
                   style={{
-                    writingMode: 'vertical-lr' as any,
+                    writingMode: 'vertical-lr' as React.CSSProperties['writingMode'],
                     direction: 'rtl',
                     height: 120,
                     width: 20,
-                    WebkitAppearance: 'slider-vertical' as any,
+                    WebkitAppearance: 'slider-vertical' as React.CSSProperties['WebkitAppearance'],
                   }}
                 />
               </div>
@@ -147,11 +147,11 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
               value={global.masterVolume}
               onChange={(e) => updateGlobal({ masterVolume: parseFloat(e.target.value) })}
               style={{
-                writingMode: 'vertical-lr' as any,
+                writingMode: 'vertical-lr' as React.CSSProperties['writingMode'],
                 direction: 'rtl',
                 height: 120,
                 width: 20,
-                WebkitAppearance: 'slider-vertical' as any,
+                WebkitAppearance: 'slider-vertical' as React.CSSProperties['WebkitAppearance'],
               }}
             />
           </div>

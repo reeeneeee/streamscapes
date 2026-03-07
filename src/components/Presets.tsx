@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useStore } from '@/store';
+import type { ChannelConfig, GlobalConfig } from '@/types/sonification';
 
 interface SavedPreset {
   name: string;
-  channels: Record<string, any>;
-  global: any;
+  channels: Record<string, ChannelConfig>;
+  global: GlobalConfig;
   savedAt: number;
 }
 
@@ -58,7 +59,7 @@ export default function Presets() {
     }
     // Add preset channels
     for (const config of Object.values(preset.channels)) {
-      addChannel(config as any);
+      addChannel(config as ChannelConfig);
     }
     // Update global
     updateGlobal(preset.global);
@@ -96,7 +97,7 @@ export default function Presets() {
             removeChannel(id);
           }
           for (const config of Object.values(data.channels)) {
-            addChannel(config as any);
+            addChannel(config as ChannelConfig);
           }
           updateGlobal(data.global);
         }

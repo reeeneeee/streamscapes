@@ -249,7 +249,7 @@ export default function FlightSynth({
     });
     
     // Clean up synths for flights that are no longer in range
-    currentFlightIds = new Set(currentFlights.data.map((f: any) => f.fr24_id));
+    currentFlightIds = new Set(currentFlights.data.map((f: { fr24_id: string }) => f.fr24_id));
     synthsRef.current.forEach((value, flightId) => {
         if (!currentFlightIds.has(flightId)) {
             value.synth.triggerRelease();

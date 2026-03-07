@@ -33,7 +33,7 @@ export function createRssPlugin(feedUrls: string[] = DEFAULT_FEEDS): StreamPlugi
             if (!response.ok) continue;
 
             const data = await response.json();
-            const items: any[] = data.items ?? [];
+            const items: { link?: string; title?: string; contentSnippet?: string; content?: string; enclosure?: unknown }[] = data.items ?? [];
 
             for (const item of items) {
               const id = item.link ?? item.title ?? '';

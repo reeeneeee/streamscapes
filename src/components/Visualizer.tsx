@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone';
 
 // Import p5 only on client side
-let p5: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let p5: any; // Dynamic import — typed as any until P5.js is replaced with Canvas 2D
 if (typeof window !== 'undefined') {
   p5 = require('p5');
 }
@@ -131,7 +132,8 @@ const Visualizer = ({
   useEffect(() => {
     if (!containerRef.current || !p5) return;
 
-    const sketch = (p: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sketch = (p: any) => { // P5 instance — typed as any until Canvas 2D replacement
       // Preload airplane images
       const airplane = p.loadImage('/airplane.svg');
       

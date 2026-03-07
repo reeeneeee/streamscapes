@@ -41,10 +41,16 @@ interface PatternNodes extends BaseNodes {
 
 type ChannelNodes = TriggeredNodes | ContinuousNodes | PatternNodes;
 
+interface StoreState {
+  channels: Record<string, ChannelConfig>;
+  global: GlobalConfig;
+  isPlaying: boolean;
+}
+
 export interface AudioEngineStore {
-  getState(): { channels: Record<string, ChannelConfig>; global: GlobalConfig; isPlaying: boolean };
+  getState(): StoreState;
   subscribe: <T>(
-    selector: (state: any) => T,
+    selector: (state: StoreState) => T,
     listener: (curr: T, prev: T) => void,
     options?: { equalityFn?: (a: T, b: T) => boolean }
   ) => () => void;
@@ -77,7 +83,7 @@ export class AudioEngine {
     // Subscribe to channel config changes
     this.unsubscribers.push(
       store.subscribe(
-        (state: any) => state.channels,
+        (state: StoreState) => state.channels,
         (channels: Record<string, ChannelConfig>) => this.reconcileChannels(channels)
       )
     );
@@ -85,7 +91,7 @@ export class AudioEngine {
     // Subscribe to global config changes
     this.unsubscribers.push(
       store.subscribe(
-        (state: any) => state.global,
+        (state: StoreState) => state.global,
         (global: GlobalConfig) => this.applyGlobalConfig(global)
       )
     );
@@ -164,7 +170,7 @@ export class AudioEngine {
         break;
     }
     if ('wet' in effect) {
-      (effect as any).wet.value = cfg.bypass ? 0 : cfg.wet;
+      (effect as Tone.Reverb).wet.value = cfg.bypass ? 0 : cfg.wet;
     }
     return effect;
   }
@@ -213,8 +219,8 @@ export class AudioEngine {
   ) {
     const filter = new Tone.Filter({ type: 'highpass', frequency: 50, Q: 1 });
     const synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: (config.synthOptions.oscillator as any) ?? { type: 'sine' },
-      envelope: (config.synthOptions.envelope as any) ?? {
+      oscillator: (config.synthOptions.oscillator as Record<string, unknown>) ?? { type: 'sine' },
+      envelope: (config.synthOptions.envelope as Record<string, number>) ?? {
         attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1,
       },
     });
@@ -241,7 +247,7 @@ export class AudioEngine {
     analyzer: Tone.Analyser
   ) {
     const synth = new Tone.Synth({
-      oscillator: (config.synthOptions.oscillator as any) ?? { type: 'sine' },
+      oscillator: (config.synthOptions.oscillator as Record<string, unknown>) ?? { type: 'sine' },
     });
     const insertEffects = this.buildInsertChain(config, synth, channel);
 
@@ -252,7 +258,7 @@ export class AudioEngine {
     const pattern = new Tone.Pattern(
       (time, note) => { synth.triggerAttackRelease(note, '8n', time); },
       initialNotes,
-      (config.patternType as any) ?? 'upDown'
+      (config.patternType ?? 'upDown') as 'up' | 'down' | 'upDown' | 'downUp' | 'alternateUp' | 'alternateDown' | 'random' | 'randomOnce' | 'randomWalk'
     );
 
     this.channelNodes.set(id, {
@@ -400,8 +406,8 @@ export class AudioEngine {
     } else {
       // Create new drone
       const synth = new Tone.Synth({
-        oscillator: (config.synthOptions.oscillator as any) ?? { type: 'sine' },
-        envelope: (config.synthOptions.envelope as any) ?? {
+        oscillator: (config.synthOptions.oscillator as Record<string, unknown>) ?? { type: 'sine' },
+        envelope: (config.synthOptions.envelope as Record<string, number>) ?? {
           attack: 0.1, decay: 0.2, sustain: 0.5, release: 0.8,
         },
       });
