@@ -17,7 +17,7 @@ const STREAM_COLORS: Record<string, string> = {
   flights: '#5C7285',
   wikipedia: '#5D8736',
   rss: '#B8860B',
-  crypto: '#E6A817',
+  stocks: '#E6A817',
 };
 
 export default function SonificationPanel() {

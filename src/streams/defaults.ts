@@ -124,9 +124,9 @@ export const DEFAULT_RSS_CHANNEL: ChannelConfig = {
   solo: false,
 };
 
-export const DEFAULT_CRYPTO_CHANNEL: ChannelConfig = {
-  streamId: 'crypto',
-  enabled: false, // Off by default
+export const DEFAULT_STOCKS_CHANNEL: ChannelConfig = {
+  streamId: 'stocks',
+  enabled: false, // Off by default — needs FINNHUB_API_KEY
   mode: 'triggered',
   synthType: 'MembraneSynth',
   synthOptions: {},
@@ -160,5 +160,5 @@ export const ALL_DEFAULT_CHANNELS: ChannelConfig[] = [
   DEFAULT_FLIGHTS_CHANNEL,
   DEFAULT_WIKIPEDIA_CHANNEL,
   DEFAULT_RSS_CHANNEL,
-  DEFAULT_CRYPTO_CHANNEL,
+  DEFAULT_STOCKS_CHANNEL,
 ];

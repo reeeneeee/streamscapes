@@ -9,7 +9,7 @@ const STREAM_COLORS: Record<string, string> = {
   flights: '#5C7285',
   wikipedia: '#5D8736',
   rss: '#B8860B',
-  crypto: '#E6A817',
+  stocks: '#E6A817',
 };
 
 const STREAM_LABELS: Record<string, string> = {
@@ -17,7 +17,7 @@ const STREAM_LABELS: Record<string, string> = {
   flights: 'Flights',
   wikipedia: 'Wikipedia',
   rss: 'RSS',
-  crypto: 'Crypto',
+  stocks: 'Stocks',
 };
 
 // Per-stream volume ranges (matching original controls)

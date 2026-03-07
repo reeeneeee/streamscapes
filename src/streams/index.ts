@@ -3,7 +3,7 @@ import { wikipediaPlugin } from './wikipedia';
 import { createFlightPlugin } from './flights';
 import { createWeatherPlugin } from './weather';
 import { createRssPlugin } from './rss';
-import { cryptoPlugin } from './crypto';
+import { stocksPlugin } from './stocks';
 
 export function createPlugins(lat: number, lon: number): StreamPlugin[] {
   return [
@@ -11,6 +11,6 @@ export function createPlugins(lat: number, lon: number): StreamPlugin[] {
     createFlightPlugin(lat, lon),
     wikipediaPlugin,
     createRssPlugin(),
-    cryptoPlugin,
+    stocksPlugin,
   ];
 }

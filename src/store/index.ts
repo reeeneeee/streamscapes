@@ -96,7 +96,7 @@ export const useStore = create<StreamscapesStore>()(
       }),
       {
         name: 'streamscapes-store',
-        version: 4, // v4: added rss + crypto channels
+        version: 5, // v5: replaced crypto with stocks
         partialize: (state) => ({
           global: state.global,
           channels: state.channels,
