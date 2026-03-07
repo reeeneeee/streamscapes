@@ -136,29 +136,10 @@ function sanitizeChannels(value: unknown): Record<string, ChannelConfig> | null 
   if (!isRecord(value)) return null;
   const entries = Object.entries(value);
   const sanitized: Record<string, ChannelConfig> = {};
-  let seenEnabled = false;
   for (const [id, channel] of entries) {
     if (!isChannelConfig(channel)) return null;
     if (channel.streamId !== id) return null;
-    const nextChannel: ChannelConfig = { ...channel } as ChannelConfig;
-    // Backward-compat for prior ambient mode names.
-    const ambientRaw = String(channel.ambientMode ?? '');
-    if (ambientRaw === 'loop') {
-      (nextChannel as ChannelConfig & { ambientMode: 'arpeggio' }).ambientMode = 'arpeggio';
-    } else if (ambientRaw === 'drone') {
-      (nextChannel as ChannelConfig & { ambientMode: 'sustain' }).ambientMode = 'sustain';
-    }
-    const normalized = nextChannel.solo && nextChannel.mute ? { ...nextChannel, solo: false } : nextChannel;
-    if (normalized.enabled) {
-      if (seenEnabled) {
-        sanitized[id] = { ...normalized, enabled: false };
-      } else {
-        sanitized[id] = normalized;
-        seenEnabled = true;
-      }
-    } else {
-      sanitized[id] = normalized;
-    }
+    sanitized[id] = channel.solo && channel.mute ? { ...channel, solo: false } : channel;
   }
   return sanitized;
 }
@@ -181,20 +162,19 @@ export const useStore = create<StreamscapesStore>()(
             const channels = { ...state.channels, [streamId]: updated };
             const selectedChannelId = state.selectedChannelId;
 
-            // Exclusive solo: if soloing this channel, unsolo all others
+            // Solo means "only this one is heard":
+            // - soloing a channel disables + un-solos all others
+            // - enabling a channel clears any existing solo elsewhere
             if (partial.solo === true) {
               for (const id of Object.keys(channels)) {
                 if (id !== streamId) {
-                  channels[id] = { ...channels[id], solo: false };
+                  channels[id] = { ...channels[id], solo: false, enabled: false };
                 }
               }
-            }
-
-            // Exclusive active stream: enabling one disables all others.
-            if (partial.enabled === true) {
+            } else if (partial.enabled === true) {
               for (const id of Object.keys(channels)) {
-                if (id !== streamId && channels[id].enabled) {
-                  channels[id] = { ...channels[id], enabled: false };
+                if (id !== streamId && channels[id].solo) {
+                  channels[id] = { ...channels[id], solo: false };
                 }
               }
             }
@@ -221,15 +201,7 @@ export const useStore = create<StreamscapesStore>()(
         addChannel: (config) =>
           set((state) => {
             const channels = { ...state.channels, [config.streamId]: config };
-            let selectedChannelId = state.selectedChannelId;
-            if (config.enabled) {
-              for (const id of Object.keys(channels)) {
-                if (id !== config.streamId && channels[id].enabled) {
-                  channels[id] = { ...channels[id], enabled: false };
-                }
-              }
-            }
-            if (!selectedChannelId) selectedChannelId = config.streamId;
+            const selectedChannelId = state.selectedChannelId ?? config.streamId;
             return { channels, selectedChannelId };
           }),
 
@@ -249,7 +221,7 @@ export const useStore = create<StreamscapesStore>()(
       }),
       {
         name: 'streamscapes-store',
-        version: 13, // v13: add monitoring semantics controls
+        version: 14, // v14: all streams enabled by default
         partialize: (state) => ({
           global: state.global,
           channels: state.channels,

@@ -1,16 +1,9 @@
 "use client";
 
 import { useStore } from '@/store';
+import { STREAM_COLORS } from '@/lib/stream-constants';
 import type { StreamPlugin } from '@/types/stream';
 import { genericChannelPatch } from '@/lib/generic-settings';
-
-const STREAM_COLORS: Record<string, string> = {
-  weather: '#7C444F',
-  flights: '#5C7285',
-  wikipedia: '#5D8736',
-  rss: '#B8860B',
-  stocks: '#E6A817',
-};
 
 const CATEGORY_LABELS: Record<string, string> = {
   environment: 'Environment',
@@ -32,9 +25,27 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
     return acc;
   }, {});
 
+  const cycleState = (id: string) => {
+    const config = channels[id];
+    if (!config) return;
+    if (config.solo) {
+      // solo → off
+      updateChannel(id, { enabled: false, solo: false });
+    } else if (config.enabled) {
+      // active → solo
+      updateChannel(id, { solo: true, mute: false });
+    } else {
+      // off → active
+      updateChannel(id, { enabled: true, solo: false, mute: false });
+    }
+  };
+
   return (
     <div className="panel">
       <div className="panel-title">Streams</div>
+      <div className="text-[9px] text-gray-500 -mt-1 mb-2">
+        Activate streams to listen. Solo a stream to hear it alone.
+      </div>
       {Object.entries(grouped).map(([category, streams]) => (
         <div key={category} className="mb-2">
           <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
@@ -43,17 +54,24 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
           {streams.map((plugin) => {
             const config = channels[plugin.id];
             if (!config) return null;
-            const enabled = config?.enabled ?? false;
+            const isActive = config.enabled;
+            const isSolo = config.solo;
+            const isSelected = selectedChannelId === plugin.id;
             const status = activeStreams[plugin.id]?.status;
             const color = STREAM_COLORS[plugin.id] ?? '#888';
+
+            const stateLabel = isSolo ? 'SOLO' : isActive ? 'ACTIVE' : '';
+            const btnLabel = isSolo ? 'Solo' : isActive ? 'Active' : 'Off';
+            const btnBg = isSolo ? '#facc15' : isActive ? '#4ade80' : '#333';
+            const btnColor = isSolo ? '#000' : isActive ? '#000' : '#999';
 
             return (
               <div
                 key={plugin.id}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm mb-0.5 transition-colors"
                 style={{
-                  background: selectedChannelId === plugin.id ? `${color}22` : 'transparent',
-                  color: selectedChannelId === plugin.id ? '#eee' : '#666',
+                  background: isSelected ? `${color}22` : 'transparent',
+                  color: isSelected ? '#eee' : '#666',
                 }}
               >
                 {/* Status dot */}
@@ -63,7 +81,7 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
                     background: status === 'connected' ? '#4ade80'
                       : status === 'connecting' ? '#facc15'
                       : status === 'error' ? '#ef4444'
-                      : enabled ? color : '#444',
+                      : isActive ? color : '#444',
                   }}
                 />
                 <button
@@ -72,25 +90,27 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
                 >
                   {plugin.name}
                 </button>
-                <span className="text-[10px] text-gray-500">
-                  {selectedChannelId === plugin.id ? 'WORKING' : enabled ? 'HEARD' : 'OFF'}
+                <span className="text-[10px] text-gray-500 w-12 text-right">
+                  {isSelected ? 'EDITING' : stateLabel}
                 </span>
                 <button
                   onClick={() => updateChannel(plugin.id, genericChannelPatch(plugin.id, config))}
                   className="text-[10px] px-1.5 py-0.5 rounded bg-[#333] text-gray-300 hover:text-white"
-                  title="Choose Generic Setting"
+                  title="Reset to default settings"
                 >
-                  Generic
+                  Reset
                 </button>
                 <button
-                  onClick={() => updateChannel(plugin.id, { enabled: !enabled })}
-                  className="text-[10px] px-1.5 py-0.5 rounded"
-                  style={{
-                    background: enabled ? '#4ade80' : '#333',
-                    color: enabled ? '#000' : '#999',
-                  }}
+                  onClick={() => cycleState(plugin.id)}
+                  className="text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors min-w-[44px] text-center"
+                  title={
+                    isSolo ? 'Click to deactivate'
+                    : isActive ? 'Click to solo'
+                    : 'Click to activate'
+                  }
+                  style={{ background: btnBg, color: btnColor }}
                 >
-                  Hear
+                  {btnLabel}
                 </button>
               </div>
             );

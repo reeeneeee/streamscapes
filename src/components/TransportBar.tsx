@@ -1,23 +1,8 @@
 "use client";
 
 import { useStore } from '@/store';
+import { STREAM_CSS_COLORS } from '@/lib/stream-constants';
 import type { AudioEngine } from '@/lib/audio-engine';
-
-const STREAM_COLORS: Record<string, string> = {
-  weather: 'var(--stream-weather)',
-  flights: 'var(--stream-flights)',
-  wikipedia: 'var(--stream-wikipedia)',
-  rss: 'var(--stream-rss)',
-  stocks: 'var(--stream-stocks)',
-};
-
-const STREAM_LABELS: Record<string, string> = {
-  weather: 'W',
-  flights: 'F',
-  wikipedia: 'Wi',
-  rss: 'R',
-  stocks: 'S',
-};
 
 export default function TransportBar({
   engine,
@@ -33,6 +18,20 @@ export default function TransportBar({
 
   return (
     <div className="transport-bar">
+      {/* Stop button */}
+      <button
+        onClick={onStop}
+        className="text-[11px] px-2.5 py-1 rounded font-medium transition-colors"
+        style={{
+          background: 'var(--bg-input)',
+          color: 'var(--text-secondary)',
+          border: '1px solid var(--border)',
+        }}
+        title="Stop all audio and streams"
+      >
+        Stop
+      </button>
+
       {/* Stream status dots */}
       <div className="flex items-center gap-1.5">
         {Object.keys(channels).map((id) => {
@@ -46,7 +45,7 @@ export default function TransportBar({
               title={id}
               style={{
                 background: status === 'connected'
-                  ? STREAM_COLORS[id] ?? '#888'
+                  ? STREAM_CSS_COLORS[id] ?? '#888'
                   : status === 'error' ? '#ef4444'
                   : '#444',
                 opacity: status === 'connected' ? 1 : 0.5,

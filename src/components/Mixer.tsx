@@ -1,32 +1,15 @@
 "use client";
 
-import { useState } from 'react';
 import { useStore } from '@/store';
+import { STREAM_COLORS, STREAM_LABELS } from '@/lib/stream-constants';
 import type { AudioEngine } from '@/lib/audio-engine';
-import VUMeter from './VUMeter';
 
-const STREAM_COLORS: Record<string, string> = {
-  weather: '#7C444F',
-  flights: '#5C7285',
-  wikipedia: '#5D8736',
-  rss: '#B8860B',
-  stocks: '#E6A817',
-};
-
-const STREAM_LABELS: Record<string, string> = {
-  weather: 'Weather',
-  flights: 'Flights',
-  wikipedia: 'Wikipedia',
-  rss: 'RSS',
-  stocks: 'Stocks',
-};
-
-// Per-stream volume ranges (matching original controls)
 const VOLUME_RANGES: Record<string, { min: number; max: number }> = {
   weather:   { min: -20, max: 5 },
   flights:   { min: -40, max: -5 },
   wikipedia: { min: -20, max: 10 },
 };
+
 
 export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const channels = useStore((s) => s.channels);
@@ -34,169 +17,197 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const updateChannel = useStore((s) => s.updateChannel);
   const updateGlobal = useStore((s) => s.updateGlobal);
   const activeStreams = useStore((s) => s.activeStreams);
-  const [collapsed, setCollapsed] = useState(false);
 
   const channelIds = Object.keys(channels);
 
   return (
-    <div className="panel overflow-hidden !p-0">
-      {/* Collapsible header */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between px-3 py-2 md:hidden"
-        style={{ background: 'var(--bg-elevated)' }}
-      >
-        <span className="panel-title !mb-0">Mixer</span>
-        <span style={{ color: 'var(--text-muted)' }} className="text-sm">{collapsed ? '▼' : '▲'}</span>
-      </button>
+    <div className="flex flex-col gap-0.5">
+      {/* Channel rows */}
+      {channelIds.map((id) => {
+        const config = channels[id];
+        const color = STREAM_COLORS[id] ?? '#888';
+        const label = STREAM_LABELS[id] ?? id;
+        const status = activeStreams[id]?.status;
+        const isMuted = config.mute;
+        const isSolo = config.solo;
+        const isOff = !config.enabled;
+        const dimmed = isOff || isMuted;
+        const range = VOLUME_RANGES[id] ?? { min: -30, max: 6 };
 
-      {/* Channel Strips — scrollable on mobile */}
-      <div
-        className={`${collapsed ? 'hidden md:flex' : 'flex'} overflow-x-auto`}
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {channelIds.map((id) => {
-          const config = channels[id];
-          const color = STREAM_COLORS[id] ?? '#888';
-          const label = STREAM_LABELS[id] ?? id;
-          const status = activeStreams[id]?.status;
-
-          return (
+        return (
+          <div
+            key={id}
+            className="flex items-center gap-3 rounded-lg transition-opacity"
+            style={{
+              padding: '12px 14px',
+              background: 'rgba(255, 255, 255, 0.025)',
+              opacity: dimmed ? 0.4 : 1,
+            }}
+          >
+            {/* Accent dot + connection status */}
             <div
-              key={id}
-              className="flex flex-col items-center px-3 py-3 border-r border-white/5 last:border-r-0 flex-shrink-0"
-              style={{ minWidth: 80 }}
-            >
-              {/* Stream name + status */}
-              <div className="text-xs font-bold mb-2 text-center" style={{ color }}>
-                {label}
-                {status === 'connected' && (
-                  <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-green-400" />
-                )}
-                {status === 'error' && (
-                  <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-red-400" />
-                )}
-              </div>
-
-              {/* VU Meter + Volume Fader */}
-              <div className="flex items-end gap-1.5 mb-2" style={{ height: 120 }}>
-                <VUMeter analyzer={engine?.getChannelAnalyzer(id) ?? null} />
-                <input
-                  type="range"
-                  min={VOLUME_RANGES[id]?.min ?? -30}
-                  max={VOLUME_RANGES[id]?.max ?? 6}
-                  step={0.5}
-                  value={config.volume}
-                  onChange={(e) => updateChannel(id, { volume: parseFloat(e.target.value) })}
-                  className="vertical-slider"
-                  style={{
-                    writingMode: 'vertical-lr' as React.CSSProperties['writingMode'],
-                    direction: 'rtl',
-                    height: 120,
-                    width: 20,
-                    WebkitAppearance: 'slider-vertical' as React.CSSProperties['WebkitAppearance'],
-                  }}
-                />
-              </div>
-
-              {/* Volume readout */}
-              <div className="text-[10px] text-gray-400 mb-2 font-mono">
-                {config.volume.toFixed(1)} dB
-              </div>
-
-              {/* Pan knob (simple slider for now) */}
-              <div className="w-full mb-2">
-                <div className="text-[10px] text-gray-500 text-center mb-0.5">Pan</div>
-                <input
-                  type="range"
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  value={config.pan}
-                  onChange={(e) => updateChannel(id, { pan: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: color }}
-                />
-              </div>
-
-              {/* Mute / Solo */}
-              <div className="flex gap-1 mb-1">
-                <button
-                  onClick={() => updateChannel(id, { enabled: !config.enabled })}
-                  className="btn-toggle"
-                  data-active={config.enabled}
-                  title="Audible on/off"
-                  style={{
-                    minWidth: 22,
-                    background: config.enabled ? '#4ade80' : '#333',
-                    color: config.enabled ? '#000' : '#999',
-                  }}
-                >
-                  A
-                </button>
-                <button
-                  onClick={() => updateChannel(id, { mute: !config.mute })}
-                  className="btn-toggle mute"
-                  data-active={config.mute}
-                >
-                  M
-                </button>
-                <button
-                  onClick={() => updateChannel(id, { solo: !config.solo })}
-                  className="btn-toggle solo"
-                  data-active={config.solo}
-                >
-                  S
-                </button>
-              </div>
-              <div className="text-[9px] text-gray-500">
-                {config.enabled ? 'Audible' : 'Silent'}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Master Strip */}
-        <div
-          className="flex flex-col items-center px-3 py-3 border-l border-white/10 flex-shrink-0"
-          style={{ minWidth: 80, background: 'var(--bg-elevated)' }}
-        >
-          <div className="text-xs font-bold mb-2 text-gray-300">Master</div>
-          <div className="flex items-end gap-1.5 mb-2" style={{ height: 120 }}>
-            <VUMeter analyzer={engine?.getMasterAnalyzer() ?? null} />
-            <input
-              type="range"
-              min={-40}
-              max={6}
-              step={0.5}
-              value={global.masterVolume}
-              onChange={(e) => updateGlobal({ masterVolume: parseFloat(e.target.value) })}
               style={{
-                writingMode: 'vertical-lr' as React.CSSProperties['writingMode'],
-                direction: 'rtl',
-                height: 120,
-                width: 20,
-                WebkitAppearance: 'slider-vertical' as React.CSSProperties['WebkitAppearance'],
+                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                background: status === 'error' ? '#ef4444' : color,
+                boxShadow: status === 'connected' ? `0 0 6px ${color}` : 'none',
               }}
             />
-          </div>
-          <div className="text-[10px] text-gray-400 mb-2 font-mono">
-            {global.masterVolume > -40 ? `${global.masterVolume.toFixed(1)}` : '-∞'} dB
-          </div>
 
-          {/* Tempo */}
-          <div className="w-full mt-1">
-            <div className="text-[10px] text-gray-500 text-center mb-0.5">BPM</div>
+            {/* Stream name */}
+            <span
+              style={{
+                fontFamily: 'var(--font-body, var(--ff-body))',
+                fontSize: 14, fontWeight: 500,
+                color: 'var(--text-primary)',
+                width: 80, flexShrink: 0,
+              }}
+            >
+              {label}
+            </span>
+
+            {/* Volume slider */}
             <input
-              type="number"
-              min={40}
-              max={240}
-              value={global.tempo}
-              onChange={(e) => updateGlobal({ tempo: parseInt(e.target.value) || 120 })}
-              className="w-full text-xs text-center rounded px-1 py-0.5"
-              style={{ background: '#333', color: '#ddd', border: 'none' }}
+              type="range"
+              min={range.min}
+              max={range.max}
+              step={0.5}
+              value={config.volume}
+              onChange={(e) => updateChannel(id, { volume: parseFloat(e.target.value) })}
+              className="flex-1 h-1 rounded-sm appearance-none cursor-pointer"
+              style={{
+                accentColor: 'rgba(245, 240, 235, 0.4)',
+                background: 'rgba(255, 255, 255, 0.08)',
+              }}
             />
+
+            {/* dB readout */}
+            <span
+              style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 11, fontWeight: 400,
+                color: 'rgba(245, 240, 235, 0.3)',
+                width: 52, textAlign: 'right', flexShrink: 0,
+              }}
+            >
+              {config.volume.toFixed(1)} dB
+            </span>
+
+            {/* Solo */}
+            <button
+              onClick={() => {
+                if (isSolo) {
+                  updateChannel(id, { solo: false });
+                } else {
+                  updateChannel(id, { enabled: true, solo: true, mute: false });
+                }
+              }}
+              title={isSolo ? 'Un-solo' : 'Solo — hear only this stream'}
+              style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 11, fontWeight: 600, lineHeight: '26px',
+                width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                textAlign: 'center',
+                background: isSolo ? 'rgba(250, 204, 21, 0.15)' : 'transparent',
+                color: isSolo ? 'rgba(250, 204, 21, 0.9)' : 'rgba(245, 240, 235, 0.2)',
+                border: `1px solid ${isSolo ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
+                cursor: 'pointer',
+              }}
+            >
+              S
+            </button>
+
+            {/* Mute */}
+            <button
+              onClick={() => {
+                if (isOff) {
+                  updateChannel(id, { enabled: true, mute: false });
+                } else {
+                  updateChannel(id, { mute: !isMuted });
+                }
+              }}
+              title={isMuted ? 'Unmute' : isOff ? 'Enable' : 'Mute'}
+              style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 11, fontWeight: 600, lineHeight: '26px',
+                width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                textAlign: 'center',
+                background: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                color: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.8)' : 'rgba(245, 240, 235, 0.2)',
+                border: `1px solid ${(isMuted || isOff) ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
+                cursor: 'pointer',
+              }}
+            >
+              M
+            </button>
           </div>
+        );
+      })}
+
+      {/* Master volume */}
+      <div
+        className="flex items-center gap-3"
+        style={{ padding: '18px 14px', marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-display, var(--ff-display))',
+            fontSize: 11, fontWeight: 500,
+            color: 'rgba(245, 240, 235, 0.35)',
+            letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+            width: 86, flexShrink: 0,
+          }}
+        >
+          Master
+        </span>
+        <input
+          type="range"
+          min={-40}
+          max={6}
+          step={0.5}
+          value={global.masterVolume}
+          onChange={(e) => updateGlobal({ masterVolume: parseFloat(e.target.value) })}
+          className="flex-1 h-1.5 rounded-sm appearance-none cursor-pointer"
+          style={{
+            accentColor: 'rgba(245, 240, 235, 0.4)',
+            background: 'rgba(255, 255, 255, 0.08)',
+          }}
+        />
+        <span
+          style={{
+            fontFamily: 'var(--font-display, var(--ff-display))',
+            fontSize: 13, fontWeight: 400,
+            color: 'rgba(245, 240, 235, 0.5)',
+            width: 52, textAlign: 'right', flexShrink: 0,
+          }}
+        >
+          {global.masterVolume > -40 ? `${global.masterVolume.toFixed(1)}` : '-\u221E'} dB
+        </span>
+      </div>
+
+      {/* Footer metadata */}
+      <div className="flex items-center gap-4" style={{ padding: '12px 14px 0' }}>
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: 'var(--font-body, var(--ff-body))', fontSize: 11, fontWeight: 400, color: 'rgba(245,240,235,0.25)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>BPM</span>
+          <input
+            type="number"
+            min={40}
+            max={240}
+            value={global.tempo}
+            onChange={(e) => updateGlobal({ tempo: parseInt(e.target.value) || 120 })}
+            style={{
+              fontFamily: 'var(--font-display, var(--ff-display))',
+              fontSize: 14, fontWeight: 400,
+              color: 'rgba(245,240,235,0.6)',
+              background: 'transparent', border: 'none',
+              width: 44,
+            }}
+          />
+        </div>
+        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.06)' }} />
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: 'var(--font-body, var(--ff-body))', fontSize: 11, fontWeight: 400, color: 'rgba(245,240,235,0.25)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
+            {channelIds.filter((id) => channels[id].enabled && !channels[id].mute).length} active
+          </span>
         </div>
       </div>
     </div>

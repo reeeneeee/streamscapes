@@ -57,7 +57,7 @@ export const DEFAULT_WEATHER_CHANNEL: ChannelConfig = {
 
 export const DEFAULT_FLIGHTS_CHANNEL: ChannelConfig = {
   streamId: 'flights',
-  enabled: false,
+  enabled: true,
   mode: 'continuous',
   synthType: 'Synth',
   synthOptions: {
@@ -107,7 +107,7 @@ export const DEFAULT_FLIGHTS_CHANNEL: ChannelConfig = {
 
 export const DEFAULT_WIKIPEDIA_CHANNEL: ChannelConfig = {
   streamId: 'wikipedia',
-  enabled: false,
+  enabled: true,
   mode: 'triggered',
   synthType: 'Synth',
   synthOptions: {
@@ -163,7 +163,7 @@ export const DEFAULT_WIKIPEDIA_CHANNEL: ChannelConfig = {
 
 export const DEFAULT_RSS_CHANNEL: ChannelConfig = {
   streamId: 'rss',
-  enabled: false, // Off by default — user can enable
+  enabled: true,
   mode: 'triggered',
   synthType: 'PluckSynth',
   synthOptions: {},
@@ -216,7 +216,7 @@ export const DEFAULT_RSS_CHANNEL: ChannelConfig = {
 
 export const DEFAULT_STOCKS_CHANNEL: ChannelConfig = {
   streamId: 'stocks',
-  enabled: false, // Off by default — needs FINNHUB_API_KEY
+  enabled: true,
   mode: 'triggered',
   synthType: 'MembraneSynth',
   synthOptions: {},

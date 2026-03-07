@@ -4,21 +4,8 @@ import { useEffect, useRef, useCallback } from "react";
 import * as Tone from 'tone';
 import type { AudioEngine } from '@/lib/audio-engine';
 import type { DataPoint } from '@/types/stream';
-
-interface ProcessedFlight {
-  fr24_id: string;
-  lat: number;
-  lon: number;
-  gspeed: number;
-  distance: number;
-  frequency: number;
-  callsign?: string;
-  vector?: {
-    latPerSecond: number;
-    lonPerSecond: number;
-    lastUpdated: number;
-  };
-}
+import type { ProcessedFlight } from '@/types/flight';
+import { STREAM_COLORS } from '@/lib/stream-constants';
 
 interface WikiEdit {
   title: string;
@@ -41,15 +28,15 @@ interface VisualizerProps {
 
 const DISTANCE_CIRCLES = [1, 5, 10];
 const GEO_SCALE = 3;
-const STREAM_COLORS = {
-  weather: '#7C444F',
-  flights: '#5C7285',
+const VIZ_COLORS = {
+  weather: STREAM_COLORS.weather,
+  flights: STREAM_COLORS.flights,
   wiki: '#4d6c81',
 };
 
-function hash32(input: string): number {
+function hash32(input: string, seed = 0x811c9dc5): number {
   // FNV-1a 32-bit hash for stable deterministic placement.
-  let h = 0x811c9dc5;
+  let h = seed;
   for (let i = 0; i < input.length; i += 1) {
     h ^= input.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
@@ -98,8 +85,8 @@ const Visualizer = ({
       const editSize = Math.min(100, Math.max(10, absLen));
       const w = containerRef.current?.clientWidth || 400;
       const h = containerRef.current?.clientHeight || 400;
-      const hx = hash32(`${title}|x`);
-      const hy = hash32(`${title}|y`);
+      const hx = hash32(title, 0x811c9dc5);
+      const hy = hash32(title, 0x6c62272e);
       const x = (hx / 0xffffffff) * (w - 100) + 50;
       const y = (hy / 0xffffffff) * (h - 100) + 50;
       const url = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
@@ -164,9 +151,8 @@ const Visualizer = ({
     const h = canvas.height / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Background
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, w, h);
+    // Clear to transparent so CSS atmosphere shows through
+    ctx.clearRect(0, 0, w, h);
 
     const cx = w / 2;
     const cy = h / 2;
@@ -174,8 +160,38 @@ const Visualizer = ({
     const latScale = scale * GEO_SCALE;
     const lonScale = scale * GEO_SCALE;
 
+    // "Black hole sun" — dark disc with warm glowing rim
+    const scopeRadius = Math.max(latScale, lonScale) * (DISTANCE_CIRCLES[DISTANCE_CIRCLES.length - 1] / 69) + 60;
+
+    // Outer glow ring (warm rose halo)
+    const glowGrad = ctx.createRadialGradient(cx, cy, scopeRadius * 0.85, cx, cy, scopeRadius * 1.15);
+    glowGrad.addColorStop(0, 'rgba(124, 68, 79, 0)');
+    glowGrad.addColorStop(0.4, 'rgba(124, 68, 79, 0.15)');
+    glowGrad.addColorStop(0.7, 'rgba(124, 68, 79, 0.08)');
+    glowGrad.addColorStop(1, 'rgba(124, 68, 79, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Dark disc body
+    const discGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, scopeRadius);
+    discGrad.addColorStop(0, 'rgba(8, 8, 8, 0.95)');
+    discGrad.addColorStop(0.6, 'rgba(10, 10, 10, 0.9)');
+    discGrad.addColorStop(0.85, 'rgba(13, 13, 13, 0.8)');
+    discGrad.addColorStop(1, 'rgba(13, 13, 13, 0)');
+    ctx.fillStyle = discGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, scopeRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subtle rim stroke
+    ctx.strokeStyle = 'rgba(124, 68, 79, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, scopeRadius * 0.95, 0, Math.PI * 2);
+    ctx.stroke();
+
     // Distance circles
-    ctx.strokeStyle = 'rgba(255, 60, 60, 0.3)';
+    ctx.strokeStyle = 'rgba(124, 68, 79, 0.3)';
     ctx.lineWidth = 1;
     for (const miles of DISTANCE_CIRCLES) {
       const rLat = (miles / 69) * latScale;
@@ -185,11 +201,15 @@ const Visualizer = ({
       ctx.stroke();
     }
 
-    // User dot
-    ctx.fillStyle = 'rgba(255, 60, 60, 0.8)';
+    // User dot with strong glow
+    ctx.fillStyle = '#7C444F';
+    ctx.shadowColor = 'rgba(124, 68, 79, 0.8)';
+    ctx.shadowBlur = 30;
     ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fill(); // double fill for stronger glow
+    ctx.shadowBlur = 0;
 
     // Flights
     const currentFlights = flightsRef.current;
@@ -254,7 +274,7 @@ const Visualizer = ({
         ctx.stroke();
       }
 
-      ctx.fillStyle = STREAM_COLORS.wiki;
+      ctx.fillStyle = VIZ_COLORS.wiki;
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
@@ -289,9 +309,9 @@ const Visualizer = ({
       ctx.globalAlpha = 1;
     };
 
-    if (wikiAnalyzer) drawWaveform(wikiAnalyzer, STREAM_COLORS.wiki);
-    if (flightAnalyzer) drawWaveform(flightAnalyzer, STREAM_COLORS.flights);
-    if (weatherAnalyzer) drawWaveform(weatherAnalyzer, STREAM_COLORS.weather);
+    if (wikiAnalyzer) drawWaveform(wikiAnalyzer, VIZ_COLORS.wiki);
+    if (flightAnalyzer) drawWaveform(flightAnalyzer, VIZ_COLORS.flights);
+    if (weatherAnalyzer) drawWaveform(weatherAnalyzer, VIZ_COLORS.weather);
 
     rafRef.current = requestAnimationFrame(draw);
   }, [myLat, myLon, weatherAnalyzer, flightAnalyzer, wikiAnalyzer]);

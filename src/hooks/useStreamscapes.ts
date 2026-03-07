@@ -102,6 +102,12 @@ export function useStreamscapes(lat: number, lon: number) {
     if (manager) {
       manager.dispose();
     }
+    engineRef.current?.dispose();
+    cleanupVisRef.current?.();
+    engineRef.current = null;
+    managerRef.current = null;
+    cleanupVisRef.current = null;
+    initializedRef.current = false;
   };
 
   return {

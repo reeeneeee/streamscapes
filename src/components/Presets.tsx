@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '@/store';
 import type { ChannelConfig, GlobalConfig } from '@/types/sonification';
 import { ALL_DEFAULT_CHANNELS } from '@/streams/defaults';
-import { normalizeSingleActiveChannels } from '@/lib/preset-utils';
+import { normalizePresetChannels } from '@/lib/preset-utils';
 
 interface SavedPreset {
   name: string;
@@ -363,7 +363,7 @@ export default function Presets({ lockGlobalFrame = false }: { lockGlobalFrame?:
   };
 
   const handleLoad = (preset: SavedPreset) => {
-    const normalized = normalizeSingleActiveChannels(preset.channels);
+    const normalized = normalizePresetChannels(preset.channels);
     // Clear existing channels
     for (const id of Object.keys(useStore.getState().channels)) {
       removeChannel(id);

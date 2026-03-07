@@ -3,21 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #141414;
-  --bg-surface: #1a1a1a;
-  --bg-elevated: #222222;
-  --bg-input: #2a2a2a;
+  --bg-primary: #0d0d0d;
+  --bg-secondary: rgba(13, 13, 13, 0.85);
+  --bg-surface: rgba(255, 255, 255, 0.03);
+  --bg-elevated: rgba(255, 255, 255, 0.06);
+  --bg-input: rgba(255, 255, 255, 0.06);
 
-  --text-primary: #e8e8e8;
-  --text-secondary: #999999;
-  --text-muted: #666666;
+  --text-primary: #F5F0EB;
+  --text-secondary: rgba(245, 240, 235, 0.5);
+  --text-muted: rgba(245, 240, 235, 0.35);
 
-  --accent: #6366f1;
-  --accent-dim: #4f46e5;
+  --accent: #7C444F;
+  --accent-dim: rgba(124, 68, 79, 0.4);
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.1);
 
   --stream-weather: #7C444F;
   --stream-flights: #5C7285;
@@ -25,41 +25,105 @@
   --stream-rss: #B8860B;
   --stream-stocks: #E6A817;
 
-  --transport-height: 56px;
-  --tab-bar-height: 44px;
+  --transport-height: 60px;
+  --tab-bar-height: 52px;
+
+  --ff-display: 'Space Grotesk', system-ui, sans-serif;
+  --ff-body: 'DM Sans', system-ui, sans-serif;
 }
 
 body {
   color: var(--text-primary);
   background: var(--bg-primary);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body, var(--ff-body));
   margin: 0;
   overflow: hidden;
   height: 100dvh;
 }
 
+/* Atmospheric background */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.atmosphere-blob {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.atmosphere-rose {
+  top: -100px;
+  left: -60px;
+  width: 700px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(124, 68, 79, 0.7) 0%, rgba(124, 68, 79, 0.2) 40%, transparent 70%);
+  filter: blur(80px);
+}
+
+.atmosphere-blue {
+  top: 150px;
+  right: -80px;
+  width: 600px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(92, 114, 133, 0.6) 0%, rgba(92, 114, 133, 0.15) 40%, transparent 70%);
+  filter: blur(80px);
+}
+
+.atmosphere-green {
+  bottom: -60px;
+  left: 350px;
+  width: 650px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(93, 135, 54, 0.5) 0%, rgba(93, 135, 54, 0.12) 40%, transparent 70%);
+  filter: blur(80px);
+}
+
+/* Vignette */
+.vignette {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
 /* Tab bar */
 .tab-bar {
   display: flex;
-  gap: 2px;
-  padding: 0 16px;
+  gap: 4px;
+  padding: 0 32px;
   height: var(--tab-bar-height);
   align-items: center;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  background: transparent;
+  border-bottom: none;
+  position: relative;
+  z-index: 10;
+}
+
+.tab-bar .tab-group {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .tab-bar button {
-  padding: 6px 16px;
+  padding: 6px 20px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
   letter-spacing: 0.02em;
+  font-family: var(--font-body, var(--ff-body));
 }
 
 .tab-bar button:hover {
@@ -68,7 +132,16 @@ body {
 
 .tab-bar button[data-active="true"] {
   color: var(--text-primary);
-  background: var(--bg-surface);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Logo */
+.logo {
+  font-family: var(--font-display, var(--ff-display));
+  font-weight: 300;
+  font-size: 18px;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 /* Transport bar */
@@ -82,11 +155,11 @@ body {
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 12px;
+  padding: 0 32px;
+  gap: 24px;
   z-index: 50;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* Controls panel scrollable area */
@@ -122,17 +195,36 @@ select {
 /* Section panel */
 .panel {
   background: var(--bg-surface);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px;
+  border: 1px solid var(--border);
 }
 
 .panel-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-family: var(--font-display, var(--ff-display));
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0.02em;
   margin-bottom: 8px;
+}
+
+/* Step labels */
+.step-label {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.step-title {
+  font-family: var(--font-display, var(--ff-display));
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
 }
 
 /* Mute/Solo button states */
