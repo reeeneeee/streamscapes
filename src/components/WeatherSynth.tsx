@@ -2,23 +2,39 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone'
-import { Chord, Interval, Note, Scale} from 'tonal';
-import axios from "axios";
+import { Scale } from 'tonal';
 import { useUserLocation } from '../hooks/useUserLocation';
 
+// Cloud noise refs — stored at module level to prevent leaks
+let cloudNoiseNode: Tone.Noise | null = null;
+let cloudFilterNode: Tone.Filter | null = null;
+
+function disposeCloudNoise() {
+  if (cloudNoiseNode) {
+    cloudNoiseNode.stop();
+    cloudNoiseNode.dispose();
+    cloudNoiseNode = null;
+  }
+  if (cloudFilterNode) {
+    cloudFilterNode.dispose();
+    cloudFilterNode = null;
+  }
+}
+
 function cloudNoise(coverPercentage: number, volume: number) {
-    const noise = new Tone.Noise("brown").start();
-    noise.volume.value = coverPercentage/100*(volume+3);
-    
-    // make an autofilter to shape the noise
-    const filter = new Tone.Filter({
+    // Dispose previous noise/filter before creating new ones
+    disposeCloudNoise();
+
+    cloudNoiseNode = new Tone.Noise("brown").start();
+    cloudNoiseNode.volume.value = coverPercentage/100*(volume+3);
+
+    cloudFilterNode = new Tone.Filter({
       frequency: 100,
       type: "lowpass",
       rolloff: -48
     }).toDestination();
 
-    // connect the noise
-    noise.connect(filter);
+    cloudNoiseNode.connect(cloudFilterNode);
 }
 
 export default function WeatherSynth({ 
@@ -30,11 +46,6 @@ export default function WeatherSynth({
   volume: number,
   onAnalyzerCreated?: (analyzer: Tone.Analyser) => void
 }) {
-  // Add more detailed logging
-  console.log("WeatherSynth rendered with scale:", scale);
-  console.log("Scale type:", typeof scale);
-  console.log("Scale length:", scale?.length);
-  
   const [myWeather, setMyWeather] = useState<any | null>(null);
   const synthRef = useRef<any>(null);
   const arpeggioRef = useRef<any>(null);
@@ -46,8 +57,7 @@ export default function WeatherSynth({
   const myLat = location.lat;
   const myLon = location.lon;
 
-  const weatherApiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
-  let myWeatherRequest = `https://api.openweathermap.org/data/3.0/onecall?lat=${myLat}&lon=${myLon}&appid=${weatherApiKey}&units=imperial`;
+  const myWeatherRequest = `/api/streams/weather?lat=${myLat}&lon=${myLon}`;
 
   // Initialize synth, arpeggiator, and analyzer
   useEffect(() => {
@@ -73,6 +83,7 @@ export default function WeatherSynth({
     
     // Cleanup function
     return () => {
+      disposeCloudNoise();
       if (synthRef.current) {
         synthRef.current.dispose();
       }
@@ -92,20 +103,13 @@ export default function WeatherSynth({
   }, [volume]);
 
   const getArpeggioNotes = (temp: number) => {
-    console.log("getArpeggioNotes called with scale:", scale);
-    
     // Check if scale is valid before using it
     if (!scale || scale.length === 0) {
-      console.error("Scale is empty or undefined in getArpeggioNotes");
       return ["C4", "E4", "G4", "C5"]; // Fallback to C major
     }
-    
-    // Use the scale passed as prop to create arpeggios
-    // Get the root note and octave from the first note in the scale
-    const rootNote = scale[0].slice(0, -1); // Remove octave number
+
+    const rootNote = scale[0].slice(0, -1);
     const octave = parseInt(scale[0].slice(-1));
-    
-    console.log("Root note:", rootNote, "Octave:", octave);
     
     let arpeggio;
     if (temp < 32) {
@@ -136,34 +140,18 @@ export default function WeatherSynth({
     return arpeggio;
   }
 
-  useEffect(() => {    
-    console.log("Weather useEffect running with scale:", scale);
-    
+  useEffect(() => {
     const fetchWeather = async () => {
       try {
-        console.log("fetching weather with request", myWeatherRequest);
-        const response = await axios.get(myWeatherRequest);
-        const weatherData = response.data.current;
+        const response = await fetch(myWeatherRequest);
+        const data = await response.json();
+        const weatherData = data.current;
 
-        // Get cloud override from URL if it exists
-        const urlParams = new URLSearchParams(window.location.search);
-        const cloudOverride = urlParams.get('clouds');
-        const tempOverride = urlParams.get('feels_like');
-        if (cloudOverride !== null) {
-          weatherData.clouds = parseInt(cloudOverride);
-        }
-        if (tempOverride !== null) {
-          weatherData.feels_like = parseInt(tempOverride);
-        }
-        
         setMyWeather(weatherData);
-        if (response.data.current.clouds >= 0) {
-            console.log("playing cloud noise");
-            cloudNoise(response.data.current.clouds, volume);
+        if (weatherData.clouds >= 0) {
+            cloudNoise(weatherData.clouds, volume);
         }
 
-        // Update arpeggio pattern with weather-based scale
-        console.log("WeatherSynth scale", scale);
         const arpeggioNotes = getArpeggioNotes(weatherData.feels_like);
         if (arpeggioRef.current) {
           arpeggioRef.current.values = arpeggioNotes;
@@ -180,11 +168,6 @@ export default function WeatherSynth({
 
     fetchWeather();
   }, [scale, myWeatherRequest]);
-
-  // Add another useEffect just to monitor scale changes
-  useEffect(() => {
-    console.log("Scale changed to:", scale);
-  }, [scale]);
 
   // You might want to show a loading state
   if (loading) {

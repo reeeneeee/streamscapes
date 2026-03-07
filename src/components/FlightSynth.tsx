@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone'
-import { Chord, Interval, Note, Scale} from 'tonal';
-import axios from "axios";
 import { useUserLocation } from '../hooks/useUserLocation';
 
 interface Flight {
@@ -49,17 +47,6 @@ export default function FlightSynth({
   
   // Update bounds calculation
   const myBounds = `${myLat+0.07},${myLat-0.07},${myLon-0.07},${myLon+0.07}`;
-  const flightradar24ApiKey = process.env.NEXT_PUBLIC_FLIGHTRADAR24_API_KEY;
-  let config = {
-    method: 'get',
-    maxBodyLength: Infinity,
-    url: `https://fr24api.flightradar24.com/api/live/flight-positions/light?bounds=${myBounds}`,
-    headers: {
-      'Accept': 'application/json',
-      'Accept-Version': 'v1',
-      'Authorization': `Bearer ${flightradar24ApiKey}`
-    }
-  };
 
   // Define these functions at component level
   const processFlight = (flight: Flight): ProcessedFlight => {
@@ -136,8 +123,6 @@ export default function FlightSynth({
               lonPerSecond
             };
             
-            // Log vector for debugging
-            console.log(`Flight ${flightId} vector: lat=${latPerSecond.toFixed(6)}/s, lon=${lonPerSecond.toFixed(6)}/s`);
           }
         }
         
@@ -335,8 +320,8 @@ export default function FlightSynth({
   useEffect(() => {
     const fetchFlights = async () => {
       try {
-        const response = await axios.request(config);
-        const flightData = response.data;
+        const response = await fetch(`/api/streams/flights?bounds=${myBounds}`);
+        const flightData = await response.json();
         setFlightsInArea(flightData);
         flightsDataRef.current = flightData;
       } catch (error) {

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone'
-import { Chord, Interval, Note, Scale } from 'tonal';
 
 interface WikimediaEventData {
   title: string;
@@ -33,8 +32,7 @@ export default function WikiSynth({
 
   useEffect(() => {
     if (synthRef.current) {
-      console.log("setting wikipedia volume to ", volume);
-      synthRef.current.volume.value = volume;
+        synthRef.current.volume.value = volume;
     }
   }, [volume]);
 
@@ -62,7 +60,6 @@ export default function WikiSynth({
       },
     }).connect(filterRef.current).connect(analyzerRef.current);
 
-    console.log("setting initial wikipedia volume to ", volume);
     synthRef.current.volume.value = volume;
 
     const eventSource = new EventSource('/api/wiki-stream');

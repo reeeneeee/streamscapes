@@ -58,10 +58,16 @@ const Visualizer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const p5Ref = useRef<any | undefined>(undefined);
   const editsRef = useRef<WikiEdit[]>([]);
+  const flightsRef = useRef<ProcessedFlight[]>([]);
   const [, setUpdateTrigger] = useState(0); // Only used to trigger re-renders
   const [airplane, setAirplane] = useState<any | undefined>(undefined);
   const imagesLoadedRef = useRef(false);
 
+
+  // Keep flights ref in sync with prop
+  useEffect(() => {
+    flightsRef.current = flights;
+  }, [flights]);
 
   // Listen for wiki edits via EventSource
   useEffect(() => {
@@ -182,8 +188,9 @@ const Visualizer = ({
         p.ellipse(p.width/2, p.height/2, 10, 10);
         
         // Draw flights based on their actual lat/lon coordinates
-        if (flights && flights.length > 0) {
-          flights.forEach((flight) => {
+        const currentFlights = flightsRef.current;
+        if (currentFlights && currentFlights.length > 0) {
+          currentFlights.forEach((flight) => {
             // Calculate relative position from user's location
             const latDiff = flight.lat - myLat;
             const lonDiff = flight.lon - myLon;
@@ -344,8 +351,9 @@ const Visualizer = ({
         // Update mouseClicked handler to handle both flights and wiki edits
         p.mouseClicked = () => {
           // Check if click is on any flight callsign or plane
-          if (flights && flights.length > 0) {
-            for (const flight of flights) {
+          const clickFlights = flightsRef.current;
+          if (clickFlights && clickFlights.length > 0) {
+            for (const flight of clickFlights) {
               if (flight.callsign) {
                 // Calculate position using the same logic as in draw()
                 const latDiff = flight.lat - myLat;
@@ -413,7 +421,7 @@ const Visualizer = ({
         }
       }
     };
-  }, [weatherAnalyzer, flights, flightAnalyzer, myLat, myLon, wikiAnalyzer, backgroundColor]);
+  }, [weatherAnalyzer, flightAnalyzer, myLat, myLon, wikiAnalyzer, backgroundColor]);
 
   return (
     <div className="w-full mb-4">

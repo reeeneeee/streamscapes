@@ -2,14 +2,13 @@
 
 import WeatherSynth from "@/components/WeatherSynth";
 import WikiSynth from "@/components/WikiSynth";
-import WikiStream from "@/components/WikiStream";
 import FlightSynth from "@/components/FlightSynth";
 import Visualizer from "@/components/Visualizer";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import * as Tone from 'tone'
-import { Chord, Interval, Note, Scale } from 'tonal';
-import axios from "axios";
+import { Scale } from 'tonal';
+import { useUserLocation } from '../hooks/useUserLocation';
 
 const SCALE_OPTIONS = {
     'Major Pentatonic': Scale.get('C4 Major Pentatonic').notes,
@@ -46,14 +45,13 @@ export default function Main() {
 
     // Add state for flight data
     const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
-    const [myWeather, setMyWeather] = useState<any>(null);
+    const { location } = useUserLocation();
     let currentScale = SCALE_OPTIONS[selectedScale];
 
     const soundOn = async () => {
         const context = Tone.context;
         if (context.state === 'suspended') {
             await Tone.start();
-            console.log("Audio started", isPlaying);
             setIsPlaying(true);
         }
         const scaleElement = document.getElementById('scale-select');
@@ -61,13 +59,6 @@ export default function Main() {
             scaleElement.style.visibility = "visible";
         }
         document.getElementById('sound-button')?.remove();
-    };
-
-    // Update the scale selection handler
-    const handleScaleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newScale = e.target.value as ScaleType;
-        console.log("Changing scale to:", newScale); // Debug log
-        setSelectedScale(newScale);
     };
 
     useEffect(() => {
@@ -115,12 +106,12 @@ export default function Main() {
                 
                 {/* Visualizer */}
                 {wikiAnalyzer && flightAnalyzer && weatherAnalyzer && (
-                    <Visualizer 
+                    <Visualizer
                         weatherAnalyzer={weatherAnalyzer}
                         flights={processedFlights}
                         flightAnalyzer={flightAnalyzer}
-                        myLat={40.6711}
-                        myLon={-73.9814}
+                        myLat={location.lat}
+                        myLon={location.lon}
                         wikiAnalyzer={wikiAnalyzer}
                         backgroundColor="#f5f5f5"
                         scale={currentScale}
@@ -191,9 +182,6 @@ export default function Main() {
                 volume={wikiVolume} 
                 onAnalyzerCreated={setWikiAnalyzer} 
             />
-            {/* { <div className="mt-8">
-                <WikiStream />
-            </div> } */}
         </div>
     );
 }
