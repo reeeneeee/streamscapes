@@ -293,34 +293,34 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 - [x] Build VU meters using refs + rAF + direct canvas (NOT through Zustand) — `src/components/VUMeter.tsx`
 - [x] Implement solo logic in AudioEngine (mute all non-soloed channels when any is soloed)
 - [x] Master volume control
-- [ ] Stream browser/toggle panel — `src/components/StreamBrowser.tsx`
+- [x] Stream browser/toggle panel — `src/components/StreamBrowser.tsx`
 
 ### Sonification Panel
-- [ ] Per-stream synth type selector — `src/components/SonificationPanel.tsx`
-- [ ] Per-stream envelope knobs (attack, decay, sustain, release)
-- [ ] Per-stream insert effects chain (add/remove/reorder, max 4) — `src/components/EffectsChain.tsx`
-- [ ] Global controls: root note, scale, tempo — `src/components/GlobalControls.tsx`
+- [x] Per-stream synth type selector — `src/components/SonificationPanel.tsx`
+- [x] Per-stream envelope knobs (attack, decay, sustain, release)
+- [x] Per-stream insert effects chain (add/remove/reorder, max 4) — `src/components/EffectsChain.tsx`
+- [x] Global controls: root note, scale, tempo — `src/components/GlobalControls.tsx`
 
 ### Mapping Editor
-- [ ] Visual mapping editor: pick source data field, pick target audio param, set curve + range — `src/components/MappingEditor.tsx`
-- [ ] Show available fields from each stream's DataPoint
+- [x] Visual mapping editor: pick source data field, pick target audio param, set curve + range — `src/components/MappingEditor.tsx`
+- [x] Show available fields from each stream's DataPoint
 - [ ] Preview mapped values in real-time as data arrives
 
 ### Presets (localStorage only)
-- [ ] Save current config to localStorage with a name
-- [ ] Load saved configs
-- [ ] Delete saved configs
-- [ ] Export/import as JSON file (for manual sharing)
+- [x] Save current config to localStorage with a name
+- [x] Load saved configs
+- [x] Delete saved configs
+- [x] Export/import as JSON file (for manual sharing)
 
 ### Additional Streams
-- [ ] RSS/Atom feed stream plugin — `src/streams/rss.ts`
-- [ ] Cryptocurrency price stream plugin — `src/streams/crypto.ts`
+- [x] RSS/Atom feed stream plugin — `src/streams/rss.ts`
+- [x] Cryptocurrency price stream plugin — `src/streams/crypto.ts`
 
 ### Polish
 - [ ] Replace P5.js with Canvas 2D for visualization
-- [ ] Register with Media Session API for background audio (10 lines of code)
+- [x] Register with Media Session API for background audio (10 lines of code)
 - [ ] Responsive layout pass (collapsible mixer on mobile)
-- [ ] Add `visibilitychange` handler to suspend/resume AudioContext
+- [x] Add `visibilitychange` handler to suspend/resume AudioContext
 
 **Success criteria**: Users can configure synth type, mappings, and effects per stream. Mixer provides volume/pan/mute/solo with VU meters. Configs persist across page reloads. At least 5 data streams available.
 
