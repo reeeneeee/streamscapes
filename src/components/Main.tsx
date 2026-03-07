@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react";
 import * as Tone from 'tone';
+import { Scale } from 'tonal';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { useStreamscapes } from '../hooks/useStreamscapes';
 import { useStore } from '@/store';
 import Visualizer from './Visualizer';
 import Mixer from './Mixer';
+import StreamBrowser from './StreamBrowser';
+import GlobalControls from './GlobalControls';
+import SonificationPanel from './SonificationPanel';
+import EffectsChain from './EffectsChain';
+import MappingEditor from './MappingEditor';
+import Presets from './Presets';
 import type { DataPoint } from '@/types/stream';
 
 interface ProcessedFlight {
@@ -21,11 +28,10 @@ interface ProcessedFlight {
 
 export default function Main() {
   const { location } = useUserLocation();
-  const { engine, startAudio, isPlaying } = useStreamscapes(location.lat, location.lon);
+  const { engine, plugins, startAudio, isPlaying } = useStreamscapes(location.lat, location.lon);
 
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
-  const updateGlobal = useStore((s) => s.updateGlobal);
 
   // Flight data for visualizer
   const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
@@ -87,7 +93,9 @@ export default function Main() {
     return () => clearTimeout(t);
   }, [engine, isPlaying]);
 
-  const currentScale = ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'];
+  // Build scale from global config for visualizer
+  const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes as string[];
+  const currentScale = scaleNotes.length > 0 ? scaleNotes : ['C4', 'D4', 'E4', 'G4', 'A4'];
 
   return (
     <div>
@@ -102,7 +110,6 @@ export default function Main() {
             Start Synth
           </button>
         ) : (
-          /* Weather info line */
           weatherDisplay && (
             <div className="text-sm text-center opacity-70">
               📍 {location.lat.toFixed(4)}, {location.lon.toFixed(4)} &middot;
@@ -129,9 +136,29 @@ export default function Main() {
         </div>
       )}
 
-      {/* Mixer */}
+      {/* Controls */}
       {isPlaying && (
-        <Mixer engine={engine} />
+        <div className="space-y-3">
+          {/* Mixer */}
+          <Mixer engine={engine} />
+
+          {/* Two-column layout for controls */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Left column */}
+            <div className="space-y-3">
+              <StreamBrowser plugins={plugins} />
+              <GlobalControls />
+              <Presets />
+            </div>
+
+            {/* Right column */}
+            <div className="space-y-3">
+              <SonificationPanel />
+              <EffectsChain />
+              <MappingEditor />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

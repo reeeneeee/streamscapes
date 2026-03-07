@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import * as Tone from 'tone';
 import { useStore } from '@/store';
 import { AudioEngine } from '@/lib/audio-engine';
@@ -6,6 +6,7 @@ import { StreamManager } from '@/lib/stream-manager';
 import { setupVisibilityHandler } from '@/lib/visibility-handler';
 import { createPlugins } from '@/streams';
 import { ALL_DEFAULT_CHANNELS } from '@/streams/defaults';
+import type { StreamPlugin } from '@/types/stream';
 
 /**
  * Main orchestrator hook. Initializes AudioEngine, StreamManager,
@@ -22,6 +23,9 @@ export function useStreamscapes(lat: number, lon: number) {
   const channels = useStore((s) => s.channels);
   const setPlaying = useStore((s) => s.setPlaying);
   const addChannel = useStore((s) => s.addChannel);
+  const pluginsRef = useRef<StreamPlugin[]>([]);
+  const plugins = useMemo(() => createPlugins(lat, lon), [lat, lon]);
+  pluginsRef.current = plugins;
 
   // Initialize engine + manager once
   useEffect(() => {
@@ -43,7 +47,7 @@ export function useStreamscapes(lat: number, lon: number) {
     }
 
     const engine = new AudioEngine(store);
-    const plugins = createPlugins(lat, lon);
+    const plugins = pluginsRef.current;
     // StreamManager needs setStreamState — get it from the store
     const { setStreamState } = store.getState();
     const manager = new StreamManager({ setStreamState }, engine, plugins);
@@ -105,6 +109,7 @@ export function useStreamscapes(lat: number, lon: number) {
   return {
     engine: engineRef.current,
     manager: managerRef.current,
+    plugins,
     startAudio,
     stopAudio,
     isPlaying,

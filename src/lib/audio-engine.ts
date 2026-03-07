@@ -1,17 +1,23 @@
 import * as Tone from 'tone';
-import type { ChannelConfig, GlobalConfig, SynthType } from '@/types/sonification';
+import type { ChannelConfig, EffectConfig, EffectType, GlobalConfig, SynthType } from '@/types/sonification';
 import type { DataPoint } from '@/types/stream';
 import { applyMappings } from './mapping-engine';
 import { Scale } from 'tonal';
 
 // --- Types ---
 
-interface TriggeredNodes {
+type ToneEffect = Tone.Reverb | Tone.FeedbackDelay | Tone.Chorus | Tone.Distortion | Tone.Filter | Tone.Compressor;
+
+interface BaseNodes {
+  channel: Tone.Channel;
+  analyzer: Tone.Analyser;
+  insertEffects: ToneEffect[];
+}
+
+interface TriggeredNodes extends BaseNodes {
   mode: 'triggered';
   synth: Tone.PolySynth;
   filter: Tone.Filter;
-  channel: Tone.Channel;
-  analyzer: Tone.Analyser;
 }
 
 interface ContinuousEntity {
@@ -20,21 +26,17 @@ interface ContinuousEntity {
   lastSeen: number;
 }
 
-interface ContinuousNodes {
+interface ContinuousNodes extends BaseNodes {
   mode: 'continuous';
   entities: Map<string, ContinuousEntity>;
-  channel: Tone.Channel;
-  analyzer: Tone.Analyser;
 }
 
-interface PatternNodes {
+interface PatternNodes extends BaseNodes {
   mode: 'pattern';
   synth: Tone.Synth;
   pattern: Tone.Pattern<string>;
   noise: Tone.Noise | null;
   noiseFilter: Tone.Filter | null;
-  channel: Tone.Channel;
-  analyzer: Tone.Analyser;
 }
 
 type ChannelNodes = TriggeredNodes | ContinuousNodes | PatternNodes;
@@ -139,6 +141,47 @@ export class AudioEngine {
     }
   }
 
+  private createToneEffect(cfg: EffectConfig): ToneEffect {
+    let effect: ToneEffect;
+    switch (cfg.type) {
+      case 'reverb':
+        effect = new Tone.Reverb({ decay: cfg.params.decay ?? 2.5, preDelay: cfg.params.preDelay ?? 0.01 });
+        break;
+      case 'delay':
+        effect = new Tone.FeedbackDelay({ delayTime: cfg.params.delayTime ?? 0.25, feedback: cfg.params.feedback ?? 0.3 });
+        break;
+      case 'chorus':
+        effect = new Tone.Chorus({ frequency: cfg.params.frequency ?? 1.5, depth: cfg.params.depth ?? 0.7, delayTime: cfg.params.delayTime ?? 3.5 }).start();
+        break;
+      case 'distortion':
+        effect = new Tone.Distortion(cfg.params.distortion ?? 0.4);
+        break;
+      case 'filter':
+        effect = new Tone.Filter({ frequency: cfg.params.frequency ?? 1000, Q: cfg.params.Q ?? 1 });
+        break;
+      case 'compressor':
+        effect = new Tone.Compressor(cfg.params.threshold ?? -24, cfg.params.ratio ?? 4);
+        break;
+    }
+    if ('wet' in effect) {
+      (effect as any).wet.value = cfg.bypass ? 0 : cfg.wet;
+    }
+    return effect;
+  }
+
+  private buildInsertChain(config: ChannelConfig, source: Tone.ToneAudioNode, dest: Tone.ToneAudioNode): ToneEffect[] {
+    const effects: ToneEffect[] = [];
+    let prev: Tone.ToneAudioNode = source;
+    for (const cfg of config.effects) {
+      const fx = this.createToneEffect(cfg);
+      prev.connect(fx);
+      effects.push(fx);
+      prev = fx;
+    }
+    prev.connect(dest);
+    return effects;
+  }
+
   private createChannel(id: string, config: ChannelConfig) {
     const channel = new Tone.Channel({
       volume: config.volume,
@@ -176,9 +219,9 @@ export class AudioEngine {
       },
     });
     synth.connect(filter);
-    filter.connect(channel);
+    const insertEffects = this.buildInsertChain(config, filter, channel);
 
-    this.channelNodes.set(id, { mode: 'triggered', synth, filter, channel, analyzer });
+    this.channelNodes.set(id, { mode: 'triggered', synth, filter, channel, analyzer, insertEffects });
   }
 
   private createContinuousChannel(
@@ -188,7 +231,7 @@ export class AudioEngine {
     analyzer: Tone.Analyser
   ) {
     // Entities (individual drones) are created dynamically as data arrives
-    this.channelNodes.set(id, { mode: 'continuous', entities: new Map(), channel, analyzer });
+    this.channelNodes.set(id, { mode: 'continuous', entities: new Map(), channel, analyzer, insertEffects: [] });
   }
 
   private createPatternChannel(
@@ -200,7 +243,7 @@ export class AudioEngine {
     const synth = new Tone.Synth({
       oscillator: (config.synthOptions.oscillator as any) ?? { type: 'sine' },
     });
-    synth.connect(channel);
+    const insertEffects = this.buildInsertChain(config, synth, channel);
 
     const { global } = this.store.getState();
     const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes;
@@ -220,6 +263,7 @@ export class AudioEngine {
       noiseFilter: null,
       channel,
       analyzer,
+      insertEffects,
     });
 
     // Start the pattern if transport is running or audio is playing
@@ -240,6 +284,11 @@ export class AudioEngine {
   }
 
   private disposeChannel(id: string, nodes: ChannelNodes) {
+    // Dispose insert effects
+    for (const fx of nodes.insertEffects) {
+      fx.dispose();
+    }
+
     switch (nodes.mode) {
       case 'triggered':
         nodes.synth.dispose();
