@@ -289,10 +289,10 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 **Goal**: The UI that makes configuring sonifications feel great.
 
 ### Mixer
-- [ ] Build mixer panel: channel strips with volume fader, pan knob, mute/solo — `src/components/Mixer.tsx`
-- [ ] Build VU meters using refs + rAF + direct canvas (NOT through Zustand) — `src/components/VUMeter.tsx`
-- [ ] Implement solo logic in store (mute all non-soloed channels explicitly, not via `Tone.Channel.solo`)
-- [ ] Master volume control
+- [x] Build mixer panel: channel strips with volume fader, pan knob, mute/solo — `src/components/Mixer.tsx`
+- [x] Build VU meters using refs + rAF + direct canvas (NOT through Zustand) — `src/components/VUMeter.tsx`
+- [x] Implement solo logic in AudioEngine (mute all non-soloed channels when any is soloed)
+- [x] Master volume control
 - [ ] Stream browser/toggle panel — `src/components/StreamBrowser.tsx`
 
 ### Sonification Panel
