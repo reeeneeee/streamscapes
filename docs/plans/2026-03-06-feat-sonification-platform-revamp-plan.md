@@ -250,7 +250,7 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 - [x] Fix duplicate SSE — single EventSource, share data via store — `Visualizer.tsx:68`, `WikiSynth.tsx:68` (resolved: old components no longer rendered)
 - [x] Decouple FlightSynth audio updates from React renders — use refs for Tone.js, throttle state updates to 1/sec (resolved: AudioEngine handles audio outside React)
 - [x] Remove unused imports (`Chord`, `Interval`, `Note`), dead code, `console.log` statements
-- [ ] Remove `any` types (13 instances)
+- [x] Remove `any` types (13 instances)
 
 ### Security
 - [x] Move weather API calls to `/api/streams/weather` (key stays server-side)
@@ -273,12 +273,12 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 - [x] Add `visibilitychange` handler — suspend AudioContext when tab hidden
 - [x] Replace axios with fetch (only used in 2 places, saves ~14KB)
 - [x] Move `@types/p5` to devDependencies, remove unused `wikimedia-streams`
-- [ ] Import tonal subpackages directly instead of barrel import
+- [x] Import tonal subpackages directly instead of barrel import
 
 ### Tests
-- [ ] Unit tests for `applyMappings` (all curve types, edge cases)
-- [ ] Unit tests for stream plugin `connect()` methods (mock data, abort signal)
-- [ ] Integration test: DataPoint -> mapping -> AudioEngine receives correct params
+- [x] Unit tests for `applyMappings` (all curve types, edge cases)
+- [x] Unit tests for stream plugin `connect()` methods (mock data, abort signal)
+- [x] Integration test: DataPoint -> mapping -> AudioEngine receives correct params
 
 **Success criteria**: All 3 streams work through the new plugin + mapping + AudioEngine pipeline. Streams can be toggled on/off. API keys are server-side. Critical bugs fixed. No audio leaks after 1 hour of listening.
 
@@ -304,7 +304,7 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 ### Mapping Editor
 - [x] Visual mapping editor: pick source data field, pick target audio param, set curve + range — `src/components/MappingEditor.tsx`
 - [x] Show available fields from each stream's DataPoint
-- [ ] Preview mapped values in real-time as data arrives
+- [x] Preview mapped values in real-time as data arrives
 
 ### Presets (localStorage only)
 - [x] Save current config to localStorage with a name
@@ -314,12 +314,12 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 
 ### Additional Streams
 - [x] RSS/Atom feed stream plugin — `src/streams/rss.ts`
-- [x] Cryptocurrency price stream plugin — `src/streams/crypto.ts`
+- [x] Stock ticker stream plugin (Finnhub) — `src/streams/stocks.ts`
 
 ### Polish
-- [ ] Replace P5.js with Canvas 2D for visualization
+- [x] Replace P5.js with Canvas 2D for visualization
 - [x] Register with Media Session API for background audio (10 lines of code)
-- [ ] Responsive layout pass (collapsible mixer on mobile)
+- [x] Responsive layout pass (collapsible mixer on mobile)
 - [x] Add `visibilitychange` handler to suspend/resume AudioContext
 
 **Success criteria**: Users can configure synth type, mappings, and effects per stream. Mixer provides volume/pan/mute/solo with VU meters. Configs persist across page reloads. At least 5 data streams available.
