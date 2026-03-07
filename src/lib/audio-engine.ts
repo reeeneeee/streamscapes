@@ -246,9 +246,13 @@ export class AudioEngine {
     channel: Tone.Channel,
     analyzer: Tone.Analyser
   ) {
-    const synth = new Tone.Synth({
+    const synthOpts: Record<string, unknown> = {
       oscillator: (config.synthOptions.oscillator as Record<string, unknown>) ?? { type: 'sine' },
-    });
+    };
+    if (config.synthOptions.envelope) {
+      synthOpts.envelope = config.synthOptions.envelope;
+    }
+    const synth = new Tone.Synth(synthOpts as ConstructorParameters<typeof Tone.Synth>[0]);
     const insertEffects = this.buildInsertChain(config, synth, channel);
 
     const { global } = this.store.getState();
@@ -256,7 +260,14 @@ export class AudioEngine {
     const initialNotes = scaleNotes.length > 0 ? scaleNotes.slice(0, 4) : ['C4', 'E4', 'G4', 'C5'];
 
     const pattern = new Tone.Pattern(
-      (time, note) => { synth.triggerAttackRelease(note, '8n', time); },
+      (time, note) => {
+        // Scale note duration to be at least attack + decay so envelope completes
+        const atk = synth.envelope.attack as number;
+        const dec = synth.envelope.decay as number;
+        const minDur = atk + dec + 0.05;
+        const dur = Math.max(Tone.Time('8n').toSeconds(), minDur);
+        synth.triggerAttackRelease(note, dur, time);
+      },
       initialNotes,
       (config.patternType ?? 'upDown') as 'up' | 'down' | 'upDown' | 'downUp' | 'alternateUp' | 'alternateDown' | 'random' | 'randomOnce' | 'randomWalk'
     );
@@ -287,6 +298,24 @@ export class AudioEngine {
     const allChannels = this.store.getState().channels;
     const anySoloed = Object.values(allChannels).some((c) => c.solo);
     nodes.channel.mute = config.mute || (anySoloed && !config.solo);
+
+    // Apply synthOptions changes (envelope, oscillator)
+    const env = config.synthOptions?.envelope as Record<string, number> | undefined;
+    if (env) {
+      if (nodes.mode === 'pattern') {
+        const patternNodes = nodes as PatternNodes;
+        const synth = patternNodes.synth;
+        // Set envelope on synth
+        synth.set({ envelope: env });
+        // Restart pattern to clear Tone.js lookahead buffer
+        // so new envelope takes effect immediately
+        patternNodes.pattern.stop();
+        patternNodes.pattern.cancel();
+        patternNodes.pattern.start();
+      } else if (nodes.mode === 'triggered') {
+        (nodes.synth as Tone.PolySynth).set({ envelope: env });
+      }
+    }
   }
 
   private disposeChannel(id: string, nodes: ChannelNodes) {

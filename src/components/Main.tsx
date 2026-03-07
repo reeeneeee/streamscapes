@@ -151,9 +151,9 @@ export default function Main() {
           <div className="text-[11px] hidden sm:block" style={{ color: 'var(--text-muted)' }}>
             {location.lat.toFixed(2)}, {location.lon.toFixed(2)}
             {' \u00B7 '}
-            {Math.trunc(weatherDisplay.feelsLike)}\u00B0F
+            {Math.trunc(weatherDisplay.feelsLike)}{'°F'}
             {' \u00B7 '}
-            {weatherDisplay.clouds}% clouds
+            {weatherDisplay.clouds}% cloud cover
           </div>
         )}
       </div>

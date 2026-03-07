@@ -38,9 +38,11 @@ export default function Presets() {
   const [showSave, setShowSave] = useState(false);
 
   const handleSave = () => {
-    if (!name.trim()) return;
+    const defaultName = new Date().toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
     const preset: SavedPreset = {
-      name: name.trim(),
+      name: name.trim() || defaultName,
       channels,
       global,
       savedAt: Date.now(),
