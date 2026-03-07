@@ -28,9 +28,15 @@ export function useStreamscapes(lat: number, lon: number) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // Seed default channels if store is empty
+    // Seed default channels if store is empty or has stale data (missing mode)
     const currentChannels = store.getState().channels;
-    if (Object.keys(currentChannels).length === 0) {
+    const needsReseed = Object.keys(currentChannels).length === 0 ||
+      Object.values(currentChannels).some((ch) => !ch.mode);
+    if (needsReseed) {
+      // Clear stale channels
+      for (const id of Object.keys(currentChannels)) {
+        store.getState().removeChannel(id);
+      }
       for (const ch of ALL_DEFAULT_CHANNELS) {
         addChannel(ch);
       }

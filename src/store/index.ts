@@ -49,12 +49,21 @@ export const useStore = create<StreamscapesStore>()(
         setPlaying: (playing) => set({ isPlaying: playing }),
 
         updateChannel: (streamId, partial) =>
-          set((state) => ({
-            channels: {
-              ...state.channels,
-              [streamId]: { ...state.channels[streamId], ...partial },
-            },
-          })),
+          set((state) => {
+            const updated = { ...state.channels[streamId], ...partial };
+            const channels = { ...state.channels, [streamId]: updated };
+
+            // Exclusive solo: if soloing this channel, unsolo all others
+            if (partial.solo === true) {
+              for (const id of Object.keys(channels)) {
+                if (id !== streamId) {
+                  channels[id] = { ...channels[id], solo: false };
+                }
+              }
+            }
+
+            return { channels };
+          }),
 
         updateGlobal: (partial) =>
           set((state) => ({
@@ -87,11 +96,15 @@ export const useStore = create<StreamscapesStore>()(
       }),
       {
         name: 'streamscapes-store',
-        version: 2, // Bump when schema changes (v2 = added mode field)
+        version: 3, // v3: clear stale channels missing mode field
         partialize: (state) => ({
           global: state.global,
           channels: state.channels,
         }),
+        migrate: () => {
+          // Wipe channels on version bump — defaults will be re-seeded
+          return { global: DEFAULT_GLOBAL, channels: {} };
+        },
       }
     )
   )

@@ -16,6 +16,13 @@ const STREAM_LABELS: Record<string, string> = {
   wikipedia: 'Wikipedia',
 };
 
+// Per-stream volume ranges (matching original controls)
+const VOLUME_RANGES: Record<string, { min: number; max: number }> = {
+  weather:   { min: -20, max: 5 },
+  flights:   { min: -40, max: -5 },
+  wikipedia: { min: -20, max: 10 },
+};
+
 export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
@@ -57,8 +64,8 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
                 <VUMeter analyzer={engine?.getChannelAnalyzer(id) ?? null} />
                 <input
                   type="range"
-                  min={-40}
-                  max={6}
+                  min={VOLUME_RANGES[id]?.min ?? -30}
+                  max={VOLUME_RANGES[id]?.max ?? 6}
                   step={0.5}
                   value={config.volume}
                   onChange={(e) => updateChannel(id, { volume: parseFloat(e.target.value) })}
@@ -75,7 +82,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
 
               {/* Volume readout */}
               <div className="text-[10px] text-gray-400 mb-2 font-mono">
-                {config.volume > -40 ? `${config.volume.toFixed(1)}` : '-∞'} dB
+                {config.volume.toFixed(1)} dB
               </div>
 
               {/* Pan knob (simple slider for now) */}
