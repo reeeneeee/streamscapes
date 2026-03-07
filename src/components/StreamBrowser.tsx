@@ -7,6 +7,8 @@ const STREAM_COLORS: Record<string, string> = {
   weather: '#7C444F',
   flights: '#5C7285',
   wikipedia: '#5D8736',
+  rss: '#B8860B',
+  crypto: '#E6A817',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {

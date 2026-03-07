@@ -93,8 +93,72 @@ export const DEFAULT_WIKIPEDIA_CHANNEL: ChannelConfig = {
   solo: false,
 };
 
+export const DEFAULT_RSS_CHANNEL: ChannelConfig = {
+  streamId: 'rss',
+  enabled: false, // Off by default — user can enable
+  mode: 'triggered',
+  synthType: 'PluckSynth',
+  synthOptions: {},
+  mappings: [
+    {
+      sourceField: 'titleLength',
+      targetParam: 'scaleIndex',
+      curve: 'linear',
+      inputRange: [0, 80],
+      outputRange: [0, 12],
+      invert: false,
+    },
+    {
+      sourceField: 'contentLength',
+      targetParam: 'velocity',
+      curve: 'logarithmic',
+      inputRange: [0, 1000],
+      outputRange: [0.1, 0.8],
+      invert: false,
+    },
+  ],
+  effects: [],
+  volume: -5,
+  pan: -0.3,
+  mute: false,
+  solo: false,
+};
+
+export const DEFAULT_CRYPTO_CHANNEL: ChannelConfig = {
+  streamId: 'crypto',
+  enabled: false, // Off by default
+  mode: 'triggered',
+  synthType: 'MembraneSynth',
+  synthOptions: {},
+  mappings: [
+    {
+      sourceField: 'priceDeltaPct',
+      targetParam: 'velocity',
+      curve: 'exponential',
+      inputRange: [0, 5],
+      outputRange: [0.1, 1],
+      invert: false,
+    },
+    {
+      sourceField: 'direction',
+      targetParam: 'scaleIndex',
+      curve: 'step',
+      inputRange: [0, 1],
+      outputRange: [0, 4],
+      invert: false,
+    },
+  ],
+  effects: [],
+  volume: -10,
+  pan: 0.3,
+  mute: false,
+  solo: false,
+};
+
 export const ALL_DEFAULT_CHANNELS: ChannelConfig[] = [
   DEFAULT_WEATHER_CHANNEL,
   DEFAULT_FLIGHTS_CHANNEL,
   DEFAULT_WIKIPEDIA_CHANNEL,
+  DEFAULT_RSS_CHANNEL,
+  DEFAULT_CRYPTO_CHANNEL,
 ];

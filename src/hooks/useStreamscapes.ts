@@ -86,6 +86,14 @@ export function useStreamscapes(lat: number, lon: number) {
     setPlaying(true);
     engineRef.current?.start();
 
+    // Register with Media Session API for background audio
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Streamscapes',
+        artist: 'Real-time data sonification',
+      });
+    }
+
     // Connect all enabled streams
     const manager = managerRef.current;
     if (manager) {

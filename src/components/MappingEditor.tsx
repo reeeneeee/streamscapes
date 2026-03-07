@@ -9,6 +9,8 @@ const KNOWN_SOURCE_FIELDS: Record<string, string[]> = {
   weather: ['temperature', 'feelsLike', 'clouds', 'humidity', 'windSpeed'],
   flights: ['distance', 'speed', 'altitude', 'frequency', 'lat', 'lon'],
   wikipedia: ['titleLength', 'lengthDelta', 'absLengthDelta'],
+  rss: ['titleLength', 'contentLength', 'hasImage'],
+  crypto: ['price', 'change24h', 'priceDelta', 'priceDeltaPct', 'direction'],
 };
 
 const TARGET_PARAMS = [

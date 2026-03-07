@@ -8,12 +8,16 @@ const STREAM_COLORS: Record<string, string> = {
   weather: '#7C444F',
   flights: '#5C7285',
   wikipedia: '#5D8736',
+  rss: '#B8860B',
+  crypto: '#E6A817',
 };
 
 const STREAM_LABELS: Record<string, string> = {
   weather: 'Weather',
   flights: 'Flights',
   wikipedia: 'Wikipedia',
+  rss: 'RSS',
+  crypto: 'Crypto',
 };
 
 // Per-stream volume ranges (matching original controls)
