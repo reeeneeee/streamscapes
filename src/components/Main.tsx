@@ -1,25 +1,13 @@
 "use client";
 
-import WeatherSynth from "@/components/WeatherSynth";
-import WikiSynth from "@/components/WikiSynth";
-import FlightSynth from "@/components/FlightSynth";
-import Visualizer from "@/components/Visualizer";
-
 import { useEffect, useState } from "react";
-import * as Tone from 'tone'
-import { Scale } from 'tonal';
+import * as Tone from 'tone';
 import { useUserLocation } from '../hooks/useUserLocation';
-
-const SCALE_OPTIONS = {
-    'Major Pentatonic': Scale.get('C4 Major Pentatonic').notes,
-    'Minor Pentatonic': Scale.get('C4 Minor Pentatonic').notes,
-    'Major': Scale.get('C4 Major').notes,
-    'Minor': Scale.get('C4 Minor').notes,
-    'Blues': Scale.get('C4 Blues').notes,
-    'Chromatic': Scale.get('C4 Chromatic').notes,
-} as const;
-
-type ScaleType = keyof typeof SCALE_OPTIONS;
+import { useStreamscapes } from '../hooks/useStreamscapes';
+import { useStore } from '@/store';
+import Visualizer from './Visualizer';
+import Mixer from './Mixer';
+import type { DataPoint } from '@/types/stream';
 
 interface ProcessedFlight {
   fr24_id: string;
@@ -32,156 +20,119 @@ interface ProcessedFlight {
 }
 
 export default function Main() {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [selectedScale, setSelectedScale] = useState<ScaleType>('Major Pentatonic');
-    const [flightAnalyzer, setFlightAnalyzer] = useState<Tone.Analyser | null>(null);
-    const [weatherAnalyzer, setWeatherAnalyzer] = useState<Tone.Analyser | null>(null);
-    const [wikiAnalyzer, setWikiAnalyzer] = useState<Tone.Analyser | null>(null);
-    
-    // Add volume state for each synth
-    const [weatherVolume, setWeatherVolume] = useState<number>(0);
-    const [flightVolume, setFlightVolume] = useState<number>(-20);
-    const [wikiVolume, setWikiVolume] = useState<number>(1);
+  const { location } = useUserLocation();
+  const { engine, startAudio, isPlaying } = useStreamscapes(location.lat, location.lon);
 
-    // Add state for flight data
-    const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
-    const { location } = useUserLocation();
-    let currentScale = SCALE_OPTIONS[selectedScale];
+  const channels = useStore((s) => s.channels);
+  const global = useStore((s) => s.global);
+  const updateGlobal = useStore((s) => s.updateGlobal);
 
-    const soundOn = async () => {
-        const context = Tone.context;
-        if (context.state === 'suspended') {
-            await Tone.start();
-            setIsPlaying(true);
+  // Flight data for visualizer
+  const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
+  const [weatherDisplay, setWeatherDisplay] = useState<{ feelsLike: number; clouds: number } | null>(null);
+
+  // Analyzer refs for visualizer
+  const [weatherAnalyzer, setWeatherAnalyzer] = useState<Tone.Analyser | null>(null);
+  const [flightAnalyzer, setFlightAnalyzer] = useState<Tone.Analyser | null>(null);
+  const [wikiAnalyzer, setWikiAnalyzer] = useState<Tone.Analyser | null>(null);
+
+  // Listen for data from streams to update UI
+  useEffect(() => {
+    if (!engine) return;
+
+    engine.onData('flights', (dp: DataPoint) => {
+      const f = dp.fields;
+      setProcessedFlights((prev) => {
+        const id = String(f.flightId);
+        const flight: ProcessedFlight = {
+          fr24_id: id,
+          lat: f.lat as number,
+          lon: f.lon as number,
+          gspeed: f.speed as number,
+          distance: f.distance as number,
+          frequency: f.frequency as number,
+          callsign: f.callsign as string | undefined,
+        };
+        const idx = prev.findIndex((p) => p.fr24_id === id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = flight;
+          return next;
         }
-        const scaleElement = document.getElementById('scale-select');
-        if (scaleElement) {
-            scaleElement.style.visibility = "visible";
-        }
-        document.getElementById('sound-button')?.remove();
+        return [...prev, flight];
+      });
+    });
+
+    engine.onData('weather', (dp: DataPoint) => {
+      setWeatherDisplay({
+        feelsLike: dp.fields.feelsLike as number,
+        clouds: dp.fields.clouds as number,
+      });
+    });
+
+    return () => {
+      engine.offData('flights');
+      engine.offData('weather');
     };
+  }, [engine]);
 
-    useEffect(() => {
-        document.documentElement.setAttribute('data-scale', selectedScale);
-    }, [selectedScale]);
+  // Grab analyzers once engine is ready
+  useEffect(() => {
+    if (!engine || !isPlaying) return;
+    const t = setTimeout(() => {
+      setWeatherAnalyzer(engine.getChannelAnalyzer('weather'));
+      setFlightAnalyzer(engine.getChannelAnalyzer('flights'));
+      setWikiAnalyzer(engine.getChannelAnalyzer('wikipedia'));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [engine, isPlaying]);
 
-    return (
-        <div>
-            {/* Center the Start Synth button and scale select at the top */}
-            <div className="w-full flex flex-col items-center mt-4 mb-8">
-                <button
-                    onClick={soundOn}
-                    id="sound-button"
-                    style={{ backgroundColor: '#2d2d2d', color: '#f5f5f5' }}
-                    className={`px-4 py-2 rounded ${isPlaying
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-green-500 hover:bg-green-600'
-                        } text-white transition-colors`}
-                >
-                    {isPlaying ? 'Mute Synth' : 'Start Synth'}
-                </button>
-                
-                <select
-                    id="scale-select"
-                    style={{ visibility: 'hidden', color: '#2d2d2d' }}
-                    value={selectedScale}
-                    onClick={soundOn}
-                    onChange={(e) => setSelectedScale(e.target.value as ScaleType)}
-                    className="px-3 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-accent bg-background text-foreground border-secondary/30 mt-0"
-                >
-                    {Object.keys(SCALE_OPTIONS).map((scale) => (
-                        <option key={scale} value={scale}>
-                            {scale}
-                        </option>
-                    ))}
-                </select>
+  const currentScale = ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'];
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="w-full flex flex-col items-center mt-4 mb-6">
+        {!isPlaying ? (
+          <button
+            onClick={startAudio}
+            style={{ backgroundColor: '#2d2d2d', color: '#f5f5f5' }}
+            className="px-6 py-3 rounded-lg text-lg hover:opacity-90 transition-opacity"
+          >
+            Start Synth
+          </button>
+        ) : (
+          /* Weather info line */
+          weatherDisplay && (
+            <div className="text-sm text-center opacity-70">
+              📍 {location.lat.toFixed(4)}, {location.lon.toFixed(4)} &middot;
+              🌡️ {Math.trunc(weatherDisplay.feelsLike)}°F &middot;
+              ☁️ {weatherDisplay.clouds}%
             </div>
-            <WeatherSynth 
-                scale={currentScale} 
-                volume={weatherVolume} 
-                onAnalyzerCreated={setWeatherAnalyzer} 
-            />  
-            {/* Add visualizers */}
-            <div className="mt-8 space-y-6">
-                
-                {/* Visualizer */}
-                {wikiAnalyzer && flightAnalyzer && weatherAnalyzer && (
-                    <Visualizer
-                        weatherAnalyzer={weatherAnalyzer}
-                        flights={processedFlights}
-                        flightAnalyzer={flightAnalyzer}
-                        myLat={location.lat}
-                        myLon={location.lon}
-                        wikiAnalyzer={wikiAnalyzer}
-                        backgroundColor="#f5f5f5"
-                        scale={currentScale}
-                    />
-                )}
-            </div>
+          )
+        )}
+      </div>
 
-            <div className="p-4 bg-background/50 shadow rounded backdrop-blur-sm">
-                {/* Volume Controls */}
-                <div className="space-y-3">
-                    <div className="flex items-center gap-4">
-                        <span className="w-24 text-sm" style={{ fontWeight: 'bold', color: '#7C444F' }}>Weather</span>
-                        <input 
-                            type="range" 
-                            min="-20" 
-                            max="5" 
-                            step="0.1" 
-                            value={weatherVolume}
-                            onChange={(e) => setWeatherVolume(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <span className="w-10 text-sm text-right"></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                        <span className="w-24 text-sm" style={{ fontWeight: 'bold', color: '#5C7285' }}>Flights</span>
-                        <input 
-                            type="range" 
-                            min="-40" 
-                            max="-5" 
-                            step="0.1" 
-                            value={flightVolume}
-                            onChange={(e) => setFlightVolume(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <span className="w-10 text-sm text-right"></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                        <span className="w-24 text-sm" style={{ fontWeight: 'bold', color: '#5D8736' }}>Wikipedia</span>
-                        <input 
-                            type="range" 
-                            min="-20" 
-                            max="10"
-                            step="0.1" 
-                            value={wikiVolume}
-                            onChange={(e) => setWikiVolume(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <span className="w-10 text-sm text-right"></span>
-                    </div>
-                </div>
-            </div>
-            
-            <FlightSynth 
-                volume={flightVolume} 
-                onAnalyzerCreated={setFlightAnalyzer}
-                onFlightsUpdated={setProcessedFlights}
-                
-            />
-            
-
-            {/* Pass callbacks to synth components */}
-             
-            
-            <WikiSynth 
-                scale={currentScale} 
-                volume={wikiVolume} 
-                onAnalyzerCreated={setWikiAnalyzer} 
-            />
+      {/* Visualizer */}
+      {isPlaying && wikiAnalyzer && flightAnalyzer && weatherAnalyzer && (
+        <div className="mb-6">
+          <Visualizer
+            weatherAnalyzer={weatherAnalyzer}
+            flights={processedFlights}
+            flightAnalyzer={flightAnalyzer}
+            myLat={location.lat}
+            myLon={location.lon}
+            wikiAnalyzer={wikiAnalyzer}
+            backgroundColor="#f5f5f5"
+            scale={currentScale}
+          />
         </div>
-    );
+      )}
+
+      {/* Mixer */}
+      {isPlaying && (
+        <Mixer engine={engine} />
+      )}
+    </div>
+  );
 }

@@ -17,6 +17,8 @@ export type SynthType =
   | 'MembraneSynth'
   | 'NoiseSynth';
 
+export type SonificationMode = 'triggered' | 'continuous' | 'pattern';
+
 export type EffectType =
   | 'reverb'
   | 'delay'
@@ -35,6 +37,7 @@ export interface EffectConfig {
 export interface ChannelConfig {
   readonly streamId: string;
   readonly enabled: boolean;
+  readonly mode: SonificationMode;
   readonly synthType: SynthType;
   readonly synthOptions: Record<string, unknown>;
   readonly mappings: readonly SonificationMapping[];
@@ -43,6 +46,10 @@ export interface ChannelConfig {
   readonly pan: number; // -1 to 1
   readonly mute: boolean;
   readonly solo: boolean;
+  // Continuous mode: which field identifies each entity (e.g. 'flightId')
+  readonly entityField?: string;
+  // Pattern mode: pattern type for Tone.Pattern
+  readonly patternType?: string;
 }
 
 export interface GlobalConfig {

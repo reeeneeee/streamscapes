@@ -1,15 +1,18 @@
-import type { StreamPlugin, DataPoint } from '@/types/stream';
+import type { StreamPlugin } from '@/types/stream';
 import type { AudioEngine } from './audio-engine';
-import type { StreamscapesStore } from '@/store';
+
+export interface StreamManagerStore {
+  setStreamState(streamId: string, state: { status: string; error?: string } | null): void;
+}
 
 export class StreamManager {
   private plugins: Map<string, StreamPlugin> = new Map();
   private abortControllers: Map<string, AbortController> = new Map();
-  private store: StreamscapesStore;
+  private store: StreamManagerStore;
   private audioEngine: AudioEngine;
 
   constructor(
-    store: StreamscapesStore,
+    store: StreamManagerStore,
     audioEngine: AudioEngine,
     plugins: StreamPlugin[]
   ) {
@@ -41,7 +44,7 @@ export class StreamManager {
         this.audioEngine.handleDataPoint(dataPoint);
       }
     } catch (error: unknown) {
-      if (controller.signal.aborted) return; // Expected on disconnect
+      if (controller.signal.aborted) return;
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.store.setStreamState(streamId, { status: 'error', error: message });
     }

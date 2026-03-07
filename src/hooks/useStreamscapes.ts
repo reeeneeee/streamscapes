@@ -1,0 +1,106 @@
+import { useEffect, useRef } from 'react';
+import * as Tone from 'tone';
+import { useStore } from '@/store';
+import { AudioEngine } from '@/lib/audio-engine';
+import { StreamManager } from '@/lib/stream-manager';
+import { setupVisibilityHandler } from '@/lib/visibility-handler';
+import { createPlugins } from '@/streams';
+import { ALL_DEFAULT_CHANNELS } from '@/streams/defaults';
+
+/**
+ * Main orchestrator hook. Initializes AudioEngine, StreamManager,
+ * and connects/disconnects streams based on store state.
+ */
+export function useStreamscapes(lat: number, lon: number) {
+  const engineRef = useRef<AudioEngine | null>(null);
+  const managerRef = useRef<StreamManager | null>(null);
+  const cleanupVisRef = useRef<(() => void) | null>(null);
+  const initializedRef = useRef(false);
+
+  const store = useStore;
+  const isPlaying = useStore((s) => s.isPlaying);
+  const channels = useStore((s) => s.channels);
+  const setPlaying = useStore((s) => s.setPlaying);
+  const addChannel = useStore((s) => s.addChannel);
+
+  // Initialize engine + manager once
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    // Seed default channels if store is empty
+    const currentChannels = store.getState().channels;
+    if (Object.keys(currentChannels).length === 0) {
+      for (const ch of ALL_DEFAULT_CHANNELS) {
+        addChannel(ch);
+      }
+    }
+
+    const engine = new AudioEngine(store);
+    const plugins = createPlugins(lat, lon);
+    // StreamManager needs setStreamState — get it from the store
+    const { setStreamState } = store.getState();
+    const manager = new StreamManager({ setStreamState }, engine, plugins);
+
+    engineRef.current = engine;
+    managerRef.current = manager;
+    cleanupVisRef.current = setupVisibilityHandler();
+
+    return () => {
+      manager.dispose();
+      engine.dispose();
+      cleanupVisRef.current?.();
+      initializedRef.current = false;
+    };
+  }, [lat, lon]);
+
+  // Connect/disconnect streams when channel enabled state changes
+  useEffect(() => {
+    const manager = managerRef.current;
+    if (!manager || !isPlaying) return;
+
+    for (const [streamId, config] of Object.entries(channels)) {
+      const streamState = useStore.getState().activeStreams[streamId];
+      if (config.enabled && !streamState) {
+        manager.connectStream(streamId);
+      } else if (!config.enabled && streamState) {
+        manager.disconnectStream(streamId);
+      }
+    }
+  }, [channels, isPlaying]);
+
+  const startAudio = async () => {
+    if (Tone.context.state === 'suspended') {
+      await Tone.start();
+    }
+    setPlaying(true);
+    engineRef.current?.start();
+
+    // Connect all enabled streams
+    const manager = managerRef.current;
+    if (manager) {
+      const chs = useStore.getState().channels;
+      for (const [streamId, config] of Object.entries(chs)) {
+        if (config.enabled) {
+          manager.connectStream(streamId);
+        }
+      }
+    }
+  };
+
+  const stopAudio = () => {
+    setPlaying(false);
+    const manager = managerRef.current;
+    if (manager) {
+      manager.dispose();
+    }
+  };
+
+  return {
+    engine: engineRef.current,
+    manager: managerRef.current,
+    startAudio,
+    stopAudio,
+    isPlaying,
+  };
+}

@@ -87,6 +87,7 @@ export const useStore = create<StreamscapesStore>()(
       }),
       {
         name: 'streamscapes-store',
+        version: 2, // Bump when schema changes (v2 = added mode field)
         partialize: (state) => ({
           global: state.global,
           channels: state.channels,

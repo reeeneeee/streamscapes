@@ -247,8 +247,8 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 ### Bug Fixes
 - [x] Fix P5.js recreation — remove `flights` from useEffect deps, read from ref in `draw()` — `Visualizer.tsx:416`
 - [x] Fix cloud noise leak — store refs to Noise/Filter, dispose before recreating — `WeatherSynth.tsx:9-22`
-- [ ] Fix duplicate SSE — single EventSource, share data via store — `Visualizer.tsx:68`, `WikiSynth.tsx:68` (deferred to Zustand store work)
-- [ ] Decouple FlightSynth audio updates from React renders — use refs for Tone.js, throttle state updates to 1/sec
+- [x] Fix duplicate SSE — single EventSource, share data via store — `Visualizer.tsx:68`, `WikiSynth.tsx:68` (resolved: old components no longer rendered)
+- [x] Decouple FlightSynth audio updates from React renders — use refs for Tone.js, throttle state updates to 1/sec (resolved: AudioEngine handles audio outside React)
 - [x] Remove unused imports (`Chord`, `Interval`, `Note`), dead code, `console.log` statements
 - [ ] Remove `any` types (13 instances)
 
@@ -261,16 +261,16 @@ This was flagged as missing by the architecture reviewer. The `StreamManager` is
 - [x] Add basic security headers to `next.config.ts` (CSP, X-Frame-Options)
 
 ### Architecture
-- [ ] Define types: `DataPoint`, `StreamPlugin`, `ChannelConfig`, `EffectConfig`, `GlobalConfig` — `src/types/`
-- [ ] Install Zustand, create flat store with `persist` + `subscribeWithSelector` — `src/store/index.ts`
-- [ ] Create `AudioEngine` class (depends on store interface, not React) — `src/lib/audio-engine.ts`
-- [ ] Create `StreamManager` (connects/disconnects plugins, feeds data to AudioEngine) — `src/lib/stream-manager.ts`
-- [ ] Create `applyMappings` pure function — `src/lib/mapping-engine.ts`
-- [ ] Extract WeatherSynth into `WeatherStreamPlugin` (data only) — `src/streams/weather.ts`
-- [ ] Extract FlightSynth into `FlightStreamPlugin` (data only) — `src/streams/flights.ts`
-- [ ] Extract WikiSynth into `WikiStreamPlugin` (data only) — `src/streams/wikipedia.ts`
-- [ ] Create default mappings for each stream (replicate current sonification behavior)
-- [ ] Add `visibilitychange` handler — suspend AudioContext when tab hidden
+- [x] Define types: `DataPoint`, `StreamPlugin`, `ChannelConfig`, `EffectConfig`, `GlobalConfig` — `src/types/`
+- [x] Install Zustand, create flat store with `persist` + `subscribeWithSelector` — `src/store/index.ts`
+- [x] Create `AudioEngine` class (depends on store interface, not React) — `src/lib/audio-engine.ts`
+- [x] Create `StreamManager` (connects/disconnects plugins, feeds data to AudioEngine) — `src/lib/stream-manager.ts`
+- [x] Create `applyMappings` pure function — `src/lib/mapping-engine.ts`
+- [x] Extract WeatherSynth into `WeatherStreamPlugin` (data only) — `src/streams/weather.ts`
+- [x] Extract FlightSynth into `FlightStreamPlugin` (data only) — `src/streams/flights.ts`
+- [x] Extract WikiSynth into `WikiStreamPlugin` (data only) — `src/streams/wikipedia.ts`
+- [x] Create default mappings for each stream (replicate current sonification behavior)
+- [x] Add `visibilitychange` handler — suspend AudioContext when tab hidden
 - [x] Replace axios with fetch (only used in 2 places, saves ~14KB)
 - [x] Move `@types/p5` to devDependencies, remove unused `wikimedia-streams`
 - [ ] Import tonal subpackages directly instead of barrel import
