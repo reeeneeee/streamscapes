@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Tone from 'tone'
-import { Scale } from 'tonal';
+import Scale from '@tonaljs/scale';
 import { useUserLocation } from '../hooks/useUserLocation';
 
 // Cloud noise refs — stored at module level to prevent leaks

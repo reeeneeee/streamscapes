@@ -2,7 +2,7 @@ import * as Tone from 'tone';
 import type { ChannelConfig, EffectConfig, EffectType, GlobalConfig, SynthType } from '@/types/sonification';
 import type { DataPoint } from '@/types/stream';
 import { applyMappings } from './mapping-engine';
-import { Scale } from 'tonal';
+import Scale from '@tonaljs/scale';
 
 // --- Types ---
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import * as Tone from 'tone';
-import { Scale } from 'tonal';
+import Scale from '@tonaljs/scale';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { useStreamscapes } from '../hooks/useStreamscapes';
 import { useStore } from '@/store';
