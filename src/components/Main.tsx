@@ -155,7 +155,7 @@ export default function Main() {
             <div className="space-y-3">
               <SonificationPanel />
               <EffectsChain />
-              <MappingEditor />
+              <MappingEditor engine={engine} />
             </div>
           </div>
         </div>

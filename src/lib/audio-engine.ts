@@ -66,8 +66,8 @@ export class AudioEngine {
   private unsubscribers: (() => void)[] = [];
   private store: AudioEngineStore;
   private entityCleanupInterval: ReturnType<typeof setInterval> | null = null;
-  // Callbacks for UI data (flights for visualizer, weather display, etc.)
-  private dataListeners = new Map<string, (data: DataPoint) => void>();
+  // Callbacks for UI data (flights for visualizer, weather display, mapping preview, etc.)
+  private dataListeners = new Map<string, { streamId: string; listener: (data: DataPoint) => void }>();
 
   constructor(store: AudioEngineStore) {
     this.store = store;
@@ -107,12 +107,12 @@ export class AudioEngine {
 
   // --- Data listener registration (for UI like visualizer) ---
 
-  onData(streamId: string, listener: (data: DataPoint) => void) {
-    this.dataListeners.set(streamId, listener);
+  onData(listenerId: string, listener: (data: DataPoint) => void, streamId?: string) {
+    this.dataListeners.set(listenerId, { streamId: streamId ?? listenerId, listener });
   }
 
-  offData(streamId: string) {
-    this.dataListeners.delete(streamId);
+  offData(listenerId: string) {
+    this.dataListeners.delete(listenerId);
   }
 
   // --- Channel reconciliation ---
@@ -332,8 +332,11 @@ export class AudioEngine {
 
   handleDataPoint(dataPoint: DataPoint) {
     // Notify UI listeners
-    const listener = this.dataListeners.get(dataPoint.streamId);
-    if (listener) listener(dataPoint);
+    for (const [, entry] of this.dataListeners) {
+      if (entry.streamId === dataPoint.streamId || entry.streamId === '*') {
+        entry.listener(dataPoint);
+      }
+    }
 
     const { channels, global } = this.store.getState();
     const config = channels[dataPoint.streamId];
