@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import { useStore } from '@/store';
 import type { AudioEngine } from '@/lib/audio-engine';
 import VUMeter from './VUMeter';
@@ -33,13 +34,27 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const updateChannel = useStore((s) => s.updateChannel);
   const updateGlobal = useStore((s) => s.updateGlobal);
   const activeStreams = useStore((s) => s.activeStreams);
+  const [collapsed, setCollapsed] = useState(false);
 
   const channelIds = Object.keys(channels);
 
   return (
     <div className="rounded-lg overflow-hidden" style={{ background: '#1a1a1a' }}>
-      {/* Channel Strips */}
-      <div className="flex gap-0">
+      {/* Collapsible header */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center justify-between px-3 py-2 md:hidden"
+        style={{ background: '#222' }}
+      >
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mixer</span>
+        <span className="text-gray-500 text-sm">{collapsed ? '▼' : '▲'}</span>
+      </button>
+
+      {/* Channel Strips — scrollable on mobile */}
+      <div
+        className={`${collapsed ? 'hidden md:flex' : 'flex'} overflow-x-auto`}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {channelIds.map((id) => {
           const config = channels[id];
           const color = STREAM_COLORS[id] ?? '#888';
@@ -49,7 +64,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
           return (
             <div
               key={id}
-              className="flex flex-col items-center px-3 py-3 border-r border-white/5 last:border-r-0"
+              className="flex flex-col items-center px-3 py-3 border-r border-white/5 last:border-r-0 flex-shrink-0"
               style={{ minWidth: 80 }}
             >
               {/* Stream name + status */}
@@ -133,7 +148,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
 
         {/* Master Strip */}
         <div
-          className="flex flex-col items-center px-3 py-3 border-l border-white/10"
+          className="flex flex-col items-center px-3 py-3 border-l border-white/10 flex-shrink-0"
           style={{ minWidth: 80, background: '#222' }}
         >
           <div className="text-xs font-bold mb-2 text-gray-300">Master</div>
