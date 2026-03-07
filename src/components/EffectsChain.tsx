@@ -72,10 +72,10 @@ export default function EffectsChain() {
   };
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#1a1a1a' }}>
+    <div className="panel">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-          Effects <span className="text-gray-600">({activeId})</span>
+        <div className="panel-title !mb-0">
+          Effects <span style={{ color: 'var(--text-muted)' }}>({activeId})</span>
         </div>
         <span className="text-[10px] text-gray-600">{effects.length}/{MAX_EFFECTS}</span>
       </div>

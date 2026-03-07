@@ -2,142 +2,174 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Default theme */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --accent: #4f46e5;
-  --secondary: #818cf8;
-}
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-surface: #1a1a1a;
+  --bg-elevated: #222222;
+  --bg-input: #2a2a2a;
 
-/* Scale-specific themes */
-:root[data-scale="Major Pentatonic"] {
-  --background: #f0fdf4;
-  --foreground: #14532d;
-  --accent: #22c55e;
-  --secondary: #86efac;
-}
+  --text-primary: #e8e8e8;
+  --text-secondary: #999999;
+  --text-muted: #666666;
 
-:root[data-scale="Minor Pentatonic"] {
-  --background: #fef2f2;
-  --foreground: #7f1d1d;
-  --accent: #ef4444;
-  --secondary: #fca5a5;
-}
+  --accent: #6366f1;
+  --accent-dim: #4f46e5;
 
-:root[data-scale="Major"] {
-  --background: #eff6ff;
-  --foreground: #1e3a8a;
-  --accent: #3b82f6;
-  --secondary: #93c5fd;
-}
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
 
-:root[data-scale="Minor"] {
-  --background: #faf5ff;
-  --foreground: #581c87;
-  --accent: #a855f7;
-  --secondary: #d8b4fe;
-}
+  --stream-weather: #7C444F;
+  --stream-flights: #5C7285;
+  --stream-wikipedia: #5D8736;
+  --stream-rss: #B8860B;
+  --stream-stocks: #E6A817;
 
-:root[data-scale="Blues"] {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --accent: #64748b;
-  --secondary: #94a3b8;
-}
-
-:root[data-scale="Chromatic"] {
-  --background: #fdf4ff;
-  --foreground: #831843;
-  --accent: #ec4899;
-  --secondary: #f9a8d4;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --accent: #6366f1;
-    --secondary: #a5b4fc;
-  }
-
-  :root[data-scale="Major Pentatonic"] {
-    --background: #052e16;
-    --foreground: #dcfce7;
-    --accent: #22c55e;
-    --secondary: #4ade80;
-  }
-
-  :root[data-scale="Minor Pentatonic"] {
-    --background: #450a0a;
-    --foreground: #fee2e2;
-    --accent: #ef4444;
-    --secondary: #f87171;
-  }
-
-  :root[data-scale="Major"] {
-    --background: #172554;
-    --foreground: #dbeafe;
-    --accent: #3b82f6;
-    --secondary: #60a5fa;
-  }
-
-  :root[data-scale="Minor"] {
-    --background: #3b0764;
-    --foreground: #f3e8ff;
-    --accent: #a855f7;
-    --secondary: #c084fc;
-  }
-
-  :root[data-scale="Blues"] {
-    --background: #020617;
-    --foreground: #f8fafc;
-    --accent: #64748b;
-    --secondary: #94a3b8;
-  }
-
-  :root[data-scale="Chromatic"] {
-    --background: #500724;
-    --foreground: #fce7f3;
-    --accent: #ec4899;
-    --secondary: #f472b6;
-  }
+  --transport-height: 56px;
+  --tab-bar-height: 44px;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Add smooth transitions */
-body {
-  transition: color 0.3s ease, background-color 0.3s ease;
-}
-.sound-button {
-  width: 100px;
-}
-
-.wrapper {
-  max-width: 100%;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  margin: 0;
   overflow: hidden;
-}
-.marquee {
-  white-space: nowrap;
-  overflow: hidden;
-  display: inline-block;
-  animation: marquee 10s linear infinite;
-}
-.marquee div {
-  display: inline-block;
+  height: 100dvh;
 }
 
-@keyframes marquee {
-  0% {
-      transform: translate(0, 0);
-  }
+/* Tab bar */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  padding: 0 16px;
+  height: var(--tab-bar-height);
+  align-items: center;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
 
-  100% {
-      transform: translate(-50%, 0);
-  }
+.tab-bar button {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.tab-bar button:hover {
+  color: var(--text-secondary);
+}
+
+.tab-bar button[data-active="true"] {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+/* Transport bar */
+.transport-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--transport-height);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Controls panel scrollable area */
+.controls-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom scrollbar */
+.controls-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.controls-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.controls-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+/* Range input styling */
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+/* Select styling */
+select {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Section panel */
+.panel {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+/* Mute/Solo button states */
+.btn-toggle {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  background: var(--bg-input);
+  color: var(--text-muted);
+}
+
+.btn-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.btn-toggle[data-active="true"] {
+  color: #fff;
+}
+
+.btn-toggle.mute[data-active="true"] {
+  background: #ef4444;
+}
+
+.btn-toggle.solo[data-active="true"] {
+  background: #facc15;
+  color: #000;
+}
+
+/* Stream toggle button */
+.stream-toggle {
+  transition: background 0.1s, color 0.1s;
+}
+.stream-toggle:hover {
+  background: var(--bg-elevated) !important;
 }

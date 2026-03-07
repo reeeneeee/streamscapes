@@ -29,8 +29,8 @@ export default function GlobalControls() {
   const octave = parseInt(global.rootNote.match(/\d+$/)?.[0] ?? '4');
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#1a1a1a' }}>
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Global</div>
+    <div className="panel">
+      <div className="panel-title">Global</div>
 
       <div className="grid grid-cols-2 gap-2">
         {/* Root Note */}
@@ -40,7 +40,6 @@ export default function GlobalControls() {
             value={noteName}
             onChange={(e) => updateGlobal({ rootNote: `${e.target.value}${octave}` })}
             className="w-full text-xs rounded px-1.5 py-1"
-            style={{ background: '#333', color: '#ddd', border: 'none' }}
           >
             {NOTES.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -55,7 +54,6 @@ export default function GlobalControls() {
             value={octave}
             onChange={(e) => updateGlobal({ rootNote: `${noteName}${e.target.value}` })}
             className="w-full text-xs rounded px-1.5 py-1"
-            style={{ background: '#333', color: '#ddd', border: 'none' }}
           >
             {OCTAVES.map((o) => (
               <option key={o} value={o}>{o}</option>
@@ -89,7 +87,7 @@ export default function GlobalControls() {
           value={global.tempo}
           onChange={(e) => updateGlobal({ tempo: parseInt(e.target.value) })}
           className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
-          style={{ accentColor: '#6366f1' }}
+          style={{ accentColor: 'var(--accent)' }}
         />
       </div>
     </div>

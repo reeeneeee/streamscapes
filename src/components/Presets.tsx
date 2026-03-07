@@ -109,9 +109,9 @@ export default function Presets() {
   };
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#1a1a1a' }}>
+    <div className="panel">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Presets</div>
+        <div className="panel-title !mb-0">Presets</div>
         <div className="flex gap-1">
           <button
             onClick={() => setShowSave(!showSave)}

@@ -39,15 +39,15 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const channelIds = Object.keys(channels);
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ background: '#1a1a1a' }}>
+    <div className="panel overflow-hidden !p-0">
       {/* Collapsible header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="w-full flex items-center justify-between px-3 py-2 md:hidden"
-        style={{ background: '#222' }}
+        style={{ background: 'var(--bg-elevated)' }}
       >
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mixer</span>
-        <span className="text-gray-500 text-sm">{collapsed ? '▼' : '▲'}</span>
+        <span className="panel-title !mb-0">Mixer</span>
+        <span style={{ color: 'var(--text-muted)' }} className="text-sm">{collapsed ? '▼' : '▲'}</span>
       </button>
 
       {/* Channel Strips — scrollable on mobile */}
@@ -123,21 +123,15 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
               <div className="flex gap-1">
                 <button
                   onClick={() => updateChannel(id, { mute: !config.mute })}
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{
-                    background: config.mute ? '#ef4444' : '#333',
-                    color: config.mute ? '#fff' : '#888',
-                  }}
+                  className="btn-toggle mute"
+                  data-active={config.mute}
                 >
                   M
                 </button>
                 <button
                   onClick={() => updateChannel(id, { solo: !config.solo })}
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{
-                    background: config.solo ? '#facc15' : '#333',
-                    color: config.solo ? '#000' : '#888',
-                  }}
+                  className="btn-toggle solo"
+                  data-active={config.solo}
                 >
                   S
                 </button>
@@ -149,7 +143,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
         {/* Master Strip */}
         <div
           className="flex flex-col items-center px-3 py-3 border-l border-white/10 flex-shrink-0"
-          style={{ minWidth: 80, background: '#222' }}
+          style={{ minWidth: 80, background: 'var(--bg-elevated)' }}
         >
           <div className="text-xs font-bold mb-2 text-gray-300">Master</div>
           <div className="flex items-end gap-1.5 mb-2" style={{ height: 120 }}>

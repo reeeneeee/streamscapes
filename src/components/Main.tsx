@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import * as Tone from 'tone';
 import Scale from '@tonaljs/scale';
 import { useUserLocation } from '../hooks/useUserLocation';
@@ -14,7 +14,10 @@ import SonificationPanel from './SonificationPanel';
 import EffectsChain from './EffectsChain';
 import MappingEditor from './MappingEditor';
 import Presets from './Presets';
+import TransportBar from './TransportBar';
 import type { DataPoint } from '@/types/stream';
+
+type Tab = 'listen' | 'controls';
 
 interface ProcessedFlight {
   fr24_id: string;
@@ -33,20 +36,31 @@ export default function Main() {
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
 
-  // Flight data for visualizer
+  const [tab, setTab] = useState<Tab>('listen');
   const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
   const [weatherDisplay, setWeatherDisplay] = useState<{ feelsLike: number; clouds: number } | null>(null);
 
-  // Analyzer refs for visualizer
   const [weatherAnalyzer, setWeatherAnalyzer] = useState<Tone.Analyser | null>(null);
   const [flightAnalyzer, setFlightAnalyzer] = useState<Tone.Analyser | null>(null);
   const [wikiAnalyzer, setWikiAnalyzer] = useState<Tone.Analyser | null>(null);
 
-  // Listen for data from streams to update UI
+  // Keyboard shortcuts: 1 = Listen, 2 = Controls
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+      if (e.key === '1') setTab('listen');
+      if (e.key === '2') setTab('controls');
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Listen for data from streams
   useEffect(() => {
     if (!engine) return;
 
-    engine.onData('flights', (dp: DataPoint) => {
+    engine.onData('main-flights', (dp: DataPoint) => {
+      if (dp.streamId !== 'flights') return;
       const f = dp.fields;
       setProcessedFlights((prev) => {
         const id = String(f.flightId);
@@ -67,18 +81,19 @@ export default function Main() {
         }
         return [...prev, flight];
       });
-    });
+    }, 'flights');
 
-    engine.onData('weather', (dp: DataPoint) => {
+    engine.onData('main-weather', (dp: DataPoint) => {
+      if (dp.streamId !== 'weather') return;
       setWeatherDisplay({
         feelsLike: dp.fields.feelsLike as number,
         clouds: dp.fields.clouds as number,
       });
-    });
+    }, 'weather');
 
     return () => {
-      engine.offData('flights');
-      engine.offData('weather');
+      engine.offData('main-flights');
+      engine.offData('main-weather');
     };
   }, [engine]);
 
@@ -93,36 +108,59 @@ export default function Main() {
     return () => clearTimeout(t);
   }, [engine, isPlaying]);
 
-  // Build scale from global config for visualizer
-  const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes as string[];
-  const currentScale = scaleNotes.length > 0 ? scaleNotes : ['C4', 'D4', 'E4', 'G4', 'A4'];
+  // Not playing — show start screen
+  if (!isPlaying) {
+    return (
+      <div className="h-[100dvh] flex flex-col items-center justify-center gap-6">
+        <h1 className="text-3xl font-light tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          Streamscapes
+        </h1>
+        <p className="text-sm max-w-xs text-center" style={{ color: 'var(--text-muted)' }}>
+          Real-time data streams turned into sound
+        </p>
+        <button
+          onClick={startAudio}
+          className="px-8 py-3 rounded-lg text-base font-medium transition-all hover:scale-105"
+          style={{
+            background: 'var(--accent)',
+            color: '#fff',
+          }}
+        >
+          Start Listening
+        </button>
+      </div>
+    );
+  }
+
+  const vizHeight = 'calc(100dvh - var(--tab-bar-height) - var(--transport-height))';
 
   return (
-    <div>
-      {/* Header */}
-      <div className="w-full flex flex-col items-center mt-4 mb-6">
-        {!isPlaying ? (
-          <button
-            onClick={startAudio}
-            style={{ backgroundColor: '#2d2d2d', color: '#f5f5f5' }}
-            className="px-6 py-3 rounded-lg text-lg hover:opacity-90 transition-opacity"
-          >
-            Start Synth
-          </button>
-        ) : (
-          weatherDisplay && (
-            <div className="text-sm text-center opacity-70">
-              📍 {location.lat.toFixed(4)}, {location.lon.toFixed(4)} &middot;
-              🌡️ {Math.trunc(weatherDisplay.feelsLike)}°F &middot;
-              ☁️ {weatherDisplay.clouds}%
-            </div>
-          )
+    <div className="h-[100dvh] flex flex-col overflow-hidden">
+      {/* Tab bar */}
+      <div className="tab-bar">
+        <button data-active={tab === 'listen'} onClick={() => setTab('listen')}>
+          Listen
+        </button>
+        <button data-active={tab === 'controls'} onClick={() => setTab('controls')}>
+          Controls
+        </button>
+
+        {/* Weather info in tab bar */}
+        <div className="flex-1" />
+        {weatherDisplay && (
+          <div className="text-[11px] hidden sm:block" style={{ color: 'var(--text-muted)' }}>
+            {location.lat.toFixed(2)}, {location.lon.toFixed(2)}
+            {' \u00B7 '}
+            {Math.trunc(weatherDisplay.feelsLike)}\u00B0F
+            {' \u00B7 '}
+            {weatherDisplay.clouds}% clouds
+          </div>
         )}
       </div>
 
-      {/* Visualizer */}
-      {isPlaying && wikiAnalyzer && flightAnalyzer && weatherAnalyzer && (
-        <div className="mb-6">
+      {/* Tab content */}
+      {tab === 'listen' ? (
+        <div style={{ height: vizHeight }}>
           <Visualizer
             weatherAnalyzer={weatherAnalyzer}
             flights={processedFlights}
@@ -130,28 +168,24 @@ export default function Main() {
             myLat={location.lat}
             myLon={location.lon}
             wikiAnalyzer={wikiAnalyzer}
-            backgroundColor="#f5f5f5"
-            scale={currentScale}
+            engine={engine}
           />
         </div>
-      )}
-
-      {/* Controls */}
-      {isPlaying && (
-        <div className="space-y-3">
-          {/* Mixer */}
+      ) : (
+        <div
+          className="controls-scroll p-3 space-y-3"
+          style={{ height: vizHeight }}
+        >
+          {/* Mixer at top */}
           <Mixer engine={engine} />
 
-          {/* Two-column layout for controls */}
+          {/* Two-column layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Left column */}
             <div className="space-y-3">
               <StreamBrowser plugins={plugins} />
               <GlobalControls />
               <Presets />
             </div>
-
-            {/* Right column */}
             <div className="space-y-3">
               <SonificationPanel />
               <EffectsChain />
@@ -160,6 +194,9 @@ export default function Main() {
           </div>
         </div>
       )}
+
+      {/* Transport bar */}
+      <TransportBar engine={engine} onStop={() => {}} />
     </div>
   );
 }

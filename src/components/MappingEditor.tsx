@@ -91,10 +91,10 @@ export default function MappingEditor({ engine }: { engine: AudioEngine | null }
   };
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#1a1a1a' }}>
+    <div className="panel">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-          Mappings <span className="text-gray-600">({activeId})</span>
+        <div className="panel-title !mb-0">
+          Mappings <span style={{ color: 'var(--text-muted)' }}>({activeId})</span>
         </div>
         <button
           onClick={addMapping}

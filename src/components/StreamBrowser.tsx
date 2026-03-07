@@ -30,8 +30,8 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
   }, {});
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#1a1a1a' }}>
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Streams</div>
+    <div className="panel">
+      <div className="panel-title">Streams</div>
       {Object.entries(grouped).map(([category, streams]) => (
         <div key={category} className="mb-2">
           <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">

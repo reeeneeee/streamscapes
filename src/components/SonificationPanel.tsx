@@ -51,8 +51,8 @@ export default function SonificationPanel() {
   };
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#1a1a1a' }}>
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Sonification</div>
+    <div className="panel">
+      <div className="panel-title">Sonification</div>
 
       {/* Channel tabs */}
       <div className="flex gap-1 mb-3">

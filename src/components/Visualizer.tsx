@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import * as Tone from 'tone';
+import type { AudioEngine } from '@/lib/audio-engine';
+import type { DataPoint } from '@/types/stream';
 
 interface ProcessedFlight {
   fr24_id: string;
@@ -34,12 +36,11 @@ interface VisualizerProps {
   myLat: number;
   myLon: number;
   wikiAnalyzer: Tone.Analyser | null;
-  backgroundColor?: string;
-  scale: string[];
+  engine: AudioEngine | null;
 }
 
-const DISTANCE_CIRCLES = [1, 5, 10]; // Miles
-const GEO_SCALE = 3; // Multiplier for lat/lon → pixel conversion
+const DISTANCE_CIRCLES = [1, 5, 10];
+const GEO_SCALE = 3;
 const STREAM_COLORS = {
   weather: '#7C444F',
   flights: '#5C7285',
@@ -57,7 +58,7 @@ const Visualizer = ({
   myLat,
   myLon,
   wikiAnalyzer,
-  backgroundColor,
+  engine,
 }: VisualizerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,36 +76,34 @@ const Visualizer = ({
     img.onload = () => { airplaneImgRef.current = img; };
   }, []);
 
-  // Listen for wiki edits
+  // Listen for wiki edits from AudioEngine (no duplicate SSE)
   useEffect(() => {
-    const eventSource = new EventSource('/api/wiki-stream');
+    if (!engine) return;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.server_name === "en.wikipedia.org" &&
-          data.type === "edit" &&
-          !data.title.includes(":")) {
-          const editSize = data.length ? Math.abs(data.length.new - data.length.old) : 10;
-          const seed = data.title.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-          const w = containerRef.current?.clientWidth || 400;
-          const x = (seed % 1000) / 1000 * (w - 100) + 50;
-          const y = ((seed % 500) / 500) * (w - 100) + 50;
+    engine.onData('viz-wiki', (dp: DataPoint) => {
+      const f = dp.fields;
+      const title = String(f.title ?? '');
+      const absLen = typeof f.absLengthDelta === 'number' ? f.absLengthDelta : 10;
+      const editSize = Math.min(100, Math.max(10, absLen));
+      const seed = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const w = containerRef.current?.clientWidth || 400;
+      const h = containerRef.current?.clientHeight || 400;
+      const x = (seed % 1000) / 1000 * (w - 100) + 50;
+      const y = ((seed % 500) / 500) * (h - 100) + 50;
+      const url = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
 
-          editsRef.current = [{
-            title: data.title,
-            url: data.notify_url || "",
-            size: Math.min(100, Math.max(10, editSize)),
-            age: 0,
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-            position: { x, y },
-          }, ...editsRef.current].slice(0, 50);
-        }
-      } catch { /* skip malformed */ }
-    };
+      editsRef.current = [{
+        title,
+        url,
+        size: editSize,
+        age: 0,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+        position: { x, y },
+      }, ...editsRef.current].slice(0, 50);
+    }, 'wikipedia');
 
-    return () => eventSource.close();
-  }, []);
+    return () => { engine.offData('viz-wiki'); };
+  }, [engine]);
 
   // Age edits
   useEffect(() => {
@@ -116,18 +115,19 @@ const Visualizer = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Canvas resize
+  // Canvas resize — fill container (no longer square)
   useEffect(() => {
     const resize = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
       const w = container.clientWidth;
+      const h = container.clientHeight;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = w * dpr;
-      canvas.height = w * dpr;
+      canvas.height = h * dpr;
       canvas.style.width = `${w}px`;
-      canvas.style.height = `${w}px`;
+      canvas.style.height = `${h}px`;
     };
     resize();
     window.addEventListener('resize', resize);
@@ -147,17 +147,18 @@ const Visualizer = ({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Background
-    ctx.fillStyle = backgroundColor || '#111';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, w, h);
 
     const cx = w / 2;
     const cy = h / 2;
-    const latScale = h * GEO_SCALE;
-    const lonScale = w * GEO_SCALE;
+    const scale = Math.min(w, h);
+    const latScale = scale * GEO_SCALE;
+    const lonScale = scale * GEO_SCALE;
 
     // Distance circles
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255, 60, 60, 0.3)';
+    ctx.lineWidth = 1;
     for (const miles of DISTANCE_CIRCLES) {
       const rLat = (miles / 69) * latScale;
       const rLon = (miles / 69) * lonScale;
@@ -167,9 +168,9 @@ const Visualizer = ({
     }
 
     // User dot
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = 'rgba(255, 60, 60, 0.8)';
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fill();
 
     // Flights
@@ -188,37 +189,35 @@ const Visualizer = ({
       ctx.save();
       ctx.translate(x, y);
 
-      // Rotation from vector
       if (flight.vector) {
         const { latPerSecond, lonPerSecond } = flight.vector;
         if (Math.abs(latPerSecond) > 0.00001 || Math.abs(lonPerSecond) > 0.00001) {
           const angle = Math.atan2(-latPerSecond, lonPerSecond) - Math.PI / 2;
           ctx.rotate(angle);
 
-          // Direction line
-          ctx.strokeStyle = 'rgba(255, 255, 0, 0.78)';
-          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.moveTo(0, 0);
           const vs = 50;
           ctx.lineTo(lonPerSecond * vs, -latPerSecond * vs);
           ctx.stroke();
-          ctx.rotate(-angle); // reset for image
+          ctx.rotate(-angle);
           ctx.rotate(angle);
         }
       }
 
-      // Draw airplane
       if (airplane && airplane.complete) {
+        ctx.globalAlpha = 0.85;
         ctx.drawImage(airplane, -size / 2, -size / 2, size, size);
+        ctx.globalAlpha = 1;
       }
       ctx.restore();
 
-      // Distance label
-      ctx.fillStyle = STREAM_COLORS.flights;
-      ctx.font = '12px sans-serif';
+      ctx.fillStyle = 'rgba(92, 114, 133, 0.7)';
+      ctx.font = '11px var(--font-geist-mono, monospace)';
       ctx.textAlign = 'center';
-      ctx.fillText(`${Math.round(flight.distance)} mi`, x, y - size / 2 - 10);
+      ctx.fillText(`${Math.round(flight.distance)} mi`, x, y - size / 2 - 8);
     }
 
     // Wiki edits
@@ -227,51 +226,40 @@ const Visualizer = ({
       const maxSize = edit.size;
       const currentSize = maxSize * (1 - edit.age / 60);
 
-      // Ripple rings
       for (let i = 3; i >= 0; i--) {
         const rippleSize = currentSize * (1 + i * 0.3);
-        const alpha = lerp(i, 0, 3, 0.78, 0.1);
+        const alpha = lerp(i, 0, 3, 0.5, 0.08);
         ctx.strokeStyle = `rgba(77, 108, 129, ${alpha})`;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(x, y, rippleSize / 2, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // Center dot
       ctx.fillStyle = STREAM_COLORS.wiki;
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
 
-      // Title
       if (edit.size > 30 && edit.age < 20) {
-        const displayTitle = edit.title.length > 25
-          ? edit.title.substring(0, 22) + '...'
+        const displayTitle = edit.title.length > 30
+          ? edit.title.substring(0, 27) + '...'
           : edit.title;
-        ctx.fillStyle = STREAM_COLORS.flights;
-        ctx.font = '15px sans-serif';
+        ctx.fillStyle = 'rgba(92, 114, 133, 0.6)';
+        ctx.font = '12px var(--font-geist-sans, sans-serif)';
         ctx.textAlign = 'center';
         ctx.fillText(displayTitle, x, y + currentSize);
-
-        // Underline
-        const tw = ctx.measureText(displayTitle).width;
-        ctx.strokeStyle = STREAM_COLORS.flights;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x - tw / 2, y + currentSize + 8);
-        ctx.lineTo(x + tw / 2, y + currentSize + 8);
-        ctx.stroke();
       }
     }
 
-    // Waveforms
-    const waveformY0 = h - 50;
-    const waveformY1 = h - 10;
+    // Waveforms at bottom
+    const waveformY0 = h - 44;
+    const waveformY1 = h - 8;
     const drawWaveform = (analyzer: Tone.Analyser, color: string) => {
       const data = analyzer.getValue() as Float32Array;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.6;
       ctx.beginPath();
       for (let i = 0; i < data.length; i++) {
         const px = lerp(i, 0, data.length, 0, w);
@@ -280,6 +268,7 @@ const Visualizer = ({
         else ctx.lineTo(px, py);
       }
       ctx.stroke();
+      ctx.globalAlpha = 1;
     };
 
     if (wikiAnalyzer) drawWaveform(wikiAnalyzer, STREAM_COLORS.wiki);
@@ -287,7 +276,7 @@ const Visualizer = ({
     if (weatherAnalyzer) drawWaveform(weatherAnalyzer, STREAM_COLORS.weather);
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [backgroundColor, myLat, myLon, weatherAnalyzer, flightAnalyzer, wikiAnalyzer]);
+  }, [myLat, myLon, weatherAnalyzer, flightAnalyzer, wikiAnalyzer]);
 
   // Animation loop
   useEffect(() => {
@@ -306,10 +295,10 @@ const Visualizer = ({
     const h = rect.height;
     const cx = w / 2;
     const cy = h / 2;
-    const latScale = h * GEO_SCALE;
-    const lonScale = w * GEO_SCALE;
+    const scale = Math.min(w, h);
+    const latScale = scale * GEO_SCALE;
+    const lonScale = scale * GEO_SCALE;
 
-    // Check flights
     for (const flight of flightsRef.current) {
       if (!flight.callsign) continue;
       const latDiff = flight.lat - myLat;
@@ -325,7 +314,6 @@ const Visualizer = ({
       }
     }
 
-    // Check wiki edits
     for (const edit of editsRef.current) {
       const dx = mx - edit.position.x;
       const dy = my - edit.position.y;
@@ -337,15 +325,12 @@ const Visualizer = ({
   }, [myLat, myLon]);
 
   return (
-    <div className="w-full mb-4">
-      <h4 className="mb-2 text-sm font-medium"></h4>
-      <div ref={containerRef} className="w-full max-w-lg mx-auto rounded-lg overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          onClick={handleClick}
-          style={{ cursor: 'pointer', display: 'block' }}
-        />
-      </div>
+    <div ref={containerRef} className="w-full h-full">
+      <canvas
+        ref={canvasRef}
+        onClick={handleClick}
+        style={{ cursor: 'pointer', display: 'block' }}
+      />
     </div>
   );
 };
