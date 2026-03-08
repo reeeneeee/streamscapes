@@ -52,7 +52,7 @@ final class SonificationEngine {
         let synth: DunneAudioKit.Synth
         let fader: Fader
         let panner: Panner
-        var timer: DispatchSourceTimer?
+        var timer: Timer?
         var patternStep: Int = 0
     }
 
@@ -216,7 +216,7 @@ final class SonificationEngine {
 
         // Cancel any pattern timers
         if case .pattern(var ch) = node {
-            ch.timer?.cancel()
+            ch.timer?.invalidate()
             ch.timer = nil
         }
 
@@ -301,21 +301,17 @@ final class SonificationEngine {
     // MARK: - Pattern timer
 
     private func startPatternTimer(id: String, channel: inout PatternChannel, config: ChannelConfig) {
-        channel.timer?.cancel()
+        channel.timer?.invalidate()
 
         let tempo = max(40, min(240, Double(lastRootNote.isEmpty ? 120 : 120))) // will be set from global
         let beatIntervalSec = 60.0 / tempo / 2.0 // eighth note subdivision
 
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.streamscapes.pattern.\(id)", qos: .userInitiated))
-        timer.schedule(deadline: .now() + beatIntervalSec, repeating: beatIntervalSec, leeway: .milliseconds(1))
-
-        timer.setEventHandler { [weak self] in
-            DispatchQueue.main.async {
-                self?.firePatternNote(id: id)
-            }
+        // Timer.scheduledTimer runs on the main RunLoop — no isolation boundary crossing
+        let timer = Timer.scheduledTimer(withTimeInterval: beatIntervalSec, repeats: true) { [weak self] _ in
+            self?.firePatternNote(id: id)
         }
-
-        timer.resume()
+        // Ensure timer fires during UI tracking (scrolling)
+        RunLoop.main.add(timer, forMode: .common)
         channel.timer = timer
     }
 
@@ -362,7 +358,13 @@ final class SonificationEngine {
 
         for (id, node) in channels {
             if case .pattern(var ch) = node {
-                ch.timer?.schedule(deadline: .now() + beatIntervalSec, repeating: beatIntervalSec, leeway: .milliseconds(1))
+                // Recreate timer with new interval (Timer doesn't support rescheduling)
+                ch.timer?.invalidate()
+                let timer = Timer.scheduledTimer(withTimeInterval: beatIntervalSec, repeats: true) { [weak self] _ in
+                    self?.firePatternNote(id: id)
+                }
+                RunLoop.main.add(timer, forMode: .common)
+                ch.timer = timer
                 channels[id] = .pattern(ch)
             }
         }
