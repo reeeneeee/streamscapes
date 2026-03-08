@@ -68,7 +68,7 @@ export default function TransportBar({
           value={global.masterVolume}
           onChange={(e) => updateGlobal({ masterVolume: parseFloat(e.target.value) })}
           className="w-20 h-1"
-          style={{ accentColor: 'var(--accent)' }}
+          style={{ accentColor: 'var(--accent)', touchAction: 'none' }}
         />
         <span className="text-[10px] text-[var(--text-muted)] w-8 text-right font-mono">
           {global.masterVolume > -40 ? `${global.masterVolume.toFixed(0)}` : '-∞'}

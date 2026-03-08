@@ -9,27 +9,33 @@ final class AudioCoordinator {
     private var reconcileTask: Task<Void, Never>?
     let visualizerData = VisualizerData()
 
-    // Base URL for API calls (the web app dev server)
-    var baseURL = URL(string: "http://localhost:3000")!
-
     func start(store: AppStore) {
+        print("[Audio] Starting engine...")
         do {
             try engine.start()
+            print("[Audio] Engine started OK")
         } catch {
-            print("[AudioCoordinator] Engine start failed: \(error)")
+            print("[Audio] Engine start FAILED: \(error)")
             return
         }
 
         engine.reconcile(store: store)
+        print("[Audio] Reconciled \(store.channels.filter { $0.value.enabled && !$0.value.mute }.count) active channels")
         visualizerData.startAging()
 
         let lat = 37.7749
         let lon = -122.4194
 
         let plugins: [any StreamPlugin] = [
-            WeatherStreamPlugin(baseURL: baseURL, lat: lat, lon: lon),
-            FlightStreamPlugin(baseURL: baseURL, lat: lat, lon: lon),
-            WikiStreamPlugin(baseURL: baseURL),
+            WeatherStreamPlugin(
+                lat: lat, lon: lon,
+                apiKey: Secrets.weatherAPIKey
+            ),
+            FlightStreamPlugin(
+                lat: lat, lon: lon,
+                apiKey: Secrets.flightRadarAPIKey
+            ),
+            WikiStreamPlugin(),
         ]
 
         for plugin in plugins {
@@ -70,8 +76,6 @@ final class AudioCoordinator {
         switch dp.streamId {
         case "flights":
             flightBuffer.append(dp)
-            // Batch update after all flights from one poll arrive (10s interval)
-            // Use a simple debounce: update after short delay
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(100))
                 if !self.flightBuffer.isEmpty {

@@ -19,8 +19,5 @@ struct RootView: View {
                 coordinator.stop(store: store)
             }
         }
-        .onChange(of: store.global.masterVolume) { _, _ in
-            coordinator.reconcile(store: store)
-        }
     }
 }

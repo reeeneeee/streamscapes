@@ -15,12 +15,15 @@
 		17025D7A493A94B359DDBD45 /* AtmosphereBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B467806C06645FCBFBE2AF2F /* AtmosphereBackground.swift */; };
 		23703F48423C8BD13BF75FCF /* ChannelConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494E81DC0C32DF0173CA7CF5 /* ChannelConfig.swift */; };
 		25B5946E97B91A1180BAB5D6 /* ListenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284EBA21364E9A630A21B47A /* ListenView.swift */; };
+		279124535D5A6F61A6DFBAD1 /* Secrets.example in Resources */ = {isa = PBXBuildFile; fileRef = DD12484096EA9E0236691F8D /* Secrets.example */; };
 		2BDB24C0A319F1C55AB06CC2 /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 15FFFCAEB65E883809007A21 /* DMSans-Medium.ttf */; };
 		2DB3C6D56640C9A9CCC4E984 /* StreamscapesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85F4BDD7E914F3154AAF61F /* StreamscapesApp.swift */; };
 		38A703E24F8350688AECC75E /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C1AB5EE41BC0C38895F46B8D /* SpaceGrotesk-Regular.ttf */; };
 		433A5FD4060E404798916D2D /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9C4C4134AE3461A18BA27 /* AppStore.swift */; };
 		450AEE9F9892EDD077BB4A64 /* StreamManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1B3965A24D156E90A8C074C /* StreamManager.swift */; };
 		48CFC5FC073C5DA7734AC0AF /* StreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9A270D84960CD3174EC8904 /* StreamPlugin.swift */; };
+		5715D256A9BF2E66E0A9DE2C /* GlobalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCF77449C575CE894CD04EC /* GlobalSettingsView.swift */; };
+		575CC7571EA90DEA0936C016 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */; };
 		5A816CF102BDE8FA2F11499A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86D517E52DFF9650DF316E5 /* RootView.swift */; };
 		64D804D538875199BCB36D70 /* VisualizerData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D643625E40B2E7D2603891 /* VisualizerData.swift */; };
 		694F25B8FF7F61CD779AC898 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4778315E48C61CCD6588B667 /* Theme.swift */; };
@@ -28,8 +31,11 @@
 		8DB3DBB25B693A3848B81D95 /* AudioCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A018A3723F2B6161B6C248B3 /* AudioCoordinator.swift */; };
 		9305B13B134A87970F37CFBF /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A0DAF0DCB09C7ECE4F211C36 /* DMSans-Regular.ttf */; };
 		953B6118B947677CA2954590 /* MappingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82523C4E9E09306FAD1D0091 /* MappingsView.swift */; };
+		96A340A87B4CF49CDA2B1DAB /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6FFE74060E617651385ADA /* WebAppView.swift */; };
+		9894731A8746F9B88B010528 /* PresetCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C5C420458CD16F5853D89F /* PresetCatalog.swift */; };
 		98E9DBBE049B72983F7A1460 /* WeatherStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CEF6DCFE5AAF5943EAECC89 /* WeatherStreamPlugin.swift */; };
 		9B2A583F9461A1009985D638 /* SonificationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC0198213E562AAC263806F /* SonificationEngine.swift */; };
+		A03DD61BDC5B0A8183308FCB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 31539198BBEE43B82AD0D64E /* Assets.xcassets */; };
 		A2253889AE6AB69D903025F9 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CD8A7906A35D974589312EDE /* SpaceGrotesk-Light.ttf */; };
 		A6A665F40830687C8717A455 /* DunneAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 82AD0676F009469DFA763CE5 /* DunneAudioKit */; };
 		AE1B487300AE7DF7604A67E0 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0547F19613D91BCC82CA84 /* MainView.swift */; };
@@ -48,13 +54,17 @@
 
 /* Begin PBXFileReference section */
 		0073A1922970594E842786AF /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-SemiBold.ttf"; sourceTree = "<group>"; };
+		0DCF77449C575CE894CD04EC /* GlobalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettingsView.swift; sourceTree = "<group>"; };
 		0ED9C4C4134AE3461A18BA27 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		15FFFCAEB65E883809007A21 /* DMSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Medium.ttf"; sourceTree = "<group>"; };
 		21357F05579D411B8E6F2DFF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		21C5C420458CD16F5853D89F /* PresetCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetCatalog.swift; sourceTree = "<group>"; };
 		225B6C2723F867F7AC584A20 /* DataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataPoint.swift; sourceTree = "<group>"; };
 		26E18959BF3306A2DA4806BE /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
 		284EBA21364E9A630A21B47A /* ListenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenView.swift; sourceTree = "<group>"; };
 		29E142AE6D01C3B27ACD33DF /* GlobalConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalConfig.swift; sourceTree = "<group>"; };
+		2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		31539198BBEE43B82AD0D64E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3757410AF3795556FF8C69C2 /* Streamscapes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Streamscapes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37CE79C45C5975B7A075CF0E /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		387AFBC9405D9ADEA1C5CAD9 /* WikiStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiStreamPlugin.swift; sourceTree = "<group>"; };
@@ -66,6 +76,7 @@
 		801CF04FF22A105E533F4A92 /* EffectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsView.swift; sourceTree = "<group>"; };
 		82523C4E9E09306FAD1D0091 /* MappingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingsView.swift; sourceTree = "<group>"; };
 		877BFD89B7F8DB68A6E64944 /* SonificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonificationView.swift; sourceTree = "<group>"; };
+		9E6FFE74060E617651385ADA /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
 		A018A3723F2B6161B6C248B3 /* AudioCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCoordinator.swift; sourceTree = "<group>"; };
 		A0DAF0DCB09C7ECE4F211C36 /* DMSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Regular.ttf"; sourceTree = "<group>"; };
 		A4D5A2923705C7F18500A14C /* PresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetsView.swift; sourceTree = "<group>"; };
@@ -80,6 +91,7 @@
 		C1AB5EE41BC0C38895F46B8D /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
 		C97A7C4E68D66877707925E7 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		CD8A7906A35D974589312EDE /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		DD12484096EA9E0236691F8D /* Secrets.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Secrets.example; sourceTree = "<group>"; };
 		E1B3965A24D156E90A8C074C /* StreamManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamManager.swift; sourceTree = "<group>"; };
 		E9A270D84960CD3174EC8904 /* StreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPlugin.swift; sourceTree = "<group>"; };
 		FB64EFD85BDB81BC7B0071D0 /* MixerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerView.swift; sourceTree = "<group>"; };
@@ -116,6 +128,7 @@
 				21357F05579D411B8E6F2DFF /* Info.plist */,
 				FFC9F4F8377AC451FDF79222 /* App */,
 				DF68C0F4AF5F193D0C1AB6C3 /* Audio */,
+				73C7E9045AC153BDC2759895 /* Config */,
 				09B796C4848C8F508DB634DF /* Models */,
 				A6B14FFA287E631BB6019254 /* Resources */,
 				B0EDAC9E79B10481B1C972F7 /* Store */,
@@ -162,6 +175,15 @@
 			path = Listen;
 			sourceTree = "<group>";
 		};
+		73C7E9045AC153BDC2759895 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				DD12484096EA9E0236691F8D /* Secrets.example */,
+				2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		86FB32BBEFBB8B1B3A31F54D /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
@@ -205,6 +227,7 @@
 		A6B14FFA287E631BB6019254 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				31539198BBEE43B82AD0D64E /* Assets.xcassets */,
 				86FB32BBEFBB8B1B3A31F54D /* Fonts */,
 			);
 			path = Resources;
@@ -214,6 +237,7 @@
 			isa = PBXGroup;
 			children = (
 				0ED9C4C4134AE3461A18BA27 /* AppStore.swift */,
+				21C5C420458CD16F5853D89F /* PresetCatalog.swift */,
 			);
 			path = Store;
 			sourceTree = "<group>";
@@ -240,6 +264,7 @@
 			isa = PBXGroup;
 			children = (
 				801CF04FF22A105E533F4A92 /* EffectsView.swift */,
+				0DCF77449C575CE894CD04EC /* GlobalSettingsView.swift */,
 				82523C4E9E09306FAD1D0091 /* MappingsView.swift */,
 				A4D5A2923705C7F18500A14C /* PresetsView.swift */,
 				877BFD89B7F8DB68A6E64944 /* SonificationView.swift */,
@@ -265,6 +290,7 @@
 			children = (
 				B86D517E52DFF9650DF316E5 /* RootView.swift */,
 				B85F4BDD7E914F3154AAF61F /* StreamscapesApp.swift */,
+				9E6FFE74060E617651385ADA /* WebAppView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -332,10 +358,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A03DD61BDC5B0A8183308FCB /* Assets.xcassets in Resources */,
 				D57982F24919B3DE4BF31CC5 /* DMSans-Bold.ttf in Resources */,
 				2BDB24C0A319F1C55AB06CC2 /* DMSans-Medium.ttf in Resources */,
 				9305B13B134A87970F37CFBF /* DMSans-Regular.ttf in Resources */,
 				E3A2EB66C8DFBD921CE192DE /* DMSans-SemiBold.ttf in Resources */,
+				279124535D5A6F61A6DFBAD1 /* Secrets.example in Resources */,
 				D84E50B5CD7FFA0422A04DEC /* SpaceGrotesk-Bold.ttf in Resources */,
 				A2253889AE6AB69D903025F9 /* SpaceGrotesk-Light.ttf in Resources */,
 				F218309D0C0078C17E0FCC53 /* SpaceGrotesk-Medium.ttf in Resources */,
@@ -360,12 +388,15 @@
 				0EC017D98CCFDBAFEE28A796 /* EffectsView.swift in Sources */,
 				C6D93D99032FC6092C3E1FA6 /* FlightStreamPlugin.swift in Sources */,
 				0146D24831365AB3EEE861F2 /* GlobalConfig.swift in Sources */,
+				5715D256A9BF2E66E0A9DE2C /* GlobalSettingsView.swift in Sources */,
 				25B5946E97B91A1180BAB5D6 /* ListenView.swift in Sources */,
 				AE1B487300AE7DF7604A67E0 /* MainView.swift in Sources */,
 				953B6118B947677CA2954590 /* MappingsView.swift in Sources */,
 				B40BBE4AD4B333828FD1DE35 /* MixerView.swift in Sources */,
+				9894731A8746F9B88B010528 /* PresetCatalog.swift in Sources */,
 				13456CCEAED96278F99A1A6F /* PresetsView.swift in Sources */,
 				5A816CF102BDE8FA2F11499A /* RootView.swift in Sources */,
+				575CC7571EA90DEA0936C016 /* Secrets.swift in Sources */,
 				9B2A583F9461A1009985D638 /* SonificationEngine.swift in Sources */,
 				BEBE9185D530EFF54DA4D0EA /* SonificationView.swift in Sources */,
 				8A178777C4FC182BBD0D139A /* StartView.swift in Sources */,
@@ -375,6 +406,7 @@
 				694F25B8FF7F61CD779AC898 /* Theme.swift in Sources */,
 				64D804D538875199BCB36D70 /* VisualizerData.swift in Sources */,
 				98E9DBBE049B72983F7A1460 /* WeatherStreamPlugin.swift in Sources */,
+				96A340A87B4CF49CDA2B1DAB /* WebAppView.swift in Sources */,
 				C7DB6B4BA9A3CA7C5A29C94D /* WikiStreamPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

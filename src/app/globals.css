@@ -32,6 +32,11 @@
   --ff-body: 'DM Sans', system-ui, sans-serif;
 }
 
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   color: var(--text-primary);
   background: var(--bg-primary);

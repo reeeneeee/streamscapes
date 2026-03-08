@@ -2,9 +2,9 @@ import Foundation
 
 struct WeatherStreamPlugin: StreamPlugin {
     let id = "weather"
-    let baseURL: URL
     let lat: Double
     let lon: Double
+    let apiKey: String
 
     func connect() -> AsyncStream<DataPoint> {
         AsyncStream { continuation in
@@ -13,10 +13,11 @@ struct WeatherStreamPlugin: StreamPlugin {
                     do {
                         let dp = try await fetchWeather()
                         continuation.yield(dp)
+                        print("[Weather] Got data: \(dp.fields)")
                     } catch {
-                        // Silently retry on failure
+                        print("[Weather] Fetch failed: \(error)")
                     }
-                    try? await Task.sleep(for: .seconds(180)) // 3 min
+                    try? await Task.sleep(for: .seconds(180))
                 }
                 continuation.finish()
             }
@@ -25,21 +26,25 @@ struct WeatherStreamPlugin: StreamPlugin {
     }
 
     private func fetchWeather() async throws -> DataPoint {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/api/streams/weather"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "lat", value: String(lat)),
-            URLQueryItem(name: "lon", value: String(lon)),
-        ]
-
-        let (data, _) = try await URLSession.shared.data(from: components.url!)
+        let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?lat=\(lat)&lon=\(lon)&appid=\(apiKey)&units=imperial")!
+        let (data, _) = try await URLSession.shared.data(from: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
 
         var fields: [String: Double] = [:]
-        if let temp = json["feelsLike"] as? Double { fields["feelsLike"] = temp }
-        if let clouds = json["clouds"] as? Double { fields["clouds"] = clouds }
-        if let humidity = json["humidity"] as? Double { fields["humidity"] = humidity }
-        if let windSpeed = json["windSpeed"] as? Double { fields["windSpeed"] = windSpeed }
-        if let pressure = json["pressure"] as? Double { fields["pressure"] = pressure }
+
+        // Main weather data
+        if let main = json["main"] as? [String: Any] {
+            if let feelsLike = main["feels_like"] as? Double { fields["feelsLike"] = feelsLike }
+            if let humidity = main["humidity"] as? Double { fields["humidity"] = humidity }
+            if let pressure = main["pressure"] as? Double { fields["pressure"] = pressure }
+            if let temp = main["temp"] as? Double { fields["temperature"] = temp }
+        }
+        if let clouds = (json["clouds"] as? [String: Any])?["all"] as? Double {
+            fields["clouds"] = clouds
+        }
+        if let wind = json["wind"] as? [String: Any] {
+            if let speed = wind["speed"] as? Double { fields["windSpeed"] = speed }
+        }
 
         return DataPoint(
             streamId: "weather",

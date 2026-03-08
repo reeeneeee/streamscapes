@@ -37,7 +37,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
         return (
           <div
             key={id}
-            className="flex items-center gap-3 rounded-lg transition-opacity"
+            className="flex items-center gap-2 sm:gap-3 rounded-lg transition-opacity"
             style={{
               padding: '12px 14px',
               background: 'rgba(255, 255, 255, 0.025)',
@@ -59,7 +59,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
                 fontFamily: 'var(--font-body, var(--ff-body))',
                 fontSize: 14, fontWeight: 500,
                 color: 'var(--text-primary)',
-                width: 80, flexShrink: 0,
+                width: 70, flexShrink: 0,
               }}
             >
               {label}
@@ -77,6 +77,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
               style={{
                 accentColor: 'rgba(245, 240, 235, 0.4)',
                 background: 'rgba(255, 255, 255, 0.08)',
+                touchAction: 'none',
               }}
             />
 
@@ -86,7 +87,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
                 fontFamily: 'var(--font-display, var(--ff-display))',
                 fontSize: 11, fontWeight: 400,
                 color: 'rgba(245, 240, 235, 0.3)',
-                width: 52, textAlign: 'right', flexShrink: 0,
+                width: 46, textAlign: 'right', flexShrink: 0,
               }}
             >
               {config.volume.toFixed(1)} dB
@@ -170,6 +171,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
           style={{
             accentColor: 'rgba(245, 240, 235, 0.4)',
             background: 'rgba(255, 255, 255, 0.08)',
+            touchAction: 'none',
           }}
         />
         <span

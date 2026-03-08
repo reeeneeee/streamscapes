@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum SettingsDestination: Hashable {
+    case global
     case presets
     case sonification
     case mappings
@@ -23,17 +24,20 @@ struct ControlsView: View {
                     MixerView()
 
                     VStack(spacing: 1) {
+                        NavigationLink(value: SettingsDestination.global) {
+                            SettingsRow(number: "01", title: "Global")
+                        }
                         NavigationLink(value: SettingsDestination.presets) {
-                            SettingsRow(number: "01", title: "Presets")
+                            SettingsRow(number: "02", title: "Presets")
                         }
                         NavigationLink(value: SettingsDestination.sonification) {
-                            SettingsRow(number: "02", title: "Sonification")
+                            SettingsRow(number: "03", title: "Sonification")
                         }
                         NavigationLink(value: SettingsDestination.mappings) {
-                            SettingsRow(number: "03", title: "Mappings")
+                            SettingsRow(number: "04", title: "Mappings")
                         }
                         NavigationLink(value: SettingsDestination.effects) {
-                            SettingsRow(number: "04", title: "Effects")
+                            SettingsRow(number: "05", title: "Effects")
                         }
                     }
                     .padding(.top, 16)
@@ -43,6 +47,7 @@ struct ControlsView: View {
             .scrollIndicators(.hidden)
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
+                case .global: GlobalSettingsView()
                 case .presets: PresetsView()
                 case .sonification: SonificationView()
                 case .mappings: MappingsView()

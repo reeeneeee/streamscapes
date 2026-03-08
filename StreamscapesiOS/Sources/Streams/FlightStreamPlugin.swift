@@ -2,9 +2,9 @@ import Foundation
 
 struct FlightStreamPlugin: StreamPlugin {
     let id = "flights"
-    let baseURL: URL
     let lat: Double
     let lon: Double
+    let apiKey: String
 
     func connect() -> AsyncStream<DataPoint> {
         let bounds = "\(lat + 0.07),\(lat - 0.07),\(lon - 0.07),\(lon + 0.07)"
@@ -18,7 +18,7 @@ struct FlightStreamPlugin: StreamPlugin {
                             continuation.yield(dp)
                         }
                     } catch {
-                        // Silently retry
+                        print("[Flights] Fetch failed: \(error)")
                     }
                     try? await Task.sleep(for: .seconds(10))
                 }
@@ -29,12 +29,13 @@ struct FlightStreamPlugin: StreamPlugin {
     }
 
     private func fetchFlights(bounds: String) async throws -> [DataPoint] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/api/streams/flights"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "bounds", value: bounds),
-        ]
+        let url = URL(string: "https://fr24api.flightradar24.com/api/live/flight-positions/light?bounds=\(bounds)")!
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("v1", forHTTPHeaderField: "Accept-Version")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
-        let (data, _) = try await URLSession.shared.data(from: components.url!)
+        let (data, _) = try await URLSession.shared.data(for: request)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
         let flights = json["data"] as? [[String: Any]] ?? []
 
@@ -44,27 +45,24 @@ struct FlightStreamPlugin: StreamPlugin {
 
             let distance = coordDistanceMiles(lat1: lat, lon1: lon, lat2: flightLat, lon2: flightLon)
             let altitude = flight["alt"] as? Double ?? 0
-            let speed = (flight["gspeed"] as? Double ?? 0) * 1.15 // knots → mph
+            let speed = (flight["gspeed"] as? Double ?? 0) * 1.15
 
             let maxDist = 10.0
             let minFreq = 110.0
             let maxFreq = 880.0
             let frequency = minFreq * pow(maxFreq / minFreq, max(0, maxDist - distance) / maxDist)
 
-            var fields: [String: Double] = [
-                "distance": distance,
-                "altitude": altitude,
-                "speed": speed,
-                "frequency": frequency,
-            ]
-            if let id = flight["fr24_id"] as? String {
-                fields["flightId"] = Double(id.hashValue & 0xFFFF)
-            }
-
             return DataPoint(
                 streamId: "flights",
                 timestamp: Date(),
-                fields: fields,
+                fields: [
+                    "distance": distance,
+                    "altitude": altitude,
+                    "speed": speed,
+                    "frequency": frequency,
+                    "lat": flightLat,
+                    "lon": flightLon,
+                ],
                 metadata: [
                     "callsign": flight["callsign"] as? String ?? "",
                 ]

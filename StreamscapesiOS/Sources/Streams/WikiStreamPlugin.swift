@@ -2,15 +2,18 @@ import Foundation
 
 struct WikiStreamPlugin: StreamPlugin {
     let id = "wikipedia"
-    let baseURL: URL
 
     func connect() -> AsyncStream<DataPoint> {
         AsyncStream { continuation in
             let task = Task {
-                do {
-                    try await streamSSE(continuation: continuation)
-                } catch {
-                    // Stream ended or was cancelled
+                // Reconnect loop
+                while !Task.isCancelled {
+                    do {
+                        try await streamSSE(continuation: continuation)
+                    } catch {
+                        print("[Wiki] Stream error: \(error), reconnecting in 5s...")
+                    }
+                    try? await Task.sleep(for: .seconds(5))
                 }
                 continuation.finish()
             }
@@ -19,21 +22,19 @@ struct WikiStreamPlugin: StreamPlugin {
     }
 
     private func streamSSE(continuation: AsyncStream<DataPoint>.Continuation) async throws {
-        let url = baseURL.appendingPathComponent("/api/wiki-stream")
+        let url = URL(string: "https://stream.wikimedia.org/v2/stream/mediawiki.recentchange")!
         var request = URLRequest(url: url)
-        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.setValue("streamscapes/1.0", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 300
 
-        let (bytes, _) = try await URLSession.shared.bytes(from: url)
+        let (bytes, _) = try await URLSession.shared.bytes(for: request)
         var buffer = ""
 
         for try await byte in bytes {
             if Task.isCancelled { break }
 
-            let char = String(UnicodeScalar(byte))
-            buffer += char
+            buffer.append(Character(UnicodeScalar(byte)))
 
-            // SSE messages are delimited by double newlines
             if buffer.hasSuffix("\n\n") {
                 processSSEBlock(buffer, continuation: continuation)
                 buffer = ""
@@ -49,7 +50,10 @@ struct WikiStreamPlugin: StreamPlugin {
             guard let data = jsonStr.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
 
-            // Filter: non-minor, main namespace (no ":" in title)
+            // Filter: en.wikipedia.org, edits only, non-minor, main namespace
+            guard json["server_name"] as? String == "en.wikipedia.org",
+                  json["type"] as? String == "edit" else { continue }
+
             let minor = json["minor"] as? Bool ?? true
             let title = json["title"] as? String ?? ""
             guard !minor, !title.contains(":") else { continue }

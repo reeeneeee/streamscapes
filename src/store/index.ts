@@ -221,10 +221,12 @@ export const useStore = create<StreamscapesStore>()(
       }),
       {
         name: 'streamscapes-store',
-        version: 14, // v14: all streams enabled by default
+        version: 14,
         partialize: (state) => ({
+          isPlaying: state.isPlaying,
           global: state.global,
           channels: state.channels,
+          selectedChannelId: state.selectedChannelId,
         }),
         migrate: () => {
           // Wipe on version bump to apply current defaults safely.
@@ -245,8 +247,10 @@ export const useStore = create<StreamscapesStore>()(
           }
           return {
             ...currentState,
+            isPlaying: typeof persistedState.isPlaying === 'boolean' ? persistedState.isPlaying : currentState.isPlaying,
             global,
             channels,
+            selectedChannelId: typeof persistedState.selectedChannelId === 'string' ? persistedState.selectedChannelId : currentState.selectedChannelId,
           };
         },
       }

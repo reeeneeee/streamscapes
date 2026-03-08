@@ -56,7 +56,48 @@ export function useStreamscapes(lat: number, lon: number) {
     managerRef.current = manager;
     cleanupVisRef.current = setupVisibilityHandler();
 
+    const resumeIfPlaying = async () => {
+      if (!useStore.getState().isPlaying) return;
+      try {
+        await Tone.start();
+        const ctx = Tone.getContext().rawContext as AudioContext;
+        await ctx.resume();
+        engine.start();
+        const channels = useStore.getState().channels;
+        const activeStreams = useStore.getState().activeStreams;
+        for (const [streamId, config] of Object.entries(channels)) {
+          if (config.enabled && !activeStreams[streamId]) {
+            manager.connectStream(streamId);
+          }
+        }
+      } catch {
+        // no-op; will retry on visibility/user gesture
+      }
+    };
+    void resumeIfPlaying();
+
+    // Resume audio + reconnect streams when page becomes visible again
+    const handleResume = async () => {
+      if (document.hidden || !useStore.getState().isPlaying) return;
+      try {
+        await Tone.start();
+        const ctx = Tone.getContext().rawContext as AudioContext;
+        await ctx.resume();
+        engine.start();
+        // Reconnect any dropped streams
+        const channels = useStore.getState().channels;
+        const activeStreams = useStore.getState().activeStreams;
+        for (const [streamId, config] of Object.entries(channels)) {
+          if (config.enabled && !activeStreams[streamId]) {
+            manager.connectStream(streamId);
+          }
+        }
+      } catch (e) { /* ignore */ }
+    };
+    document.addEventListener('visibilitychange', handleResume);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleResume);
       manager.dispose();
       engine.dispose();
       cleanupVisRef.current?.();
@@ -81,9 +122,11 @@ export function useStreamscapes(lat: number, lon: number) {
 
   const startAudio = async () => {
     if (useStore.getState().isPlaying) return;
-    if (Tone.context.state === 'suspended') {
-      await Tone.start();
-    }
+    // Must call synchronously within user gesture for iOS Safari
+    Tone.start();
+    // Also poke the raw AudioContext directly
+    const rawCtx = Tone.getContext().rawContext as AudioContext;
+    if (rawCtx.state !== 'running') rawCtx.resume();
     setPlaying(true);
     engineRef.current?.start();
 

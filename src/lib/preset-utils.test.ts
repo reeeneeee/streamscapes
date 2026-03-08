@@ -29,6 +29,9 @@ describe('normalizePresetChannels', () => {
     const input = channelsMap({
       weather: { enabled: false },
       flights: { enabled: false },
+      wikipedia: { enabled: false },
+      rss: { enabled: false },
+      stocks: { enabled: false },
     });
     const result = normalizePresetChannels(input);
     expect(result.selected).toBe('weather');

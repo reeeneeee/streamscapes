@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import * as Tone from 'tone';
 import type { AudioEngine } from '@/lib/audio-engine';
 import type { DataPoint } from '@/types/stream';
@@ -57,6 +57,7 @@ const Visualizer = ({
   wikiAnalyzer,
   engine,
 }: VisualizerProps) => {
+  const [infoPanel, setInfoPanel] = useState<{ title: string; json: string; url?: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editsRef = useRef<WikiEdit[]>([]);
@@ -348,7 +349,12 @@ const Visualizer = ({
       const dx = mx - x;
       const dy = my - y;
       if (Math.sqrt(dx * dx + dy * dy) < size / 2) {
-        window.open(`https://api.adsbdb.com/v0/callsign/${flight.callsign}`, '_blank');
+        const apiUrl = `https://api.adsbdb.com/v0/callsign/${flight.callsign}`;
+        setInfoPanel({ title: flight.callsign, json: 'Loading...', url: apiUrl });
+        fetch(apiUrl)
+          .then((r) => r.json())
+          .then((data) => setInfoPanel({ title: flight.callsign!, json: JSON.stringify(data, null, 2), url: apiUrl }))
+          .catch(() => setInfoPanel({ title: flight.callsign!, json: '{ "error": "Failed to fetch" }', url: apiUrl }));
         return;
       }
     }
@@ -364,12 +370,68 @@ const Visualizer = ({
   }, [myLat, myLon]);
 
   return (
-    <div ref={containerRef} className="w-full h-full">
+    <div ref={containerRef} className="w-full h-full relative">
       <canvas
         ref={canvasRef}
         onClick={handleClick}
         style={{ cursor: 'pointer', display: 'block' }}
       />
+      {infoPanel && (
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 20,
+          }}
+          onClick={() => setInfoPanel(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 12,
+              padding: '16px 20px',
+              maxWidth: '90%',
+              maxHeight: '70%',
+              overflow: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 16, fontWeight: 600,
+                color: 'var(--text-primary)',
+                letterSpacing: '0.04em',
+              }}>
+                {infoPanel.title}
+              </span>
+              <button
+                onClick={() => setInfoPanel(null)}
+                style={{
+                  background: 'none', border: 'none', color: 'var(--text-muted)',
+                  fontSize: 18, cursor: 'pointer', padding: '0 4px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <pre style={{
+              fontFamily: 'var(--font-geist-mono, monospace)',
+              fontSize: 11,
+              lineHeight: 1.5,
+              color: 'var(--text-secondary)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              margin: 0,
+            }}>
+              {infoPanel.json}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

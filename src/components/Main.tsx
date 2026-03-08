@@ -215,6 +215,8 @@ export default function Main() {
     setWikiAnalyzer(null);
   }, [stopAudio]);
 
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
   // Not playing — show start screen
   if (!isPlaying) {
     return (
@@ -251,6 +253,20 @@ export default function Main() {
         >
           plug in
         </p>
+        {isIOS && (
+          <p
+            className="relative z-10"
+            style={{
+              fontFamily: 'var(--font-body, var(--ff-body))',
+              fontSize: 12,
+              fontWeight: 400,
+              color: 'rgba(245, 240, 235, 0.15)',
+              marginTop: 24,
+            }}
+          >
+            turn off silent mode for sound
+          </p>
+        )}
       </div>
     );
   }

@@ -32,7 +32,10 @@ struct MixerView: View {
                 .frame(width: 56, alignment: .leading)
 
             Slider(
-                value: Bindable(store).global.masterVolume,
+                value: Binding(
+                    get: { store.global.masterVolume },
+                    set: { val in store.updateGlobal { $0.masterVolume = val } }
+                ),
                 in: -40...6,
                 step: 0.5
             )

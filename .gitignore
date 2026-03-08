@@ -44,3 +44,6 @@ next-env.d.ts
 xcuserdata/
 *.xcuserstate
 DerivedData/
+
+# iOS secrets (API keys)
+StreamscapesiOS/Sources/Config/Secrets.swift
