@@ -227,9 +227,7 @@ final class SonificationEngine {
             fader.gain = 0
             // Schedule actual removal on next runloop tick
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                Task { @MainActor in
-                    self?.mixer.removeInput(fader)
-                }
+                self?.mixer.removeInput(fader)
             }
         } else {
             mixer.removeInput(fader)
@@ -312,7 +310,7 @@ final class SonificationEngine {
         timer.schedule(deadline: .now() + beatIntervalSec, repeating: beatIntervalSec, leeway: .milliseconds(1))
 
         timer.setEventHandler { [weak self] in
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 self?.firePatternNote(id: id)
             }
         }
@@ -350,10 +348,8 @@ final class SonificationEngine {
         // Schedule note-off after note duration (half the beat interval)
         let noteDurationMs = 250
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(noteDurationMs)) { [weak self] in
-            Task { @MainActor in
-                guard case .pattern(let currentCh) = self?.channels[id] else { return }
-                currentCh.synth.stop(noteNumber: UInt8(midiNote), channel: 0)
-            }
+            guard case .pattern(let currentCh) = self?.channels[id] else { return }
+            currentCh.synth.stop(noteNumber: UInt8(midiNote), channel: 0)
         }
 
         ch.patternStep = step + 1
@@ -523,10 +519,8 @@ final class SonificationEngine {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(durationMs)) { [weak self] in
-            Task { @MainActor in
-                guard case .triggered(let currentCh) = self?.channels[id] else { return }
-                currentCh.synth.stop(noteNumber: midiNote, channel: 0)
-            }
+            guard case .triggered(let currentCh) = self?.channels[id] else { return }
+            currentCh.synth.stop(noteNumber: midiNote, channel: 0)
         }
 
         // Apply pan from mapped data
