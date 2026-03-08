@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET() {
   const encoder = new TextEncoder();
@@ -29,11 +29,8 @@ export async function GET() {
 
         while (!isControllerClosed) {
           const { done, value } = await reader.read();
-          
-          if (done) {
-            console.log('Stream complete');
-            break;
-          }
+
+          if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
@@ -42,14 +39,19 @@ export async function GET() {
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
-                const data = line.slice(6);
-                if (!isControllerClosed) {
-                  controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                const jsonStr = line.slice(6);
+                // Server-side filtering: only forward en.wikipedia.org edits
+                const data = JSON.parse(jsonStr);
+                if (
+                  data.server_name === 'en.wikipedia.org' &&
+                  data.type === 'edit'
+                ) {
+                  if (!isControllerClosed) {
+                    controller.enqueue(encoder.encode(`data: ${jsonStr}\n\n`));
+                  }
                 }
-              } catch (enqueueError) {
-                console.error('Error enqueueing data:', enqueueError);
-                isControllerClosed = true;
-                break;
+              } catch {
+                // Skip malformed JSON lines
               }
             }
           }
@@ -57,7 +59,6 @@ export async function GET() {
 
         reader.releaseLock();
       } catch (error) {
-        console.error('Stream error:', error);
         if (!isControllerClosed) {
           isControllerClosed = true;
           controller.error(error);
@@ -71,7 +72,6 @@ export async function GET() {
     },
 
     cancel() {
-      console.log('Stream cancelled by client');
       isControllerClosed = true;
     }
   });
