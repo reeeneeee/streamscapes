@@ -4,23 +4,16 @@ import Observation
 @MainActor
 @Observable
 final class AudioCoordinator {
-    private let engine = SonificationEngine()
+    private let bridge = WebAudioBridge()
     private let streamManager = StreamManager()
     private var reconcileTask: Task<Void, Never>?
     let visualizerData = VisualizerData()
 
     func start(store: AppStore) {
-        print("[Audio] Starting engine...")
-        do {
-            try engine.start()
-            print("[Audio] Engine started OK")
-        } catch {
-            print("[Audio] Engine start FAILED: \(error)")
-            return
-        }
-
-        engine.reconcile(store: store)
-        print("[Audio] Reconciled \(store.channels.filter { $0.value.enabled && !$0.value.mute }.count) active channels")
+        print("[Audio] Starting WebAudioBridge...")
+        bridge.start(store: store)
+        bridge.initialize(store: store)
+        print("[Audio] Bridge initialized with \(store.channels.filter { $0.value.enabled && !$0.value.mute }.count) active channels")
         visualizerData.startAging()
 
         let lat = 37.7749
@@ -55,7 +48,7 @@ final class AudioCoordinator {
 
     func stop(store: AppStore) {
         Task { await streamManager.stopAll() }
-        engine.stop()
+        bridge.stop()
         visualizerData.stopAging()
         for id in store.channels.keys {
             store.setStreamState(id, nil)
@@ -63,14 +56,14 @@ final class AudioCoordinator {
     }
 
     func reconcile(store: AppStore) {
-        engine.reconcile(channels: store.channels, global: store.global)
+        bridge.reconcile(channels: store.channels, global: store.global)
     }
 
     private var flightBuffer: [DataPoint] = []
 
     private func handleData(_ dp: DataPoint, store: AppStore) {
-        guard let config = store.channels[dp.streamId] else { return }
-        engine.handleDataPoint(dp, config: config, global: store.global)
+        guard store.channels[dp.streamId] != nil else { return }
+        bridge.handleDataPoint(dp)
 
         // Feed visualizer
         switch dp.streamId {

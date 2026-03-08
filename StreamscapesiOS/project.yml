@@ -8,26 +8,12 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     ENABLE_USER_SCRIPT_SANDBOXING: false
-packages:
-  AudioKit:
-    url: https://github.com/AudioKit/AudioKit.git
-    exactVersion: "5.6.4"
-  SoundpipeAudioKit:
-    url: https://github.com/AudioKit/SoundpipeAudioKit.git
-    exactVersion: "5.6.1"
-  DunneAudioKit:
-    url: https://github.com/AudioKit/DunneAudioKit.git
-    exactVersion: "5.6.1"
 targets:
   Streamscapes:
     type: application
     platform: iOS
     sources:
       - Sources
-    dependencies:
-      - package: AudioKit
-      - package: SoundpipeAudioKit
-      - package: DunneAudioKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.streamscapes.app
