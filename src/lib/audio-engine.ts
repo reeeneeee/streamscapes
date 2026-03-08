@@ -79,6 +79,13 @@ export interface AudioEngineStore {
   ) => () => void;
 }
 
+/** Expand notes into ABCBCB arpeggio pattern (6-step cycle). */
+function abcbcbPattern(notes: string[]): string[] {
+  if (notes.length >= 3) return [notes[0], notes[1], notes[2], notes[1], notes[2], notes[1]];
+  if (notes.length === 2) return [notes[0], notes[1], notes[0], notes[1]];
+  return notes;
+}
+
 const SAMPLE_SOURCE_URLS: Record<string, string> = {
   rain: 'https://tonejs.github.io/audio/berklee/rain_ambience.mp3',
   wind: 'https://tonejs.github.io/audio/berklee/wind_ambience.mp3',
@@ -655,7 +662,7 @@ export class AudioEngine {
 
     const { global } = this.store.getState();
     const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes;
-    const initialNotes = scaleNotes.length > 0 ? scaleNotes.slice(0, 4) : ['C4', 'E4', 'G4', 'C5'];
+    const initialNotes = scaleNotes.length > 0 ? scaleNotes.slice(0, 3) : ['C4', 'E4', 'G4'];
 
     const pattern = new Tone.Pattern(
       (time, note) => {
@@ -667,8 +674,8 @@ export class AudioEngine {
         const dur = Math.max(Tone.Time('8n').toSeconds(), minDur);
         synth.triggerAttackRelease(note, dur, time);
       },
-      initialNotes,
-      (config.patternType ?? 'upDown') as 'up' | 'down' | 'upDown' | 'downUp' | 'alternateUp' | 'alternateDown' | 'random' | 'randomOnce' | 'randomWalk'
+      abcbcbPattern(initialNotes),
+      'up' // ABCBCB cycle is pre-expanded, just traverse in order
     );
 
     let hybridEventGain: Tone.Gain | null = null;
@@ -974,14 +981,14 @@ export class AudioEngine {
     if (scaleKey === this.lastScaleKey) return;
     this.lastScaleKey = scaleKey;
 
-    const notes = scaleNotes.length > 0 ? scaleNotes.slice(0, 4) : ['C4', 'E4', 'G4', 'C5'];
+    const notes = scaleNotes.length > 0 ? scaleNotes.slice(0, 3) : ['C4', 'E4', 'G4'];
     for (const [streamId, nodes] of this.channelNodes) {
       if (nodes.mode !== 'pattern') continue;
       const state = this.store.getState();
       const cfg = state.channels[streamId];
       const sampleMode = cfg?.ambientMode === 'sample';
       const hybridSustain = cfg?.behaviorType === 'hybrid' && cfg?.ambientMode === 'sustain';
-      nodes.pattern.values = notes;
+      nodes.pattern.values = abcbcbPattern(notes);
       if (sampleMode) {
         if (nodes.pattern.state === 'started') {
           nodes.pattern.stop();
@@ -1298,7 +1305,6 @@ export class AudioEngine {
             `${rootNote}${octave}`,
             scaleNotes[Math.min(2, scaleNotes.length - 1)],
             scaleNotes[Math.min(4, scaleNotes.length - 1)],
-            `${rootNote}${octave + 1}`,
           ];
         } else if (patternSelect === 1) {
           // Moderate
@@ -1306,7 +1312,6 @@ export class AudioEngine {
             `${rootNote}${octave}`,
             scaleNotes[Math.min(2, scaleNotes.length - 1)],
             scaleNotes[Math.min(4, scaleNotes.length - 1)],
-            scaleNotes[Math.min(2, scaleNotes.length - 1)],
           ];
         } else {
           // Warm — complex
@@ -1314,10 +1319,9 @@ export class AudioEngine {
             scaleNotes[Math.min(1, scaleNotes.length - 1)],
             scaleNotes[Math.min(4, scaleNotes.length - 1)],
             scaleNotes[Math.min(scaleNotes.length - 1, 6)],
-            `${rootNote}${octave + 1}`,
           ];
         }
-        nodes.pattern.values = arpNotes;
+        nodes.pattern.values = abcbcbPattern(arpNotes);
       }
     }
 

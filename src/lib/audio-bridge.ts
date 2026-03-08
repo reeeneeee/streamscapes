@@ -4,6 +4,9 @@
  *
  * Exposes `window.AudioBridge` with methods callable from Swift
  * via `evaluateJavaScript()`.
+ *
+ * IMPORTANT: All methods must return synchronous primitives (string/number/null).
+ * WKWebView's evaluateJavaScript cannot serialize Promises.
  */
 import * as Tone from 'tone';
 import { AudioEngine } from './audio-engine';
@@ -78,24 +81,23 @@ const AudioBridge = {
   /**
    * Initialize engine with channel + global config from Swift.
    * Called once when the iOS app starts audio.
+   * Tone.start() runs async internally but we return synchronously.
    */
-  async init(
-    channelsJson: string,
-    globalJson: string,
-  ): Promise<string> {
+  init(channelsJson: string, globalJson: string): string {
     try {
       const channels: Record<string, ChannelConfig> = JSON.parse(channelsJson);
       const global: GlobalConfig = JSON.parse(globalJson);
 
-      // Create store and engine
+      // Create store and engine (synchronous)
       store = new BridgeStore({ channels, global, isPlaying: true });
       engine = new AudioEngine(store);
 
-      // Start Tone.js audio context + transport
-      await Tone.start();
-      const ctx = Tone.getContext().rawContext as AudioContext;
-      if (ctx.state !== 'running') await ctx.resume();
-      engine.start();
+      // Start audio context async — don't block the return
+      Tone.start().then(() => {
+        const ctx = Tone.getContext().rawContext as AudioContext;
+        if (ctx.state !== 'running') ctx.resume();
+        engine?.start();
+      });
 
       return 'ok';
     } catch (e) {
@@ -135,13 +137,14 @@ const AudioBridge = {
   /**
    * Resume audio context (call after app foregrounding).
    */
-  async resume(): Promise<string> {
+  resume(): string {
     try {
-      await Tone.start();
-      const ctx = Tone.getContext().rawContext as AudioContext;
-      if (ctx.state !== 'running') await ctx.resume();
-      if (engine) engine.start();
-      return Tone.getContext().rawContext.state;
+      Tone.start().then(() => {
+        const ctx = Tone.getContext().rawContext as AudioContext;
+        if (ctx.state !== 'running') ctx.resume();
+        engine?.start();
+      });
+      return 'ok';
     } catch (e) {
       return `error: ${e}`;
     }
