@@ -24,6 +24,7 @@ final class SonificationEngine {
 
     // Cached scale notes — recomputed when global config changes
     private var currentScaleNotes: [Int] = []
+    private var currentPatternNotes: [Int] = []  // root-octave subset for pattern arpeggiation
     private var lastRootNote = ""
     private var lastScale = ""
 
@@ -134,6 +135,8 @@ final class SonificationEngine {
         lastRootNote = global.rootNote
         lastScale = global.scale
         currentScaleNotes = MusicScale.scaleNotes(rootNote: global.rootNote, scale: global.scale)
+        // Pattern uses first 3 notes from root octave (ABCBCB arpeggiation)
+        currentPatternNotes = Array(MusicScale.rootOctaveNotes(rootNote: global.rootNote, scale: global.scale).prefix(3))
     }
 
     // MARK: - Channel creation
@@ -146,14 +149,14 @@ final class SonificationEngine {
                 masterVolume: 1.0,
                 pitchBend: 0,
                 vibratoDepth: 0,
-                filterCutoff: 4,
+                filterCutoff: 2,        // lowpass to soften saw → triangle-like timbre
                 filterStrength: 20,
-                filterResonance: 0,
+                filterResonance: 0.1,
                 attackDuration: Float(env?.attack ?? 0.02),
                 decayDuration: Float(env?.decay ?? 0.3),
                 sustainLevel: Float(env?.sustain ?? 0.05),
                 releaseDuration: Float(env?.release ?? 0.4),
-                filterEnable: false
+                filterEnable: true
             )
             let panner = Panner(synth)
             let fader = Fader(panner)
@@ -162,7 +165,7 @@ final class SonificationEngine {
 
         case "continuous":
             let osc = DynamicOscillator()
-            osc.setWaveform(Table(.sine))
+            osc.setWaveform(Table(.triangle))  // match web's default triangle oscillator
             osc.amplitude = 0
             osc.frequency = 220
             let ampEnv = AmplitudeEnvelope(osc)
@@ -184,14 +187,14 @@ final class SonificationEngine {
                 masterVolume: 1.0,
                 pitchBend: 0,
                 vibratoDepth: 0,
-                filterCutoff: 4,
+                filterCutoff: 2,        // lowpass to soften saw → triangle-like timbre
                 filterStrength: 20,
-                filterResonance: 0,
+                filterResonance: 0.1,
                 attackDuration: Float(pEnv?.attack ?? 0.08),
                 decayDuration: Float(pEnv?.decay ?? 0.4),
                 sustainLevel: Float(pEnv?.sustain ?? 0.3),
                 releaseDuration: Float(pEnv?.release ?? 0.8),
-                filterEnable: false
+                filterEnable: true
             )
             let panner = Panner(synth)
             let fader = Fader(panner)
@@ -300,11 +303,11 @@ final class SonificationEngine {
 
     // MARK: - Pattern timer
 
-    private func startPatternTimer(id: String, channel: inout PatternChannel, config: ChannelConfig) {
+    private func startPatternTimer(id: String, channel: inout PatternChannel, config: ChannelConfig, tempo: Double = 120) {
         channel.timer?.invalidate()
 
-        let tempo = max(40, min(240, Double(lastRootNote.isEmpty ? 120 : 120))) // will be set from global
-        let beatIntervalSec = 60.0 / tempo / 2.0 // eighth note subdivision
+        let bpm = max(40, min(240, tempo))
+        let beatIntervalSec = 60.0 / bpm / 2.0 // eighth note subdivision
 
         // Timer.scheduledTimer runs on the main RunLoop — no isolation boundary crossing
         let timer = Timer.scheduledTimer(withTimeInterval: beatIntervalSec, repeats: true) { [weak self] _ in
@@ -317,32 +320,33 @@ final class SonificationEngine {
 
     private func firePatternNote(id: String) {
         guard case .pattern(var ch) = channels[id] else { return }
-        guard !currentScaleNotes.isEmpty else { return }
 
-        let notes = currentScaleNotes
-        let noteCount = notes.count
-        guard noteCount > 0 else { return }
+        // Use root-octave subset for pattern; fall back to full scale
+        let notes = currentPatternNotes.isEmpty ? currentScaleNotes : currentPatternNotes
+        guard !notes.isEmpty else { return }
 
-        // Pattern traversal
-        let noteIndex: Int
-        let step = ch.patternStep
-        // Simple upDown pattern (most common)
-        let cycleLength = max(1, noteCount * 2 - 2)
-        let pos = step % cycleLength
-        if pos < noteCount {
-            noteIndex = pos
+        // ABCBCB pattern: [0, 1, 2, 1, 2, 1] repeating
+        let patternIndices: [Int]
+        if notes.count >= 3 {
+            patternIndices = [0, 1, 2, 1, 2, 1]
+        } else if notes.count == 2 {
+            patternIndices = [0, 1, 0, 1]
         } else {
-            noteIndex = cycleLength - pos
+            patternIndices = [0]
         }
 
-        let midiNote = notes[min(noteIndex, noteCount - 1)]
-        let velocity = 80 // moderate velocity for patterns
+        let step = ch.patternStep
+        let noteIndex = patternIndices[step % patternIndices.count]
+        let midiNote = notes[min(noteIndex, notes.count - 1)]
 
-        // Play note — DunneAudioKit.Synth handles voice management
-        ch.synth.play(noteNumber: UInt8(midiNote), velocity: UInt8(velocity), channel: 0)
+        ch.synth.play(noteNumber: UInt8(midiNote), velocity: 100, channel: 0)
 
-        // Schedule note-off after note duration (half the beat interval)
-        let noteDurationMs = 250
+        // Note duration: match web's max(8n, attack + decay + 0.05)
+        let atk = Double(ch.synth.attackDuration)
+        let dec = Double(ch.synth.decayDuration)
+        let envelopeDur = atk + dec + 0.05
+        let noteDurationMs = Int(max(0.25, envelopeDur) * 1000)
+
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(noteDurationMs)) { [weak self] in
             guard case .pattern(let currentCh) = self?.channels[id] else { return }
             currentCh.synth.stop(noteNumber: UInt8(midiNote), channel: 0)
@@ -554,7 +558,7 @@ final class SonificationEngine {
 
         // Pattern mode uses data to modulate volume/pan, not direct note control
         if let amp = mapped["amplitude"] {
-            ch.synth.masterVolume = Float(max(0, min(1, amp)) * 5) // Scale up for audibility
+            ch.synth.masterVolume = Float(max(0.05, min(1, amp)))
         }
         if let pan = mapped["pan"] {
             ch.panner.pan = AUValue(max(-1, min(1, pan)))

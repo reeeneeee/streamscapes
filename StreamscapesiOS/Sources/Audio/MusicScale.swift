@@ -75,6 +75,16 @@ enum MusicScale {
         return notes.sorted()
     }
 
+    /// Return only the root-octave notes (no octave spanning).
+    /// Used by pattern mode to match web's `Scale.get().notes.slice(0, N)`.
+    static func rootOctaveNotes(rootNote: String, scale: String) -> [Int] {
+        guard let rootMidi = parseMIDI(rootNote),
+              let intervals = scaleIntervals[scale] else {
+            return rootOctaveNotes(rootNote: "C4", scale: "major pentatonic")
+        }
+        return intervals.map { rootMidi + $0 }.filter { $0 >= 0 && $0 <= 127 }
+    }
+
     /// Given a normalized value (0-1), pick a note from the scale.
     /// This is the `scaleIndex` mapping target.
     static func noteForScaleIndex(_ normalizedIndex: Double, notes: [Int]) -> Int {
