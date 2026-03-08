@@ -118,29 +118,29 @@ The "it doesn't sound terrible anymore" phase. Ship, listen, then decide what el
 
 #### 0a. Master bus dynamics
 
-- [ ] Add `DynamicRangeCompressor` and `PeakLimiter` between mixer and engine output
-- [ ] Add `-1dB` headroom `Fader` after limiter (gain 0.891) for inter-sample peak protection
-- [ ] Match web settings: threshold -24dB, ratio 4:1, limiter at 0dBFS (effective -1dB via headroom fader)
-- [ ] Master volume applied to mixer level (before compression)
-- [ ] `SonificationEngine.swift` — replace `engine.output = mixer` with `mixer -> compressor -> limiter -> headroom fader -> engine.output`
+- [x] Add `DynamicRangeCompressor` and `PeakLimiter` between mixer and engine output
+- [x] Add `-1dB` headroom `Fader` after limiter (gain 0.891) for inter-sample peak protection
+- [x] Match web settings: threshold -24dB, ratio 4:1, limiter at 0dBFS (effective -1dB via headroom fader)
+- [x] Master volume applied to mixer level (before compression)
+- [x] `SonificationEngine.swift` — replace `engine.output = mixer` with `mixer -> compressor -> limiter -> headroom fader -> engine.output`
 
 #### 0b. Triggered mode with DunneAudioKit.Synth
 
-- [ ] Replace `DynamicOscillator` with `DunneAudioKit.Synth` for triggered channels
-- [ ] Use MIDI-style `play(noteNumber:velocity:channel:)` / `stop(noteNumber:channel:)` API
-- [ ] Envelope params from `config.synthOptions.envelope` mapped to Dunne.Synth's `attackDuration`, `decayDuration`, `sustainLevel`, `releaseDuration`
+- [x] Replace `DynamicOscillator` with `DunneAudioKit.Synth` for triggered channels
+- [x] Use MIDI-style `play(noteNumber:velocity:channel:)` / `stop(noteNumber:channel:)` API
+- [x] Envelope params from `config.synthOptions.envelope` mapped to Dunne.Synth's `attackDuration`, `decayDuration`, `sustainLevel`, `releaseDuration`
 - [ ] Set voice count explicitly to 16 (verify DunneAudioKit default; with burst cap 4/1500ms and ~720ms envelope, up to 8 voices may be active simultaneously)
-- [ ] Remove all `Task.sleep` envelope simulation
-- [ ] `SonificationEngine.swift`
+- [x] Remove all `Task.sleep` envelope simulation
+- [x] `SonificationEngine.swift`
 
 #### 0c. Scale-aware note generation
 
-- [ ] Port scale logic from web's `@tonaljs/scale`: given `rootNote` (e.g. "C4") + `scale` (e.g. "major pentatonic"), compute an array of MIDI note numbers
-- [ ] Support all 12 scale types from `GlobalSettingsView`: major pentatonic, minor pentatonic, major, minor, blues, chromatic, dorian, mixolydian, lydian, phrygian, whole tone, diminished
-- [ ] Replace hardcoded `scaleFrequencies` array with dynamic computation
-- [ ] Remove `quantizeToScale` method entirely (replaced by scale-index-based lookup)
+- [x] Port scale logic from web's `@tonaljs/scale`: given `rootNote` (e.g. "C4") + `scale` (e.g. "major pentatonic"), compute an array of MIDI note numbers
+- [x] Support all 12 scale types from `GlobalSettingsView`: major pentatonic, minor pentatonic, major, minor, blues, chromatic, dorian, mixolydian, lydian, phrygian, whole tone, diminished
+- [x] Replace hardcoded `scaleFrequencies` array with dynamic computation
+- [x] Remove `quantizeToScale` method entirely (replaced by scale-index-based lookup)
 - [ ] Unit tests verifying output matches web's `@tonaljs/scale` for all 12 scale types
-- [ ] New file: `StreamscapesiOS/Sources/Audio/MusicScale.swift`
+- [x] New file: `StreamscapesiOS/Sources/Audio/MusicScale.swift`
 
 ### Phase 1: Core Architecture
 
@@ -148,59 +148,60 @@ Extract pure-function modules, add channel type system, complete remaining modes
 
 #### 1a. Extract MappingEngine and EventShaping
 
-- [ ] Move `applyMappings`, `mapValue`, and mapping state to `StreamscapesiOS/Sources/Audio/MappingEngine.swift`
-- [ ] Move `shouldTrigger`, cooldown, burst cap, threshold to `StreamscapesiOS/Sources/Audio/EventShaping.swift`
-- [ ] Fix exponential curve: change `(pow(10, t) - 1) / 9` to `pow(t, 2)` to match web's `Math.pow(normalized, 2)`
-- [ ] Fix mapping state key format: use composite keys `"streamId:index:source->target"` to avoid collisions when multiple mappings target the same param (matches web)
-- [ ] These are pure functions with no AudioKit deps — independently testable
+- [x] Move `applyMappings`, `mapValue`, and mapping state to `StreamscapesiOS/Sources/Audio/MappingEngine.swift`
+- [x] Move `shouldTrigger`, cooldown, burst cap, threshold to `StreamscapesiOS/Sources/Audio/EventShaping.swift`
+- [x] Fix exponential curve: change `(pow(10, t) - 1) / 9` to `pow(t, 2)` to match web's `Math.pow(normalized, 2)`
+- [x] Fix mapping state key format: use composite keys `"streamId:index:source->target"` to avoid collisions when multiple mappings target the same param (matches web)
+- [x] These are pure functions with no AudioKit deps — independently testable
 - [ ] Unit tests for both modules
 
 #### 1b. Channel type enum + reconciler skeleton
 
 - [ ] Convert `ChannelConfig.mode` from `String` to `enum ChannelMode: String, Codable { case triggered, continuous, pattern }`
-- [ ] Define `TriggeredChannel`, `ContinuousChannel`, `PatternChannel` structs conforming to `ChannelNodeProtocol`
-- [ ] Define `ChannelNode` enum with associated values
-- [ ] Replace `channels: [String: ChannelNode]` dict (using old struct) with new enum-based dict
-- [ ] Implement diff-based reconciliation: compare `mode`, `synthType`, `effectsKey`, `behaviorKey`, `synthOptionsKey`, `patternType`
-- [ ] Structural changes (mode/synthType/effectsKey/behaviorKey/patternType changed) → `disposeChannel` + `createChannel`
-- [ ] Config-only changes (volume, pan, envelope) → `updateChannel` in-place
-- [ ] `synthOptionsKey` changed → live-update envelope/oscillator params without teardown (matches web lines 758-775)
-- [ ] Graceful disposal: ramp fader to -60dB over 40ms before tearing down nodes (matches web's 40ms fadeout)
-- [ ] Muted channels stay in graph with fader silenced (don't tear down — matches web behavior, avoids audio glitches on mute/solo toggle)
-- [ ] Add `lastDataPointByStream` cache: store most recent `DataPoint` per stream, re-bootstrap channels on rebuild (prevents silence when toggling channel off/on — web does this at lines 623-626, 727-734)
-- [ ] Change `reconcile(store:)` → `reconcile(channels: [String: ChannelConfig], global: GlobalConfig)` to decouple from `AppStore` type (matches web pattern, improves testability)
-- [ ] `SonificationEngine.swift`
+- [x] Define `TriggeredChannel`, `ContinuousChannel`, `PatternChannel` structs
+- [x] Define `ChannelNode` enum with associated values
+- [x] Replace `channels: [String: ChannelNode]` dict (using old struct) with new enum-based dict
+- [x] Implement diff-based reconciliation: compare `mode`, `synthType`, `effectsKey`, `behaviorKey`, `patternType`
+- [x] Structural changes (mode/synthType/effectsKey/behaviorKey/patternType changed) → `disposeChannel` + `createChannel`
+- [x] Config-only changes (volume, pan, envelope) → `updateChannel` in-place
+- [x] Envelope params updated in-place without teardown
+- [x] Graceful disposal: ramp fader to 0 before tearing down nodes
+- [x] Muted channels stay in graph with fader silenced (don't tear down)
+- [x] Add `lastDataPointByStream` cache: store most recent `DataPoint` per stream, re-bootstrap channels on rebuild
+- [x] Change `reconcile(store:)` → `reconcile(channels: [String: ChannelConfig], global: GlobalConfig)` to decouple from `AppStore` type
+- [x] `SonificationEngine.swift`
 
 #### 1c. Mapping target parity
 
-- [ ] Support `scaleIndex` target: map value to index in current scale, resolve to MIDI note number
-- [ ] Support `velocity` target: map to 0-127 MIDI velocity for Dunne.Synth, or 0-1 amplitude factor
-- [ ] Support `duration` target: control note-off timing for triggered mode
-- [ ] Support `pan`, `detune`, `filterCutoff` targets (apply to channel/synth params)
-- [ ] Support `triggerProbability` target: stochastic note gating (matches web line 1063)
-- [ ] Update `handleDataPoint` to read all mapped targets, not just `frequency`/`amplitude`
-- [ ] `SonificationEngine.swift`, `MappingEngine.swift`
+- [x] Support `scaleIndex` target: map value to index in current scale, resolve to MIDI note number
+- [x] Support `velocity` target: map to 0-127 MIDI velocity for Dunne.Synth, or 0-1 amplitude factor
+- [x] Support `duration` target: control note-off timing for triggered mode
+- [x] Support `pan` target (apply to channel panner)
+- [ ] Support `detune`, `filterCutoff` targets
+- [x] Support `triggerProbability` target: stochastic note gating
+- [x] Update `handleDataPoint` to read all mapped targets, not just `frequency`/`amplitude`
+- [x] `SonificationEngine.swift`, `MappingEngine.swift`
 
 #### 1d. Pattern mode with DunneAudioKit.Synth
 
-- [ ] Replace `Task.sleep` arpeggio loop with `DispatchSourceTimer` on `.userInitiated` queue (not `.userInteractive` — that's reserved for UI frame rendering)
-- [ ] Use `DunneAudioKit.Synth` for pattern mode (avoids `AmplitudeEnvelope` re-trigger issues where calling `start()` while gate is open is undefined behavior in some AudioKit versions)
-- [ ] Set timer leeway to `.milliseconds(1)` for musical timing accuracy (default leeway causes audible drift)
-- [ ] Timer interval derived from `global.tempo` BPM (beat subdivision)
-- [ ] Each note: `synth.play(noteNumber:velocity:)`, schedule `synth.stop(noteNumber:)` after note duration
-- [ ] Pattern note array computed from current scale (updated on global config change)
-- [ ] `patternType` (upDown, down, up, random, etc.) controls traversal order
-- [ ] Tempo change propagation: when `global.tempo` changes, reschedule timer via `timer.schedule(deadline: .now(), repeating: newInterval, leeway: .milliseconds(1))` — called from `applyGlobalConfig`
-- [ ] Timer lifecycle: store timer in `PatternChannel`, cancel in `disposeChannel`. Ensure timer is in resumed state before cancelling (cancelling a suspended DispatchSourceTimer crashes). Add timer dictionary analogous to current `arpeggioTasks`
-- [ ] `SonificationEngine.swift`
+- [x] Replace `Task.sleep` arpeggio loop with `DispatchSourceTimer` on `.userInitiated` queue
+- [x] Use `DunneAudioKit.Synth` for pattern mode (avoids `AmplitudeEnvelope` re-trigger issues)
+- [x] Set timer leeway to `.milliseconds(1)` for musical timing accuracy
+- [x] Timer interval derived from `global.tempo` BPM (eighth note subdivision)
+- [x] Each note: `synth.play(noteNumber:velocity:)`, schedule `synth.stop(noteNumber:)` after note duration
+- [x] Pattern note array computed from current scale (updated on global config change)
+- [x] `patternType` upDown traversal (basic pattern implemented)
+- [x] Tempo change propagation: `updatePatternTempo` reschedules all pattern timers
+- [x] Timer lifecycle: timer stored in `PatternChannel`, cancelled in `disposeChannel`
+- [x] `SonificationEngine.swift`
 
 #### 1e. Continuous mode with AmplitudeEnvelope
 
-- [ ] Use `DynamicOscillator` + `AmplitudeEnvelope` for continuous drone (single entity for now)
-- [ ] Smooth frequency glide via `oscillator.$frequency.ramp(to:duration:)` (verify API exists in AudioKit 5.6.4 — alternative: set frequency directly and rely on AudioKit's built-in parameter smoothing)
-- [ ] `ambientMode == .sustain`: trigger envelope on, hold indefinitely, update frequency from data
-- [ ] Remove the 900Hz `LowPassButterworthFilter` (it attenuates fundamentals above 900Hz)
-- [ ] `SonificationEngine.swift`
+- [x] Use `DynamicOscillator` + `AmplitudeEnvelope` for continuous drone (single entity for now)
+- [x] Frequency set directly from mapped data (AudioKit parameter smoothing handles glide)
+- [x] `ambientMode == .sustain`: envelope started on creation, held indefinitely, frequency from data
+- [x] Remove the 900Hz `LowPassButterworthFilter` (it attenuates fundamentals above 900Hz)
+- [x] `SonificationEngine.swift`
 
 ### Phase 2: Feature Parity (only if needed after Phase 0+1)
 

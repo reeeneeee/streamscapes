@@ -1,6 +1,7 @@
 import AudioKit
 import AudioKitEX
 import SoundpipeAudioKit
+import DunneAudioKit
 import AVFoundation
 import Foundation
 
@@ -8,31 +9,73 @@ import Foundation
 final class SonificationEngine {
     private var engine = AudioEngine()
     private var mixer = Mixer()
-    private var channels: [String: ChannelNode] = [:]
-    private var channelModes: [String: String] = [:]
+    private var compressor: DynamicRangeCompressor!
+    private var limiter: PeakLimiter!
+    private var headroomFader: Fader!
     private var isStarted = false
-    private var arpeggioTasks: [String: Task<Void, Never>] = [:]
-    private var mappingState: [String: [String: (value: Double, updatedAt: Date)]] = [:]
-    private var lastTriggeredAt: [String: Date] = [:]
-    private var eventHistory: [String: [Date]] = [:]
-    private var lastEventMetric: [String: Double] = [:]
 
-    struct ChannelNode {
-        let oscillator: DynamicOscillator
-        let filter: LowPassButterworthFilter
-        let panner: Panner
-        let fader: Fader
+    // MARK: - Channel state
+
+    private var channels: [String: ChannelNode] = [:]
+    private var channelKeys: [String: ChannelDiffKey] = [:]
+    private var mappingState = MappingEngine.MappingState()
+    private var eventState: [String: EventShaping.StreamState] = [:]
+    private var lastDataPointByStream: [String: DataPoint] = [:]
+
+    // Cached scale notes — recomputed when global config changes
+    private var currentScaleNotes: [Int] = []
+    private var lastRootNote = ""
+    private var lastScale = ""
+
+    // MARK: - Channel types
+
+    enum ChannelNode {
+        case triggered(TriggeredChannel)
+        case continuous(ContinuousChannel)
+        case pattern(PatternChannel)
     }
 
-    // C major pentatonic across 3 octaves
-    static let scaleFrequencies: [Double] = [
-        130.81, 146.83, 164.81, 196.00, 220.00,  // C3 D3 E3 G3 A3
-        261.63, 293.66, 329.63, 392.00, 440.00,  // C4 D4 E4 G4 A4
-        523.25, 587.33, 659.25, 783.99, 880.00,  // C5 D5 E5 G5 A5
-    ]
+    struct TriggeredChannel {
+        let synth: DunneAudioKit.Synth
+        let fader: Fader
+        let panner: Panner
+    }
+
+    struct ContinuousChannel {
+        let oscillator: DynamicOscillator
+        let envelope: AmplitudeEnvelope
+        let fader: Fader
+        let panner: Panner
+    }
+
+    struct PatternChannel {
+        let synth: DunneAudioKit.Synth
+        let fader: Fader
+        let panner: Panner
+        var timer: DispatchSourceTimer?
+        var patternStep: Int = 0
+    }
+
+    /// Keys used for diff-based reconciliation — rebuild only when these change.
+    struct ChannelDiffKey: Equatable {
+        let mode: String
+        let synthType: String
+        let effectsKey: String
+        let behaviorKey: String
+        let patternType: String
+    }
+
+    // MARK: - Init & lifecycle
 
     init() {
-        engine.output = mixer
+        compressor = DynamicRangeCompressor(mixer)
+        compressor.threshold = -24
+        compressor.ratio = 4
+        compressor.attackDuration = 0.01
+        compressor.releaseDuration = 0.1
+        limiter = PeakLimiter(compressor)
+        headroomFader = Fader(limiter, gain: 0.891) // -1dB headroom for inter-sample peaks
+        engine.output = headroomFader
     }
 
     func start() throws {
@@ -40,312 +83,489 @@ final class SonificationEngine {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try session.setActive(true)
+
+        // Listen for audio session interruptions (phone calls, Siri, etc.)
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            // Extract sendable values before crossing isolation boundary
+            let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            let optionsValue = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+            Task { @MainActor in
+                self?.handleInterruption(typeValue: typeValue, optionsValue: optionsValue)
+            }
+        }
+
         try engine.start()
         isStarted = true
     }
 
     func stop() {
-        for (_, task) in arpeggioTasks { task.cancel() }
-        arpeggioTasks.removeAll()
+        for id in Array(channels.keys) {
+            disposeChannel(id: id, fadeOut: false)
+        }
         engine.stop()
         channels.removeAll()
-        channelModes.removeAll()
+        channelKeys.removeAll()
         mappingState.removeAll()
-        lastTriggeredAt.removeAll()
-        eventHistory.removeAll()
-        lastEventMetric.removeAll()
+        eventState.removeAll()
+        lastDataPointByStream.removeAll()
         isStarted = false
     }
 
-    // MARK: - Channel management
+    private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
+        guard let typeValue,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
 
-    func ensureChannel(id: String, config: ChannelConfig) {
-        guard channels[id] == nil else { return }
-
-        let osc = DynamicOscillator()
-        osc.setWaveform(Table(.sine))
-        let lpf = LowPassButterworthFilter(osc, cutoffFrequency: 900)
-        let panner = Panner(lpf)
-        let fader = Fader(panner)
-
-        osc.start()
-        osc.amplitude = 0
-        osc.frequency = 130.81 // C3 — warm starting pitch
-
-        channelModes[id] = config.mode
-        mixer.addInput(fader)
-        channels[id] = ChannelNode(oscillator: osc, filter: lpf, panner: panner, fader: fader)
-
-        // Start arpeggio for ambient channels
-        if config.behaviorType == .ambient && config.ambientMode == .arpeggio {
-            startArpeggio(id: id)
+        if type == .ended {
+            let options = optionsValue.flatMap { AVAudioSession.InterruptionOptions(rawValue: $0) }
+            if options?.contains(.shouldResume) == true {
+                try? engine.start()
+            }
         }
     }
 
-    func removeChannel(id: String) {
-        arpeggioTasks[id]?.cancel()
-        arpeggioTasks.removeValue(forKey: id)
-        guard let node = channels[id] else { return }
-        node.oscillator.stop()
-        mixer.removeInput(node.fader)
-        channels.removeValue(forKey: id)
-        channelModes.removeValue(forKey: id)
+    // MARK: - Scale management
+
+    private func updateScale(global: GlobalConfig) {
+        guard global.rootNote != lastRootNote || global.scale != lastScale else { return }
+        lastRootNote = global.rootNote
+        lastScale = global.scale
+        currentScaleNotes = MusicScale.scaleNotes(rootNote: global.rootNote, scale: global.scale)
     }
 
-    // MARK: - Arpeggio
+    // MARK: - Channel creation
 
-    private func startArpeggio(id: String) {
-        arpeggioTasks[id]?.cancel()
+    private func createChannel(id: String, config: ChannelConfig) {
+        switch config.mode {
+        case "triggered":
+            let env = config.synthOptions.envelope
+            let synth = DunneAudioKit.Synth(
+                masterVolume: 1.0,
+                pitchBend: 0,
+                vibratoDepth: 0,
+                filterCutoff: 4,
+                filterStrength: 20,
+                filterResonance: 0,
+                attackDuration: Float(env?.attack ?? 0.02),
+                decayDuration: Float(env?.decay ?? 0.3),
+                sustainLevel: Float(env?.sustain ?? 0.05),
+                releaseDuration: Float(env?.release ?? 0.4),
+                filterEnable: false
+            )
+            let panner = Panner(synth)
+            let fader = Fader(panner)
+            mixer.addInput(fader)
+            channels[id] = .triggered(TriggeredChannel(synth: synth, fader: fader, panner: panner))
 
-        // Pick notes in the scale based on channel — favor warm lower registers
-        let noteIndices: [Int]
-        switch id {
-        case "weather":
-            noteIndices = [0, 2, 4, 2, 0, 3, 5, 3] // C3 E3 A3 E3 C3 G3 C4 G3
-        case "flights":
-            noteIndices = [0, 2, 4, 2] // C3 E3 A3 E3 — low register
+        case "continuous":
+            let osc = DynamicOscillator()
+            osc.setWaveform(Table(.sine))
+            osc.amplitude = 0
+            osc.frequency = 220
+            let ampEnv = AmplitudeEnvelope(osc)
+            ampEnv.attackDuration = AUValue(config.synthOptions.envelope?.attack ?? 0.2)
+            ampEnv.decayDuration = AUValue(config.synthOptions.envelope?.decay ?? 0.3)
+            ampEnv.sustainLevel = AUValue(config.synthOptions.envelope?.sustain ?? 0.5)
+            ampEnv.releaseDuration = AUValue(config.synthOptions.envelope?.release ?? 1.0)
+            let panner = Panner(ampEnv)
+            let fader = Fader(panner)
+            osc.start()
+            ampEnv.start()
+            osc.amplitude = 1 // envelope controls amplitude
+            mixer.addInput(fader)
+            channels[id] = .continuous(ContinuousChannel(oscillator: osc, envelope: ampEnv, fader: fader, panner: panner))
+
+        case "pattern":
+            let pEnv = config.synthOptions.envelope
+            let synth = DunneAudioKit.Synth(
+                masterVolume: 1.0,
+                pitchBend: 0,
+                vibratoDepth: 0,
+                filterCutoff: 4,
+                filterStrength: 20,
+                filterResonance: 0,
+                attackDuration: Float(pEnv?.attack ?? 0.08),
+                decayDuration: Float(pEnv?.decay ?? 0.4),
+                sustainLevel: Float(pEnv?.sustain ?? 0.3),
+                releaseDuration: Float(pEnv?.release ?? 0.8),
+                filterEnable: false
+            )
+            let panner = Panner(synth)
+            let fader = Fader(panner)
+            mixer.addInput(fader)
+            var channel = PatternChannel(synth: synth, fader: fader, panner: panner)
+            startPatternTimer(id: id, channel: &channel, config: config)
+            channels[id] = .pattern(channel)
+
         default:
-            noteIndices = [0, 2, 4, 5] // C3 E3 A3 C4
+            print("[SonificationEngine] Unknown mode: \(config.mode)")
         }
 
-        arpeggioTasks[id] = Task { @MainActor in
-            var step = 0
-            while !Task.isCancelled {
-                guard let node = self.channels[id] else { break }
+        // Store diff key
+        channelKeys[id] = diffKey(for: config)
 
-                let idx = noteIndices[step % noteIndices.count]
-                let freq = Self.scaleFrequencies[idx]
-                node.oscillator.frequency = AUValue(freq)
+        // Apply volume/pan
+        updateChannel(id: id, config: config)
+    }
 
-                // Gentle swell per note — keep amplitude soft
-                let baseAmp = node.oscillator.amplitude
-                let peakAmp = max(baseAmp, 0.04)
-                node.oscillator.amplitude = AUValue(peakAmp)
+    private func disposeChannel(id: String, fadeOut: Bool = true) {
+        guard let node = channels[id] else { return }
 
-                // Note duration: ~600ms for a relaxed feel
-                try? await Task.sleep(for: .milliseconds(600))
+        // Cancel any pattern timers
+        if case .pattern(var ch) = node {
+            ch.timer?.cancel()
+            ch.timer = nil
+        }
 
-                // Gradual dip between notes
-                node.oscillator.amplitude = AUValue(peakAmp * 0.7)
-                try? await Task.sleep(for: .milliseconds(80))
+        // Remove from mixer
+        let fader = channelFader(node)
+        if fadeOut {
+            // Ramp to silence over 40ms to prevent clicks
+            fader.gain = 0
+            // Schedule actual removal on next runloop tick
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                Task { @MainActor in
+                    self?.mixer.removeInput(fader)
+                }
+            }
+        } else {
+            mixer.removeInput(fader)
+        }
 
-                step += 1
+        // Stop nodes
+        switch node {
+        case .triggered(let ch):
+            // DunneAudioKit.Synth stops automatically when removed from graph
+            _ = ch
+        case .continuous(let ch):
+            ch.envelope.stop()
+            ch.oscillator.stop()
+        case .pattern(let ch):
+            _ = ch
+        }
+
+        channels.removeValue(forKey: id)
+        channelKeys.removeValue(forKey: id)
+        MappingEngine.clearState(for: id, in: &mappingState)
+        eventState.removeValue(forKey: id)
+    }
+
+    private func channelFader(_ node: ChannelNode) -> Fader {
+        switch node {
+        case .triggered(let ch): return ch.fader
+        case .continuous(let ch): return ch.fader
+        case .pattern(let ch): return ch.fader
+        }
+    }
+
+    // MARK: - Channel update (config-only, no teardown)
+
+    private func updateChannel(id: String, config: ChannelConfig) {
+        guard let node = channels[id] else { return }
+        let fader = channelFader(node)
+        fader.gain = AUValue(dbToLinear(config.volume))
+
+        switch node {
+        case .triggered(let ch):
+            ch.panner.pan = AUValue(config.pan)
+            // Update envelope params in-place
+            if let env = config.synthOptions.envelope {
+                ch.synth.attackDuration = Float(env.attack)
+                ch.synth.decayDuration = Float(env.decay)
+                ch.synth.sustainLevel = Float(env.sustain)
+                ch.synth.releaseDuration = Float(env.release)
+            }
+
+        case .continuous(let ch):
+            ch.panner.pan = AUValue(config.pan)
+            if let env = config.synthOptions.envelope {
+                ch.envelope.attackDuration = AUValue(env.attack)
+                ch.envelope.decayDuration = AUValue(env.decay)
+                ch.envelope.sustainLevel = AUValue(env.sustain)
+                ch.envelope.releaseDuration = AUValue(env.release)
+            }
+
+        case .pattern(var ch):
+            ch.panner.pan = AUValue(config.pan)
+            if let env = config.synthOptions.envelope {
+                ch.synth.attackDuration = Float(env.attack)
+                ch.synth.decayDuration = Float(env.decay)
+                ch.synth.sustainLevel = Float(env.sustain)
+                ch.synth.releaseDuration = Float(env.release)
+            }
+            channels[id] = .pattern(ch)
+        }
+    }
+
+    // MARK: - Pattern timer
+
+    private func startPatternTimer(id: String, channel: inout PatternChannel, config: ChannelConfig) {
+        channel.timer?.cancel()
+
+        let tempo = max(40, min(240, Double(lastRootNote.isEmpty ? 120 : 120))) // will be set from global
+        let beatIntervalSec = 60.0 / tempo / 2.0 // eighth note subdivision
+
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.streamscapes.pattern.\(id)", qos: .userInitiated))
+        timer.schedule(deadline: .now() + beatIntervalSec, repeating: beatIntervalSec, leeway: .milliseconds(1))
+
+        timer.setEventHandler { [weak self] in
+            Task { @MainActor in
+                self?.firePatternNote(id: id)
+            }
+        }
+
+        timer.resume()
+        channel.timer = timer
+    }
+
+    private func firePatternNote(id: String) {
+        guard case .pattern(var ch) = channels[id] else { return }
+        guard !currentScaleNotes.isEmpty else { return }
+
+        let notes = currentScaleNotes
+        let noteCount = notes.count
+        guard noteCount > 0 else { return }
+
+        // Pattern traversal
+        let noteIndex: Int
+        let step = ch.patternStep
+        // Simple upDown pattern (most common)
+        let cycleLength = max(1, noteCount * 2 - 2)
+        let pos = step % cycleLength
+        if pos < noteCount {
+            noteIndex = pos
+        } else {
+            noteIndex = cycleLength - pos
+        }
+
+        let midiNote = notes[min(noteIndex, noteCount - 1)]
+        let velocity = 80 // moderate velocity for patterns
+
+        // Play note — DunneAudioKit.Synth handles voice management
+        ch.synth.play(noteNumber: UInt8(midiNote), velocity: UInt8(velocity), channel: 0)
+
+        // Schedule note-off after note duration (half the beat interval)
+        let noteDurationMs = 250
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(noteDurationMs)) { [weak self] in
+            Task { @MainActor in
+                guard case .pattern(let currentCh) = self?.channels[id] else { return }
+                currentCh.synth.stop(noteNumber: UInt8(midiNote), channel: 0)
+            }
+        }
+
+        ch.patternStep = step + 1
+        channels[id] = .pattern(ch)
+    }
+
+    func updatePatternTempo(global: GlobalConfig) {
+        let tempo = max(40, min(240, Double(global.tempo)))
+        let beatIntervalSec = 60.0 / tempo / 2.0
+
+        for (id, node) in channels {
+            if case .pattern(var ch) = node {
+                ch.timer?.schedule(deadline: .now() + beatIntervalSec, repeating: beatIntervalSec, leeway: .milliseconds(1))
+                channels[id] = .pattern(ch)
             }
         }
     }
 
     // MARK: - Reconcile
 
-    func reconcile(store: AppStore) {
-        let masterDb = store.global.masterVolume
-        mixer.volume = AUValue(dbToLinear(masterDb))
+    private func diffKey(for config: ChannelConfig) -> ChannelDiffKey {
+        let effectsKey = config.effects.map { "\($0.type):\($0.wet):\($0.bypass)" }.joined(separator: "|")
+        let behaviorKey = "\(config.behaviorType.rawValue):\(config.ambientMode.rawValue)"
+        return ChannelDiffKey(
+            mode: config.mode,
+            synthType: config.synthType,
+            effectsKey: effectsKey,
+            behaviorKey: behaviorKey,
+            patternType: config.patternType ?? "upDown"
+        )
+    }
 
-        for (id, config) in store.channels {
-            if config.enabled && !config.mute {
-                ensureChannel(id: id, config: config)
-                applyChannel(id: id, config: config)
+    func reconcile(channels configs: [String: ChannelConfig], global: GlobalConfig) {
+        // Update master volume (applied to mixer, before compression)
+        mixer.volume = AUValue(dbToLinear(global.masterVolume))
+
+        // Update scale
+        updateScale(global: global)
+
+        // Update pattern tempos
+        updatePatternTempo(global: global)
+
+        // Determine which channels should be active
+        let activeIds = Set(configs.filter { $0.value.enabled }.keys)
+        let currentIds = Set(channels.keys)
+
+        // Remove channels that are no longer active
+        for id in currentIds.subtracting(activeIds) {
+            disposeChannel(id: id)
+        }
+
+        // Create or update active channels
+        for (id, config) in configs where config.enabled {
+            let newKey = diffKey(for: config)
+
+            if let existingKey = channelKeys[id] {
+                if existingKey != newKey {
+                    // Structural change — rebuild
+                    disposeChannel(id: id)
+                    createChannel(id: id, config: config)
+                } else {
+                    // Config-only change — update in-place
+                    updateChannel(id: id, config: config)
+
+                    // Handle mute: keep channel alive, just silence the fader
+                    if config.mute {
+                        channelFader(channels[id]!).gain = 0
+                    }
+                }
             } else {
-                removeChannel(id: id)
+                // New channel
+                createChannel(id: id, config: config)
+                if config.mute {
+                    channelFader(channels[id]!).gain = 0
+                }
+
+                // Bootstrap from cached data point if available
+                if let cachedDp = lastDataPointByStream[id] {
+                    handleDataPoint(cachedDp, config: config, global: global)
+                }
             }
         }
     }
 
-    func applyChannel(id: String, config: ChannelConfig) {
-        guard let node = channels[id] else { return }
-        node.fader.gain = AUValue(dbToLinear(config.volume))
-        node.panner.pan = AUValue(config.pan)
-        if config.behaviorType == .ambient && config.ambientMode == .arpeggio {
-            if arpeggioTasks[id] == nil { startArpeggio(id: id) }
-        } else {
-            arpeggioTasks[id]?.cancel()
-            arpeggioTasks[id] = nil
-        }
+    // Legacy reconcile method — bridges from old AppStore-based API
+    func reconcile(store: AppStore) {
+        reconcile(channels: store.channels, global: store.global)
     }
 
     // MARK: - Data handling
 
     func handleDataPoint(_ dp: DataPoint, config: ChannelConfig, global: GlobalConfig) {
-        guard let node = channels[dp.streamId] else { return }
+        guard channels[dp.streamId] != nil else { return }
 
-        let mapped = applyMappings(streamId: dp.streamId, timestamp: dp.timestamp, dp: dp, mappings: config.mappings)
+        // Cache for channel re-bootstrap
+        lastDataPointByStream[dp.streamId] = dp
 
-        if config.mode == "triggered" {
-            if shouldTrigger(streamId: dp.streamId, config: config, mapped: mapped) {
-                triggerNote(id: dp.streamId, node: node, mapped: mapped, envelope: config.synthOptions.envelope, articulation: config.eventArticulation ?? .neutral)
+        // Ensure scale is current
+        updateScale(global: global)
+
+        // Apply mappings
+        var mapped = MappingEngine.applyMappings(
+            dataPoint: dp,
+            mappings: config.mappings,
+            state: &mappingState,
+            stateKeyPrefix: dp.streamId
+        )
+
+        // Resolve scaleIndex → MIDI note number
+        if let scaleIndex = mapped["scaleIndex"] {
+            let midiNote = MusicScale.noteForScaleIndex(scaleIndex, notes: currentScaleNotes)
+            mapped["_resolvedMidiNote"] = Double(midiNote)
+            mapped["frequency"] = MusicScale.midiToFrequency(midiNote)
+        } else if let freq = mapped["frequency"], !currentScaleNotes.isEmpty {
+            // Quantize raw frequency to nearest scale note
+            let targetMidi = 69 + 12 * log2(freq / 440.0)
+            let closest = currentScaleNotes.min(by: { abs(Double($0) - targetMidi) < abs(Double($1) - targetMidi) }) ?? 60
+            mapped["_resolvedMidiNote"] = Double(closest)
+            mapped["frequency"] = MusicScale.midiToFrequency(closest)
+        }
+
+        switch config.mode {
+        case "triggered":
+            if EventShaping.shouldTrigger(streamId: dp.streamId, config: config, mapped: mapped, state: &eventState) {
+                triggerNote(id: dp.streamId, config: config, mapped: mapped)
             }
-        } else {
-            // Continuous: update amplitude from data, frequency handled by arpeggio
-            if let amp = mapped["amplitude"] {
-                node.oscillator.amplitude = AUValue(amp)
-            }
-            // If not arpeggiated, allow direct frequency control
-            if config.ambientMode != .arpeggio, let freq = mapped["frequency"] {
-                node.oscillator.frequency = AUValue(quantizeToScale(freq))
-            }
+
+        case "continuous":
+            handleContinuousData(id: dp.streamId, mapped: mapped)
+
+        case "pattern":
+            handlePatternData(id: dp.streamId, mapped: mapped)
+
+        default:
+            break
         }
     }
 
     // MARK: - Triggered notes
 
-    private func triggerNote(
-        id: String,
-        node: ChannelNode,
-        mapped: [String: Double],
-        envelope: ChannelConfig.SynthOptions.Envelope?,
-        articulation: ChannelConfig.Articulation
-    ) {
-        var env = envelope ?? .init(attack: 0.02, decay: 0.3, sustain: 0.0, release: 0.5)
-        switch articulation {
-        case .soft:
-            env.attack = max(env.attack, 0.04)
-            env.decay = max(env.decay, 0.4)
-            env.release = max(env.release, 0.7)
-        case .punchy:
-            env.attack = min(env.attack, 0.01)
-            env.decay = min(env.decay, 0.15)
-            env.release = min(env.release, 0.25)
-        case .neutral:
-            break
+    private func triggerNote(id: String, config: ChannelConfig, mapped: [String: Double]) {
+        guard case .triggered(let ch) = channels[id] else { return }
+
+        let midiNote: UInt8
+        if let resolved = mapped["_resolvedMidiNote"] {
+            midiNote = UInt8(max(0, min(127, Int(resolved))))
+        } else {
+            // Fallback: pick a note from the middle of the scale
+            let midIndex = currentScaleNotes.count / 2
+            midiNote = UInt8(currentScaleNotes.isEmpty ? 60 : currentScaleNotes[midIndex])
         }
 
-        // Quantize frequency to scale
+        let rawVelocity = mapped["velocity"] ?? mapped["amplitude"] ?? 0.5
+        let articulation = config.eventArticulation ?? .neutral
+        let velocity = EventShaping.articulationVelocity(rawVelocity, articulation: articulation)
+        let midiVelocity = UInt8(max(1, min(127, Int(velocity * 127))))
+
+        ch.synth.play(noteNumber: midiNote, velocity: midiVelocity, channel: 0)
+
+        // Schedule note-off based on duration target or envelope
+        let durationMs: Int
+        if let dur = mapped["duration"] {
+            durationMs = max(50, Int(dur * 1000))
+        } else {
+            let env = config.synthOptions.envelope ?? .init(attack: 0.02, decay: 0.3, sustain: 0.05, release: 0.4)
+            durationMs = Int((env.attack + env.decay) * 1000) + 50
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(durationMs)) { [weak self] in
+            Task { @MainActor in
+                guard case .triggered(let currentCh) = self?.channels[id] else { return }
+                currentCh.synth.stop(noteNumber: midiNote, channel: 0)
+            }
+        }
+
+        // Apply pan from mapped data
+        if let pan = mapped["pan"] {
+            ch.panner.pan = AUValue(max(-1, min(1, pan)))
+        }
+    }
+
+    // MARK: - Continuous data
+
+    private func handleContinuousData(id: String, mapped: [String: Double]) {
+        guard case .continuous(let ch) = channels[id] else { return }
+
         if let freq = mapped["frequency"] {
-            node.oscillator.frequency = AUValue(quantizeToScale(freq))
+            ch.oscillator.frequency = AUValue(freq)
         }
-
-        let peakAmp = AUValue(mapped["amplitude"] ?? 0.15)
-
-        let attackMs = Int(env.attack * 1000)
-        let decayMs = Int(env.decay * 1000)
-        let releaseMs = Int(env.release * 1000)
-        let sustainLevel = AUValue(env.sustain) * peakAmp
-
-        // Start from silence and ramp up to avoid click
-        node.oscillator.amplitude = 0
-
-        Task { @MainActor in
-            // Attack: ramp to peak
-            try? await Task.sleep(for: .milliseconds(max(attackMs, 5)))
-            guard self.channels[id] != nil else { return }
-            node.oscillator.amplitude = peakAmp
-
-            // Decay: settle to sustain level
-            try? await Task.sleep(for: .milliseconds(decayMs))
-            guard self.channels[id] != nil else { return }
-            node.oscillator.amplitude = sustainLevel
-
-            // Release: fade to silence
-            try? await Task.sleep(for: .milliseconds(releaseMs))
-            guard self.channels[id] != nil else { return }
-            node.oscillator.amplitude = 0
+        if let amp = mapped["amplitude"] {
+            ch.oscillator.amplitude = AUValue(max(0, min(1, amp)))
+        }
+        if let pan = mapped["pan"] {
+            ch.panner.pan = AUValue(max(-1, min(1, pan)))
         }
     }
 
-    private func shouldTrigger(streamId: String, config: ChannelConfig, mapped: [String: Double]) -> Bool {
-        let now = Date()
+    // MARK: - Pattern data
 
-        if let cooldown = config.eventCooldownMs, cooldown > 0 {
-            let last = lastTriggeredAt[streamId] ?? .distantPast
-            if now.timeIntervalSince(last) * 1000 < cooldown {
-                return false
-            }
+    private func handlePatternData(id: String, mapped: [String: Double]) {
+        guard case .pattern(let ch) = channels[id] else { return }
+
+        // Pattern mode uses data to modulate volume/pan, not direct note control
+        if let amp = mapped["amplitude"] {
+            ch.synth.masterVolume = Float(max(0, min(1, amp)) * 5) // Scale up for audibility
         }
-
-        let metric = mapped["amplitude"] ?? mapped["frequency"] ?? 0
-        if let threshold = config.eventTriggerThreshold, threshold > 0 {
-            let prev = lastEventMetric[streamId] ?? metric
-            lastEventMetric[streamId] = metric
-            if abs(metric - prev) < threshold {
-                return false
-            }
+        if let pan = mapped["pan"] {
+            ch.panner.pan = AUValue(max(-1, min(1, pan)))
         }
-
-        if let cap = config.eventBurstCap, cap > 0 {
-            let windowMs = max(100, config.eventBurstWindowMs ?? 1200)
-            var kept = (eventHistory[streamId] ?? []).filter { now.timeIntervalSince($0) * 1000 <= windowMs }
-            if kept.count >= cap {
-                eventHistory[streamId] = kept
-                return false
-            }
-            kept.append(now)
-            eventHistory[streamId] = kept
-        }
-
-        lastTriggeredAt[streamId] = now
-        return true
     }
 
-    // MARK: - Scale quantization
-
-    private func quantizeToScale(_ freq: Double) -> Double {
-        var closest = Self.scaleFrequencies[0]
-        var minDist = abs(freq - closest)
-        for f in Self.scaleFrequencies {
-            let dist = abs(freq - f)
-            if dist < minDist {
-                minDist = dist
-                closest = f
-            }
-        }
-        return closest
-    }
-
-    // MARK: - Mapping engine
-
-    private func applyMappings(streamId: String, timestamp: Date, dp: DataPoint, mappings: [SonificationMapping]) -> [String: Double] {
-        var result: [String: Double] = [:]
-        for mapping in mappings {
-            guard let value = dp.fields[mapping.sourceField] else { continue }
-            var out = mapValue(
-                value: value,
-                inputRange: mapping.inputRange,
-                outputRange: mapping.outputRange,
-                curve: mapping.curve,
-                invert: mapping.invert
-            )
-            if let step = mapping.quantizeStep, step > 0 {
-                out = (out / step).rounded() * step
-            }
-            var streamState = mappingState[streamId] ?? [:]
-            if let h = mapping.hysteresis, h > 0, let prev = streamState[mapping.targetParam]?.value, abs(out - prev) < h {
-                out = prev
-            }
-            if let smoothing = mapping.smoothingMs, smoothing > 0, let prev = streamState[mapping.targetParam] {
-                let dt = max(1, timestamp.timeIntervalSince(prev.updatedAt) * 1000)
-                let alpha = min(1, dt / smoothing)
-                out = prev.value + (out - prev.value) * alpha
-            }
-            streamState[mapping.targetParam] = (value: out, updatedAt: timestamp)
-            mappingState[streamId] = streamState
-            result[mapping.targetParam] = out
-        }
-        return result
-    }
-
-    private func mapValue(
-        value: Double,
-        inputRange: [Double],
-        outputRange: [Double],
-        curve: SonificationMapping.CurveType,
-        invert: Bool
-    ) -> Double {
-        guard inputRange.count == 2, outputRange.count == 2 else { return value }
-        let inMin = inputRange[0], inMax = inputRange[1]
-        let outMin = outputRange[0], outMax = outputRange[1]
-
-        var t = (value - inMin) / (inMax - inMin)
-        t = min(1, max(0, t))
-
-        switch curve {
-        case .linear: break
-        case .log: t = log10(1 + t * 9)
-        case .exp: t = (pow(10, t) - 1) / 9
-        case .step: t = (t * 4).rounded(.down) / 4
-        }
-
-        if invert { t = 1 - t }
-        return outMin + t * (outMax - outMin)
-    }
+    // MARK: - Utilities
 
     private func dbToLinear(_ db: Double) -> Double {
         db <= -40 ? 0 : pow(10, db / 20)

@@ -25,10 +25,12 @@
 		5715D256A9BF2E66E0A9DE2C /* GlobalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCF77449C575CE894CD04EC /* GlobalSettingsView.swift */; };
 		575CC7571EA90DEA0936C016 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */; };
 		5A816CF102BDE8FA2F11499A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86D517E52DFF9650DF316E5 /* RootView.swift */; };
+		5BF7B0E85B124F515776039A /* EventShaping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CB97E03397E42FE3B1B63E /* EventShaping.swift */; };
 		64D804D538875199BCB36D70 /* VisualizerData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D643625E40B2E7D2603891 /* VisualizerData.swift */; };
 		694F25B8FF7F61CD779AC898 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4778315E48C61CCD6588B667 /* Theme.swift */; };
 		8A178777C4FC182BBD0D139A /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CE79C45C5975B7A075CF0E /* StartView.swift */; };
 		8DB3DBB25B693A3848B81D95 /* AudioCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A018A3723F2B6161B6C248B3 /* AudioCoordinator.swift */; };
+		8F27B00D5178952C28140AF1 /* MusicScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = C99678FCF993520CB9388801 /* MusicScale.swift */; };
 		9305B13B134A87970F37CFBF /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A0DAF0DCB09C7ECE4F211C36 /* DMSans-Regular.ttf */; };
 		953B6118B947677CA2954590 /* MappingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82523C4E9E09306FAD1D0091 /* MappingsView.swift */; };
 		96A340A87B4CF49CDA2B1DAB /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6FFE74060E617651385ADA /* WebAppView.swift */; };
@@ -40,6 +42,7 @@
 		A6A665F40830687C8717A455 /* DunneAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 82AD0676F009469DFA763CE5 /* DunneAudioKit */; };
 		AE1B487300AE7DF7604A67E0 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0547F19613D91BCC82CA84 /* MainView.swift */; };
 		B3556CDDE44F1F2795FA29CA /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A52D84A6B7C3FA49C7E9A128 /* SpaceGrotesk-SemiBold.ttf */; };
+		B3B413E583337E2548B38C66 /* MappingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AE6CB4920DADF6CBE5F184 /* MappingEngine.swift */; };
 		B40BBE4AD4B333828FD1DE35 /* MixerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB64EFD85BDB81BC7B0071D0 /* MixerView.swift */; };
 		BEBE9185D530EFF54DA4D0EA /* SonificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877BFD89B7F8DB68A6E64944 /* SonificationView.swift */; };
 		C6D93D99032FC6092C3E1FA6 /* FlightStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A759320F6CC4164A15F01A9A /* FlightStreamPlugin.swift */; };
@@ -56,6 +59,7 @@
 		0073A1922970594E842786AF /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-SemiBold.ttf"; sourceTree = "<group>"; };
 		0DCF77449C575CE894CD04EC /* GlobalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettingsView.swift; sourceTree = "<group>"; };
 		0ED9C4C4134AE3461A18BA27 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
+		11CB97E03397E42FE3B1B63E /* EventShaping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventShaping.swift; sourceTree = "<group>"; };
 		15FFFCAEB65E883809007A21 /* DMSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Medium.ttf"; sourceTree = "<group>"; };
 		21357F05579D411B8E6F2DFF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		21C5C420458CD16F5853D89F /* PresetCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetCatalog.swift; sourceTree = "<group>"; };
@@ -65,7 +69,7 @@
 		29E142AE6D01C3B27ACD33DF /* GlobalConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalConfig.swift; sourceTree = "<group>"; };
 		2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		31539198BBEE43B82AD0D64E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		3757410AF3795556FF8C69C2 /* Streamscapes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Streamscapes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3757410AF3795556FF8C69C2 /* Streamscapes.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Streamscapes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37CE79C45C5975B7A075CF0E /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		387AFBC9405D9ADEA1C5CAD9 /* WikiStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiStreamPlugin.swift; sourceTree = "<group>"; };
 		3E2F248C7F58134CA146811F /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
@@ -89,9 +93,11 @@
 		B86D517E52DFF9650DF316E5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		BD32C7C63F5D19762A42B3C2 /* DMSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Bold.ttf"; sourceTree = "<group>"; };
 		C1AB5EE41BC0C38895F46B8D /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		C5AE6CB4920DADF6CBE5F184 /* MappingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingEngine.swift; sourceTree = "<group>"; };
 		C97A7C4E68D66877707925E7 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		C99678FCF993520CB9388801 /* MusicScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicScale.swift; sourceTree = "<group>"; };
 		CD8A7906A35D974589312EDE /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
-		DD12484096EA9E0236691F8D /* Secrets.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Secrets.example; sourceTree = "<group>"; };
+		DD12484096EA9E0236691F8D /* Secrets.example */ = {isa = PBXFileReference; path = Secrets.example; sourceTree = "<group>"; };
 		E1B3965A24D156E90A8C074C /* StreamManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamManager.swift; sourceTree = "<group>"; };
 		E9A270D84960CD3174EC8904 /* StreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPlugin.swift; sourceTree = "<group>"; };
 		FB64EFD85BDB81BC7B0071D0 /* MixerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerView.swift; sourceTree = "<group>"; };
@@ -255,6 +261,9 @@
 			isa = PBXGroup;
 			children = (
 				A018A3723F2B6161B6C248B3 /* AudioCoordinator.swift */,
+				11CB97E03397E42FE3B1B63E /* EventShaping.swift */,
+				C5AE6CB4920DADF6CBE5F184 /* MappingEngine.swift */,
+				C99678FCF993520CB9388801 /* MusicScale.swift */,
 				ADC0198213E562AAC263806F /* SonificationEngine.swift */,
 			);
 			path = Audio;
@@ -328,6 +337,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 37A73FB855CE810ECDE3AC16 /* Build configuration list for PBXProject "Streamscapes" */;
 			developmentRegion = en;
@@ -386,13 +397,16 @@
 				C9B9558A4185EE825E04104A /* ControlsView.swift in Sources */,
 				071CCC16B17BEE67C01E1F5E /* DataPoint.swift in Sources */,
 				0EC017D98CCFDBAFEE28A796 /* EffectsView.swift in Sources */,
+				5BF7B0E85B124F515776039A /* EventShaping.swift in Sources */,
 				C6D93D99032FC6092C3E1FA6 /* FlightStreamPlugin.swift in Sources */,
 				0146D24831365AB3EEE861F2 /* GlobalConfig.swift in Sources */,
 				5715D256A9BF2E66E0A9DE2C /* GlobalSettingsView.swift in Sources */,
 				25B5946E97B91A1180BAB5D6 /* ListenView.swift in Sources */,
 				AE1B487300AE7DF7604A67E0 /* MainView.swift in Sources */,
+				B3B413E583337E2548B38C66 /* MappingEngine.swift in Sources */,
 				953B6118B947677CA2954590 /* MappingsView.swift in Sources */,
 				B40BBE4AD4B333828FD1DE35 /* MixerView.swift in Sources */,
+				8F27B00D5178952C28140AF1 /* MusicScale.swift in Sources */,
 				9894731A8746F9B88B010528 /* PresetCatalog.swift in Sources */,
 				13456CCEAED96278F99A1A6F /* PresetsView.swift in Sources */,
 				5A816CF102BDE8FA2F11499A /* RootView.swift in Sources */,
@@ -476,7 +490,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = MAG2WYD297;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -493,7 +506,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = MAG2WYD297;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

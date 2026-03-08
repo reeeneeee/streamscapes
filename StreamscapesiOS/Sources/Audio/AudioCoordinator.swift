@@ -63,7 +63,7 @@ final class AudioCoordinator {
     }
 
     func reconcile(store: AppStore) {
-        engine.reconcile(store: store)
+        engine.reconcile(channels: store.channels, global: store.global)
     }
 
     private var flightBuffer: [DataPoint] = []
