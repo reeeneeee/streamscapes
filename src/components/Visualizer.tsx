@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import * as Tone from 'tone';
+import type * as Tone from 'tone';
 import type { AudioEngine } from '@/lib/audio-engine';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
 import { STREAM_COLORS } from '@/lib/stream-constants';
+import { useStore } from '@/store';
 
 interface WikiEdit {
   title: string;
@@ -58,6 +59,19 @@ const Visualizer = ({
   engine,
 }: VisualizerProps) => {
   const [infoPanel, setInfoPanel] = useState<{ title: string; json: string; url?: string } | null>(null);
+  const activeStreams = useStore((s) => s.activeStreams);
+  const channels = useStore((s) => s.channels);
+
+  // Check if any enabled+unmuted stream is still connecting
+  const isPlaying = useStore((s) => s.isPlaying);
+  const enabledIds = Object.entries(channels)
+    .filter(([, ch]) => ch.enabled && !ch.mute)
+    .map(([id]) => id);
+  const anyLoading = isPlaying && enabledIds.length > 0 && enabledIds.some((id) => {
+    const state = activeStreams[id];
+    return state?.status === 'connecting';
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editsRef = useRef<WikiEdit[]>([]);
@@ -212,12 +226,23 @@ const Visualizer = ({
     ctx.fill(); // double fill for stronger glow
     ctx.shadowBlur = 0;
 
-    // Flights
+    // Flights — interpolate positions between API polls
     const currentFlights = flightsRef.current;
     const airplane = airplaneImgRef.current;
+    const nowMs = Date.now();
     for (const flight of currentFlights) {
-      const latDiff = flight.lat - myLat;
-      const lonDiff = flight.lon - myLon;
+      // Dead-reckoning: project forward using gspeed + track
+      const elapsed = Math.min((nowMs - flight.lastSeen) / 1000, 30);
+      // gspeed is knots (nautical miles/hr). 1 nm ≈ 1/60°. → deg/sec = gspeed / 216000
+      const degPerSec = flight.gspeed / 216000;
+      const trackRad = (flight.track * Math.PI) / 180;
+      const dLat = degPerSec * Math.cos(trackRad) * elapsed;
+      const dLon = degPerSec * Math.sin(trackRad) * elapsed / Math.cos((flight.lat * Math.PI) / 180);
+      const interpLat = flight.lat + dLat;
+      const interpLon = flight.lon + dLon;
+
+      const latDiff = interpLat - myLat;
+      const lonDiff = interpLon - myLon;
       const x = cx + lonDiff * lonScale;
       const y = cy - latDiff * latScale;
       const size = lerp(1 / flight.distance, 0, 1, 20, 60);
@@ -228,23 +253,9 @@ const Visualizer = ({
       ctx.save();
       ctx.translate(x, y);
 
-      if (flight.vector) {
-        const { latPerSecond, lonPerSecond } = flight.vector;
-        if (Math.abs(latPerSecond) > 0.00001 || Math.abs(lonPerSecond) > 0.00001) {
-          const angle = Math.atan2(-latPerSecond, lonPerSecond) - Math.PI / 2;
-          ctx.rotate(angle);
-
-          ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          const vs = 50;
-          ctx.lineTo(lonPerSecond * vs, -latPerSecond * vs);
-          ctx.stroke();
-          ctx.rotate(-angle);
-          ctx.rotate(angle);
-        }
-      }
+      // Rotate airplane by track (offset -90° because SVG points up/north, canvas 0° is east)
+      const drawRad = ((flight.track - 90) * Math.PI) / 180;
+      ctx.rotate(drawRad);
 
       if (airplane && airplane.complete) {
         ctx.globalAlpha = 0.85;
@@ -370,12 +381,13 @@ const Visualizer = ({
   }, [myLat, myLon]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
+    <div ref={containerRef} className={`w-full h-full relative ${isPlaying ? (anyLoading ? 'viz-loading' : 'viz-loaded') : ''}`}>
       <canvas
         ref={canvasRef}
         onClick={handleClick}
         style={{ cursor: 'pointer', display: 'block' }}
       />
+      <div className="viz-loading-glow" />
       {infoPanel && (
         <div
           style={{

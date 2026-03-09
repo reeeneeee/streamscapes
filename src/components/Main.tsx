@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, type ReactNode } from "react";
-import * as Tone from 'tone';
+import type * as Tone from 'tone';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { useStreamscapes } from '../hooks/useStreamscapes';
 import { useStore } from '@/store';
@@ -160,6 +160,7 @@ export default function Main() {
     engine.onData('main-flights', (dp: DataPoint) => {
       if (dp.streamId !== 'flights') return;
       const f = dp.fields;
+      const now = Date.now();
       setProcessedFlights((prev) => {
         const id = String(f.flightId);
         const flight: ProcessedFlight = {
@@ -170,14 +171,18 @@ export default function Main() {
           distance: f.distance as number,
           frequency: f.frequency as number,
           callsign: f.callsign as string | undefined,
+          track: (f.track as number) ?? 0,
+          lastSeen: now,
         };
-        const idx = prev.findIndex((p) => p.fr24_id === id);
+        // Prune flights not seen in 15s, then upsert
+        const fresh = prev.filter((p) => now - p.lastSeen < 15_000);
+        const idx = fresh.findIndex((p) => p.fr24_id === id);
         if (idx >= 0) {
-          const next = [...prev];
+          const next = [...fresh];
           next[idx] = flight;
           return next;
         }
-        return [...prev, flight];
+        return [...fresh, flight];
       });
     }, 'flights');
 
@@ -293,7 +298,7 @@ export default function Main() {
         </div>
         <div className="flex-1" />
         {weatherDisplay && (
-          <div className="text-[12px] hidden sm:block" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+          <div className="text-[12px]" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
             {location.lat.toFixed(2)}, {location.lon.toFixed(2)}
             {' \u00B7 '}
             {Math.trunc(weatherDisplay.feelsLike)}{'°F'}

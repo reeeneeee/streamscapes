@@ -37,10 +37,14 @@ export class StreamManager {
 
     try {
       const iterable = plugin.connect(controller.signal);
-      this.store.setStreamState(streamId, { status: 'connected' });
+      let firstData = false;
 
       for await (const dataPoint of iterable) {
         if (controller.signal.aborted) break;
+        if (!firstData) {
+          firstData = true;
+          this.store.setStreamState(streamId, { status: 'connected' });
+        }
         this.audioEngine.handleDataPoint(dataPoint);
       }
     } catch (error: unknown) {

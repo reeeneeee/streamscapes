@@ -270,3 +270,46 @@ select {
 .stream-toggle:hover {
   background: var(--bg-elevated) !important;
 }
+
+@keyframes stream-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+.stream-dot-pulse {
+  animation: stream-pulse 1.2s ease-in-out infinite;
+}
+
+/* Pulsating blur on visualizer while streams are loading */
+@keyframes viz-breathe {
+  0%, 100% { filter: blur(24px) brightness(0.6); transform: scale(0.97); }
+  50% { filter: blur(36px) brightness(0.8); transform: scale(1.02); }
+}
+@keyframes viz-glow-pulse {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+  50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.2); }
+}
+.viz-loading canvas {
+  animation: viz-breathe 2.8s ease-in-out infinite;
+}
+.viz-loading .viz-loading-glow {
+  display: block;
+}
+.viz-loading-glow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0%, rgba(124, 68, 79, 0.3) 40%, transparent 70%);
+  pointer-events: none;
+  z-index: 10;
+  animation: viz-glow-pulse 2.8s ease-in-out infinite;
+}
+.viz-loaded canvas {
+  animation: none;
+  filter: none;
+  transform: none;
+  transition: filter 1s ease-out, transform 0.6s ease-out;
+}

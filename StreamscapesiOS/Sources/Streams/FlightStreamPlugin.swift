@@ -7,7 +7,7 @@ struct FlightStreamPlugin: StreamPlugin {
     let apiKey: String
 
     func connect() -> AsyncStream<DataPoint> {
-        let bounds = "\(lat + 0.07),\(lat - 0.07),\(lon - 0.07),\(lon + 0.07)"
+        let bounds = "\(lat + 0.15),\(lat - 0.15),\(lon - 0.15),\(lon + 0.15)"
 
         return AsyncStream { continuation in
             let task = Task {
@@ -20,7 +20,7 @@ struct FlightStreamPlugin: StreamPlugin {
                     } catch {
                         print("[Flights] Fetch failed: \(error)")
                     }
-                    try? await Task.sleep(for: .seconds(10))
+                    try? await Task.sleep(for: .seconds(60))
                 }
                 continuation.finish()
             }
@@ -62,6 +62,7 @@ struct FlightStreamPlugin: StreamPlugin {
                     "frequency": frequency,
                     "lat": flightLat,
                     "lon": flightLon,
+                    "track": flight["track"] as? Double ?? 0,
                 ],
                 metadata: [
                     "callsign": flight["callsign"] as? String ?? "",

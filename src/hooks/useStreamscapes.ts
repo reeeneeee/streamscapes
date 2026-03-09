@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import * as Tone from 'tone';
 import { useStore } from '@/store';
 import { AudioEngine } from '@/lib/audio-engine';
@@ -32,12 +32,11 @@ export function useStreamscapes(lat: number, lon: number) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // Seed default channels if store is empty or has stale data (missing mode)
+    // Seed default channels if store is empty or has stale data
     const currentChannels = store.getState().channels;
     const needsReseed = Object.keys(currentChannels).length === 0 ||
       Object.values(currentChannels).some((ch) => !ch.mode);
     if (needsReseed) {
-      // Clear stale channels
       for (const id of Object.keys(currentChannels)) {
         store.getState().removeChannel(id);
       }
@@ -48,7 +47,6 @@ export function useStreamscapes(lat: number, lon: number) {
 
     const engine = new AudioEngine(store);
     const plugins = pluginsRef.current;
-    // StreamManager needs setStreamState — get it from the store
     const { setStreamState } = store.getState();
     const manager = new StreamManager({ setStreamState }, engine, plugins);
 
@@ -56,27 +54,7 @@ export function useStreamscapes(lat: number, lon: number) {
     managerRef.current = manager;
     cleanupVisRef.current = setupVisibilityHandler();
 
-    const resumeIfPlaying = async () => {
-      if (!useStore.getState().isPlaying) return;
-      try {
-        await Tone.start();
-        const ctx = Tone.getContext().rawContext as AudioContext;
-        await ctx.resume();
-        engine.start();
-        const channels = useStore.getState().channels;
-        const activeStreams = useStore.getState().activeStreams;
-        for (const [streamId, config] of Object.entries(channels)) {
-          if (config.enabled && !activeStreams[streamId]) {
-            manager.connectStream(streamId);
-          }
-        }
-      } catch {
-        // no-op; will retry on visibility/user gesture
-      }
-    };
-    void resumeIfPlaying();
-
-    // Resume audio + reconnect streams when page becomes visible again
+    // Resume audio + reconnect streams when page becomes visible
     const handleResume = async () => {
       if (document.hidden || !useStore.getState().isPlaying) return;
       try {
@@ -84,7 +62,6 @@ export function useStreamscapes(lat: number, lon: number) {
         const ctx = Tone.getContext().rawContext as AudioContext;
         await ctx.resume();
         engine.start();
-        // Reconnect any dropped streams
         const channels = useStore.getState().channels;
         const activeStreams = useStore.getState().activeStreams;
         for (const [streamId, config] of Object.entries(channels)) {
@@ -92,7 +69,7 @@ export function useStreamscapes(lat: number, lon: number) {
             manager.connectStream(streamId);
           }
         }
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
     };
     document.addEventListener('visibilitychange', handleResume);
 
@@ -120,38 +97,33 @@ export function useStreamscapes(lat: number, lon: number) {
     }
   }, [channels, isPlaying]);
 
-  const startAudio = async () => {
+  const startAudio = useCallback(() => {
     if (useStore.getState().isPlaying) return;
-    // Must call synchronously within user gesture for iOS Safari
+    // Synchronous — must be in user gesture for AudioContext
     Tone.start();
-    // Also poke the raw AudioContext directly
     const rawCtx = Tone.getContext().rawContext as AudioContext;
     if (rawCtx.state !== 'running') rawCtx.resume();
     setPlaying(true);
     engineRef.current?.start();
 
-    // Register with Media Session API for background audio
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: 'Streamscapes',
         artist: 'Real-time data sonification',
       });
     }
-  };
+  }, []);
 
-  const stopAudio = () => {
+  const stopAudio = useCallback(() => {
     setPlaying(false);
-    const manager = managerRef.current;
-    if (manager) {
-      manager.dispose();
-    }
+    managerRef.current?.dispose();
     engineRef.current?.dispose();
     cleanupVisRef.current?.();
     engineRef.current = null;
     managerRef.current = null;
     cleanupVisRef.current = null;
     initializedRef.current = false;
-  };
+  }, []);
 
   return {
     engine: engineRef.current,

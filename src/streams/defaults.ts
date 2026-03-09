@@ -11,7 +11,7 @@ export const DEFAULT_WEATHER_CHANNEL: ChannelConfig = {
       sourceField: 'feelsLike',
       targetParam: 'patternSelect',
       curve: 'step',
-      inputRange: [0, 100],
+      inputRange: [-10, 110],
       outputRange: [0, 2],
       invert: false,
     },

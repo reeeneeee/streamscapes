@@ -3,14 +3,25 @@ import SwiftUI
 struct ListenView: View {
     @Environment(AppStore.self) private var store
     @Environment(AudioCoordinator.self) private var coordinator
+    @Environment(LocationManager.self) private var location
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("streamscapes")
-                .font(.custom("SpaceGrotesk-Light", size: 15))
-                .foregroundStyle(Theme.textSecondary)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
+            // Title + status
+            VStack(spacing: 4) {
+                Text("streamscapes")
+                    .font(.custom("SpaceGrotesk-Light", size: 15))
+                    .foregroundStyle(Theme.textSecondary)
+
+                if let weather = store.weatherDisplay {
+                    Text("\(String(format: "%.2f", location.latitude)), \(String(format: "%.2f", location.longitude)) · \(Int(weather.feelsLike))°F · \(Int(weather.clouds))% cloud cover")
+                        .font(.custom("SpaceGrotesk-Regular", size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                        .tracking(0.3)
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 6)
 
             GeometryReader { geo in
                 TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
@@ -59,45 +70,62 @@ struct ListenView: View {
         // Center dot with glow
         drawCenterDot(context: &context, cx: cx, cy: cy)
 
-        // Flight dots
+        // Flight airplane icons — interpolate positions between API polls
         let geoScale = scale * 3
+        let airplaneImage = context.resolve(
+            Image(systemName: "airplane")
+                .symbolRenderingMode(.monochrome)
+        )
+        let now = Date()
         for flight in data.flights {
-            let myLat = 37.7749
-            let myLon = -122.4194
-            let latDiff = flight.lat - myLat
-            let lonDiff = flight.lon - myLon
+            // Dead-reckoning: project forward using gspeed + track
+            let elapsed = min(now.timeIntervalSince(flight.lastSeen), 30)
+            // gspeed is knots (nm/hr). 1 nm ≈ 1/60°. → deg/sec = gspeed / 216000
+            let degPerSec = flight.gspeed / 216000
+            let trackRad = flight.track * .pi / 180
+            let dLat = degPerSec * cos(trackRad) * elapsed
+            let dLon = degPerSec * sin(trackRad) * elapsed / cos(flight.lat * .pi / 180)
+            let interpLat = flight.lat + dLat
+            let interpLon = flight.lon + dLon
+
+            let latDiff = interpLat - location.latitude
+            let lonDiff = interpLon - location.longitude
             let x = cx + lonDiff * geoScale
             let y = cy - latDiff * geoScale
 
             guard x > -50 && x < size.width + 50 && y > -50 && y < size.height + 50 else { continue }
 
-            let dotSize: CGFloat = lerp(value: 1 / flight.distance, inMin: 0, inMax: 1, outMin: 4, outMax: 12)
+            let iconSize: CGFloat = lerp(value: 1 / flight.distance, inMin: 0, inMax: 1, outMin: 16, outMax: 36)
 
-            // Flight glow
-            let glowRect = CGRect(x: x - dotSize * 2, y: y - dotSize * 2, width: dotSize * 4, height: dotSize * 4)
+            // Glow behind airplane
+            let glowRect = CGRect(x: x - iconSize * 0.8, y: y - iconSize * 0.8, width: iconSize * 1.6, height: iconSize * 1.6)
             context.fill(
                 Circle().path(in: glowRect),
-                with: .color(Theme.streamFlights.opacity(0.15))
+                with: .color(Theme.streamFlights.opacity(0.2))
             )
 
-            // Flight dot
-            let dotRect = CGRect(x: x - dotSize / 2, y: y - dotSize / 2, width: dotSize, height: dotSize)
-            context.fill(
-                Circle().path(in: dotRect),
-                with: .color(Theme.streamFlights.opacity(0.8))
+            // Draw rotated airplane
+            var planeContext = context
+            planeContext.translateBy(x: x, y: y)
+            // SF Symbol airplane points right (east). Rotate by track (degrees from north, clockwise).
+            // Convert: north=0° → rotate -90° offset, then add track.
+            let radians = (flight.track - 90) * .pi / 180
+            planeContext.rotate(by: .radians(radians))
+            planeContext.opacity = 0.85
+            planeContext.draw(
+                airplaneImage,
+                in: CGRect(x: -iconSize / 2, y: -iconSize / 2, width: iconSize, height: iconSize)
             )
 
             // Distance label
-            if flight.distance < 8 {
-                let label = Text("\(Int(flight.distance)) mi")
-                    .font(.custom("SpaceGrotesk-Regular", size: 10))
-                    .foregroundStyle(Theme.textWhisper)
-                context.draw(
-                    context.resolve(label),
-                    at: CGPoint(x: x, y: y - dotSize - 6),
-                    anchor: .bottom
-                )
-            }
+            let label = Text("\(Int(flight.distance)) mi")
+                .font(.custom("SpaceGrotesk-Regular", size: 10))
+                .foregroundStyle(Theme.streamFlights.opacity(0.7))
+            context.draw(
+                context.resolve(label),
+                at: CGPoint(x: x, y: y + iconSize / 2 + 4),
+                anchor: .top
+            )
         }
 
         // Wiki ripples
@@ -149,7 +177,7 @@ struct ListenView: View {
         }
 
         // Stream status dots at bottom
-        drawStatusDots(context: &context, size: size)
+        drawStatusDots(context: &context, size: size, time: time)
     }
 
     private func drawScopeDisc(context: inout GraphicsContext, cx: CGFloat, cy: CGFloat, radius: CGFloat) {
@@ -193,7 +221,7 @@ struct ListenView: View {
         )
     }
 
-    private func drawStatusDots(context: inout GraphicsContext, size: CGSize) {
+    private func drawStatusDots(context: inout GraphicsContext, size: CGSize, time: Double) {
         let streams = ["weather", "flights", "wikipedia"]
         let y = size.height - 20
         let spacing: CGFloat = 40
@@ -201,14 +229,26 @@ struct ListenView: View {
 
         for (i, id) in streams.enumerated() {
             let x = startX + CGFloat(i) * spacing
-            let isActive = store.activeStreams[id] != nil
+            let state = store.activeStreams[id]
             let color = Theme.streamColor(for: id)
 
             let dotSize: CGFloat = 5
             let dotRect = CGRect(x: x - dotSize / 2, y: y - dotSize / 2, width: dotSize, height: dotSize)
+
+            let alpha: Double
+            switch state {
+            case .connected:
+                alpha = 1.0
+            case .connecting:
+                // Pulse between 0.3 and 0.8
+                alpha = 0.3 + 0.5 * (0.5 + 0.5 * sin(time * 4))
+            default:
+                alpha = 0.2
+            }
+
             context.fill(
                 Circle().path(in: dotRect),
-                with: .color(isActive ? color : color.opacity(0.2))
+                with: .color(color.opacity(alpha))
             )
         }
     }

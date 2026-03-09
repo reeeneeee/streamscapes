@@ -79,18 +79,45 @@ export interface AudioEngineStore {
   ) => () => void;
 }
 
-/** Expand notes into ABCBCB arpeggio pattern (6-step cycle). */
-function abcbcbPattern(notes: string[]): string[] {
-  if (notes.length >= 3) return [notes[0], notes[1], notes[2], notes[1], notes[2], notes[1]];
-  if (notes.length === 2) return [notes[0], notes[1], notes[0], notes[1]];
-  return notes;
+/**
+ * Arpeggio shape library.
+ * Each shape is an array of scale-degree indices (0-based) defining the note sequence.
+ * Index values wrap around the available notes via modulo.
+ *
+ * Inspired by classic arpeggiator modes, walking bass patterns, and sequencer shapes.
+ */
+export const ARP_SHAPES: Record<string, { label: string; degrees: number[] }> = {
+  // Classic arpeggiator patterns
+  up:        { label: 'Up',           degrees: [0, 1, 2, 3, 4] },
+  down:      { label: 'Down',         degrees: [4, 3, 2, 1, 0] },
+  upDown:    { label: 'Up-Down',      degrees: [0, 1, 2, 3, 4, 3, 2, 1] },
+  skip:      { label: 'Skip (1-3-5)', degrees: [0, 2, 4, 2, 4, 2] },         // ABCBCB — original
+
+  // Walking bass / melodic patterns
+  walk:      { label: 'Walk',         degrees: [0, 1, 2, 4, 2, 1] },          // climb-and-fall
+  pedal:     { label: 'Pedal',        degrees: [0, 2, 0, 4, 0, 2] },          // root anchored
+  pendulum:  { label: 'Pendulum',     degrees: [0, 4, 1, 3, 2] },             // outside-in converge
+
+  // Rhythmic / synth patterns
+  stutter:   { label: 'Stutter',      degrees: [0, 0, 2, 0, 4, 4] },          // repetition-driven
+  cascade:   { label: 'Cascade',      degrees: [0, 1, 2, 1, 2, 3, 2, 3, 4] }, // overlapping climb
+  leap:      { label: 'Leap',         degrees: [0, 4, 1, 3, 2, 4] },          // wide intervals
+};
+
+/** Expand scale notes into an arpeggio sequence using the given shape. */
+function expandArpShape(notes: string[], shape: string): string[] {
+  const def = ARP_SHAPES[shape] ?? ARP_SHAPES.skip;
+  if (notes.length === 0) return notes;
+  return def.degrees.map((d) => notes[d % notes.length]);
 }
 
+// TODO: Host our own ambient samples. Tone.js GitHub Pages hosting is gone (404).
+// Sample mode will be silent until these URLs are replaced with working sources.
 const SAMPLE_SOURCE_URLS: Record<string, string> = {
-  rain: 'https://tonejs.github.io/audio/berklee/rain_ambience.mp3',
-  wind: 'https://tonejs.github.io/audio/berklee/wind_ambience.mp3',
-  vinyl: 'https://tonejs.github.io/audio/berklee/vinyl_noise.mp3',
-  chimes: 'https://tonejs.github.io/audio/berklee/chimes.mp3',
+  // rain: 'https://example.com/samples/rain_ambience.mp3',
+  // wind: 'https://example.com/samples/wind_ambience.mp3',
+  // vinyl: 'https://example.com/samples/vinyl_noise.mp3',
+  // chimes: 'https://example.com/samples/chimes.mp3',
 };
 
 // --- Engine ---
@@ -118,6 +145,7 @@ export class AudioEngine {
   private beaconLastPeriodicAt = new Map<string, number>();
   private beaconLastEmitAt = new Map<string, number>();
   private patternSmoothingState = new Map<string, { updatedAt: number; patternSelect?: number; noiseVolume?: number }>();
+  private patternHysteresis = new Map<string, number>(); // current locked pattern index per stream
   // Callbacks for UI data (flights for visualizer, weather display, mapping preview, etc.)
   private dataListeners = new Map<string, { streamId: string; listener: (data: DataPoint) => void }>();
 
@@ -291,8 +319,8 @@ export class AudioEngine {
   }
 
   private sampleSourceUrl(source?: string): string {
-    if (!source) return SAMPLE_SOURCE_URLS.rain;
-    return SAMPLE_SOURCE_URLS[source] ?? source;
+    if (!source) return SAMPLE_SOURCE_URLS.rain ?? '';
+    return SAMPLE_SOURCE_URLS[source] ?? '';
   }
 
   private sampleDriverValue(params: Partial<Record<string, number>>): number {
@@ -648,8 +676,9 @@ export class AudioEngine {
     sampleFilter.connect(sampleReverb);
     sampleReverb.connect(sampleGain);
     sampleGain.connect(channel);
+    const sampleUrl = this.sampleSourceUrl(config.sampleSource);
     const samplePlayer = new Tone.Player({
-      url: this.sampleSourceUrl(config.sampleSource),
+      url: sampleUrl || undefined,
       autostart: false,
       loop: false,
       fadeIn: 0.01,
@@ -674,8 +703,8 @@ export class AudioEngine {
         const dur = Math.max(Tone.Time('8n').toSeconds(), minDur);
         synth.triggerAttackRelease(note, dur, time);
       },
-      abcbcbPattern(initialNotes),
-      'up' // ABCBCB cycle is pre-expanded, just traverse in order
+      expandArpShape(initialNotes, config.patternType ?? 'skip'),
+      'up' // Shape is pre-expanded, just traverse in order
     );
 
     let hybridEventGain: Tone.Gain | null = null;
@@ -794,7 +823,7 @@ export class AudioEngine {
   private applyPatternSampleSettings(nodes: PatternNodes, config: ChannelConfig) {
     if (!nodes.samplePlayer || !nodes.sampleLoop) return;
     const nextSrc = this.sampleSourceUrl(config.sampleSource);
-    if (nodes.sampleSource !== nextSrc) {
+    if (nextSrc && nodes.sampleSource !== nextSrc) {
       nodes.sampleSource = nextSrc;
       nodes.samplePlayer.load(nextSrc);
     }
@@ -988,7 +1017,7 @@ export class AudioEngine {
       const cfg = state.channels[streamId];
       const sampleMode = cfg?.ambientMode === 'sample';
       const hybridSustain = cfg?.behaviorType === 'hybrid' && cfg?.ambientMode === 'sustain';
-      nodes.pattern.values = abcbcbPattern(notes);
+      nodes.pattern.values = expandArpShape(notes, cfg?.patternType ?? 'skip');
       if (sampleMode) {
         if (nodes.pattern.state === 'started') {
           nodes.pattern.stop();
@@ -1226,7 +1255,7 @@ export class AudioEngine {
       const playbackRate = rateMin + (rateMax - rateMin) * driver;
       if (nodes.samplePlayer) {
         const nextSrc = this.sampleSourceUrl(config.sampleSource);
-        if (nodes.sampleSource !== nextSrc) {
+        if (nextSrc && nodes.sampleSource !== nextSrc) {
           nodes.sampleSource = nextSrc;
           nodes.samplePlayer.load(nextSrc);
         }
@@ -1292,9 +1321,27 @@ export class AudioEngine {
         nodes.hybridSustainFreq = null;
       }
 
-      // Update arpeggio pattern based on temperature/data
+      // Update arpeggio pattern based on temperature/data (with hysteresis)
       if (scaleNotes.length > 0) {
-        const patternSelect = Math.floor(patternSelectValue ?? 1);
+        const rawSelect = patternSelectValue ?? 1;
+        const prevPattern = this.patternHysteresis.get(dataPoint.streamId);
+        const HYSTERESIS = 0.25; // must cross 0.25 past boundary to switch
+        let patternSelect: number;
+        if (prevPattern === undefined) {
+          patternSelect = Math.floor(rawSelect);
+        } else {
+          // Only switch if we've moved HYSTERESIS past the integer boundary
+          const floored = Math.floor(rawSelect);
+          if (floored !== prevPattern) {
+            const distPastBoundary = floored > prevPattern
+              ? rawSelect - floored     // moving up: distance past the boundary
+              : prevPattern - rawSelect; // moving down: distance past the boundary
+            patternSelect = distPastBoundary >= HYSTERESIS ? floored : prevPattern;
+          } else {
+            patternSelect = prevPattern;
+          }
+        }
+        this.patternHysteresis.set(dataPoint.streamId, patternSelect);
         const rootNote = scaleNotes[0]?.slice(0, -1) ?? 'C';
         const octave = parseInt(scaleNotes[0]?.slice(-1) ?? '4');
 
@@ -1321,7 +1368,7 @@ export class AudioEngine {
             scaleNotes[Math.min(scaleNotes.length - 1, 6)],
           ];
         }
-        nodes.pattern.values = abcbcbPattern(arpNotes);
+        nodes.pattern.values = expandArpShape(arpNotes, config.patternType ?? 'skip');
       }
     }
 

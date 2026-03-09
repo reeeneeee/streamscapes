@@ -38,17 +38,20 @@ export default function TransportBar({
           const status = activeStreams[id]?.status;
           const enabled = channels[id]?.enabled;
           if (!enabled) return null;
+          const color = STREAM_CSS_COLORS[id] ?? '#888';
           return (
             <div
               key={id}
-              className="w-2 h-2 rounded-full"
-              title={id}
+              className={`w-2 h-2 rounded-full${status === 'connecting' ? ' stream-dot-pulse' : ''}`}
+              title={`${id}: ${status ?? 'idle'}`}
               style={{
-                background: status === 'connected'
-                  ? STREAM_CSS_COLORS[id] ?? '#888'
+                background: status === 'connected' ? color
+                  : status === 'connecting' ? color
                   : status === 'error' ? '#ef4444'
                   : '#444',
-                opacity: status === 'connected' ? 1 : 0.5,
+                opacity: status === 'connected' ? 1
+                  : status === 'connecting' ? 0.5
+                  : 0.3,
               }}
             />
           );

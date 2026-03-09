@@ -11,6 +11,9 @@ final class VisualizerData {
         let distance: Double
         let altitude: Double
         let callsign: String
+        let track: Double // heading in degrees
+        let gspeed: Double // ground speed in knots
+        let lastSeen: Date
     }
 
     struct WikiRipple: Identifiable {
@@ -54,7 +57,10 @@ final class VisualizerData {
                 lon: lon,
                 distance: distance,
                 altitude: dp.fields["altitude"] ?? 0,
-                callsign: dp.metadata["callsign"] ?? ""
+                callsign: dp.metadata["callsign"] ?? "",
+                track: dp.fields["track"] ?? 0,
+                gspeed: dp.fields["speed"] ?? 0,
+                lastSeen: Date()
             )
         }
     }

@@ -6,9 +6,6 @@ export interface ProcessedFlight {
   distance: number;
   frequency: number;
   callsign?: string;
-  vector?: {
-    latPerSecond: number;
-    lonPerSecond: number;
-    lastUpdated: number;
-  };
+  track: number; // heading in degrees from north, clockwise
+  lastSeen: number; // Date.now() timestamp
 }

@@ -223,7 +223,7 @@ export const useStore = create<StreamscapesStore>()(
         name: 'streamscapes-store',
         version: 14,
         partialize: (state) => ({
-          isPlaying: state.isPlaying,
+          // Never persist isPlaying — audio must start from a user gesture
           global: state.global,
           channels: state.channels,
           selectedChannelId: state.selectedChannelId,
@@ -247,7 +247,6 @@ export const useStore = create<StreamscapesStore>()(
           }
           return {
             ...currentState,
-            isPlaying: typeof persistedState.isPlaying === 'boolean' ? persistedState.isPlaying : currentState.isPlaying,
             global,
             channels,
             selectedChannelId: typeof persistedState.selectedChannelId === 'string' ? persistedState.selectedChannelId : currentState.selectedChannelId,

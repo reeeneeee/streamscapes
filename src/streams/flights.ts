@@ -23,7 +23,7 @@ export function createFlightPlugin(lat: number, lon: number): StreamPlugin {
     category: 'environment',
 
     async *connect(signal: AbortSignal): AsyncIterable<DataPoint> {
-      const bounds = `${lat + 0.07},${lat - 0.07},${lon - 0.07},${lon + 0.07}`;
+      const bounds = `${lat + 0.15},${lat - 0.15},${lon - 0.15},${lon + 0.15}`;
       let consecutiveFailures = 0;
 
       while (!signal.aborted) {
@@ -59,6 +59,7 @@ export function createFlightPlugin(lat: number, lon: number): StreamPlugin {
                   altitude: flight.alt ?? 0,
                   frequency,
                   callsign: flight.callsign ?? '',
+                  track: flight.track ?? 0,
                 },
               };
             }
@@ -74,9 +75,9 @@ export function createFlightPlugin(lat: number, lon: number): StreamPlugin {
           }
         }
 
-        // Wait before next fetch (every 10 seconds for smoother updates)
+        // Wait before next fetch (30s — interpolation fills the gap)
         await new Promise<void>((resolve) => {
-          const timeout = setTimeout(resolve, 10_000);
+          const timeout = setTimeout(resolve, 30_000);
           signal.addEventListener('abort', () => {
             clearTimeout(timeout);
             resolve();
