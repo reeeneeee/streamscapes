@@ -14,6 +14,7 @@ import EffectsChain from './EffectsChain';
 import MappingEditor from './MappingEditor';
 import Presets from './Presets';
 import TransportBar from './TransportBar';
+import InstallPrompt from './InstallPrompt';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
 
@@ -326,95 +327,90 @@ export default function Main() {
           className="controls-scroll p-4 space-y-6 relative z-[5]"
           style={{ height: vizHeight }}
         >
-          <SettingsStep
-            step={1}
-            title="Quick Mix"
-            description="Live meters plus mute/solo/level controls."
-          >
-            <Mixer engine={engine} />
-          </SettingsStep>
+          <Mixer engine={engine} />
+
+          {/* Global Musical Frame — always visible, outside steps */}
+          <div className="px-1">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="step-title" style={{ fontSize: 13 }}>Global Musical Frame</div>
+              <label className="text-[9px] text-gray-300 flex items-center gap-1 ml-auto">
+                <input
+                  type="checkbox"
+                  checked={lockGlobalFrame}
+                  onChange={(e) => setLockGlobalFrame(e.target.checked)}
+                />
+                Lock
+              </label>
+            </div>
+            <div className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>
+              Root note, scale, and tempo shared across all streams.
+            </div>
+            <GlobalControls />
+          </div>
 
           <div className="space-y-3">
             <SettingsStep
-              step={2}
+              step={1}
               title="Choose Stream"
               description="Activate streams to listen. Solo a stream to hear it alone."
               collapsible
-              expanded={guidedStep === 2}
-              onToggle={() => setGuidedStep(guidedStep === 2 ? 0 : 2)}
+              expanded={guidedStep === 1}
+              onToggle={() => setGuidedStep(guidedStep === 1 ? 0 : 1)}
             >
               <StreamBrowser plugins={plugins} />
             </SettingsStep>
 
             <SettingsStep
-              step={3}
-              title="Set Global Musical Frame"
-              description="Root note, scale, and tempo define shared context across streams."
-              collapsible
-              expanded={guidedStep === 3}
-              onToggle={() => setGuidedStep(guidedStep === 3 ? 0 : 3)}
-              actions={(
-                <label className="text-[9px] text-gray-300 flex items-center gap-1 ml-1">
-                  <input
-                    type="checkbox"
-                    checked={lockGlobalFrame}
-                    onChange={(e) => setLockGlobalFrame(e.target.checked)}
-                  />
-                  Lock Global Frame
-                </label>
-              )}
-            >
-              <GlobalControls />
-            </SettingsStep>
-
-            <SettingsStep
-              step={4}
+              step={2}
               title="Pick A Starting Intent"
               description={lockGlobalFrame
                 ? 'Use presets to land quickly on a coherent listening mode. Global frame is locked.'
                 : 'Use presets to land quickly on a coherent listening mode.'}
               collapsible
-              expanded={guidedStep === 4}
-              onToggle={() => setGuidedStep(guidedStep === 4 ? 0 : 4)}
+              expanded={guidedStep === 2}
+              onToggle={() => setGuidedStep(guidedStep === 2 ? 0 : 2)}
             >
               <Presets lockGlobalFrame={lockGlobalFrame} />
             </SettingsStep>
 
             <SettingsStep
-              step={5}
+              step={3}
               title="Shape Active Stream Behavior"
               description="Choose ambient/event/hybrid behavior and stream-level articulation."
               collapsible
-              expanded={guidedStep === 5}
-              onToggle={() => setGuidedStep(guidedStep === 5 ? 0 : 5)}
+              expanded={guidedStep === 3}
+              onToggle={() => setGuidedStep(guidedStep === 3 ? 0 : 3)}
             >
               <SonificationPanel />
             </SettingsStep>
 
             <SettingsStep
-              step={6}
+              step={4}
               title="Map Data To Sound"
               description="Decide what each data field controls and how sensitive it is."
               collapsible
-              expanded={guidedStep === 6}
-              onToggle={() => setGuidedStep(guidedStep === 6 ? 0 : 6)}
+              expanded={guidedStep === 4}
+              onToggle={() => setGuidedStep(guidedStep === 4 ? 0 : 4)}
             >
               <MappingEditor engine={engine} />
             </SettingsStep>
 
             <SettingsStep
-              step={7}
+              step={5}
               title="Polish Tone And Space"
               description="Use effects after mapping to refine color without changing semantics."
               collapsible
-              expanded={guidedStep === 7}
-              onToggle={() => setGuidedStep(guidedStep === 7 ? 0 : 7)}
+              expanded={guidedStep === 5}
+              onToggle={() => setGuidedStep(guidedStep === 5 ? 0 : 5)}
             >
               <EffectsChain />
             </SettingsStep>
           </div>
         </div>
       )}
+
+      {/* Install prompt — web only, dismissable */}
+      <InstallPrompt />
 
       {/* Transport bar */}
       <TransportBar engine={engine} onStop={handleStop} />

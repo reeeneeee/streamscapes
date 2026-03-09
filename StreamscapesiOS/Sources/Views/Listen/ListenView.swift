@@ -5,6 +5,14 @@ struct ListenView: View {
     @Environment(AudioCoordinator.self) private var coordinator
     @Environment(LocationManager.self) private var location
 
+    @State private var flightInfo: FlightInfoData? = nil
+
+    struct FlightInfoData: Identifiable {
+        let id = UUID()
+        let callsign: String
+        var json: String = "Loading..."
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Title + status
@@ -24,17 +32,77 @@ struct ListenView: View {
             .padding(.bottom, 6)
 
             GeometryReader { geo in
-                TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
-                    Canvas { context, size in
-                        drawVisualizer(
-                            context: &context,
-                            size: size,
-                            data: coordinator.visualizerData,
-                            time: timeline.date.timeIntervalSinceReferenceDate
-                        )
+                ZStack {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
+                        Canvas { context, size in
+                            drawVisualizer(
+                                context: &context,
+                                size: size,
+                                data: coordinator.visualizerData,
+                                time: timeline.date.timeIntervalSinceReferenceDate
+                            )
+                        }
+                        .frame(width: geo.size.width, height: geo.size.height)
                     }
-                    .frame(width: geo.size.width, height: geo.size.height)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture { location in
+                    handleTap(at: location, in: geo.size)
+                }
+            }
+        }
+        .sheet(item: $flightInfo) { info in
+            FlightInfoSheet(info: info)
+        }
+    }
+
+    private func handleTap(at point: CGPoint, in size: CGSize) {
+        let cx = size.width / 2
+        let cy = size.height / 2
+        let scale = min(size.width, size.height)
+        let geoScale = scale * 3
+        let now = Date()
+
+        for flight in coordinator.visualizerData.flights {
+            guard !flight.callsign.isEmpty else { continue }
+
+            // Dead-reckoning must match draw loop
+            let elapsed = min(now.timeIntervalSince(flight.lastSeen), 30)
+            let degPerSec = flight.gspeed / 216000
+            let trackRad = flight.track * .pi / 180
+            let dLat = degPerSec * cos(trackRad) * elapsed
+            let dLon = degPerSec * sin(trackRad) * elapsed / cos(flight.lat * .pi / 180)
+            let interpLat = flight.lat + dLat
+            let interpLon = flight.lon + dLon
+
+            let latDiff = interpLat - location.latitude
+            let lonDiff = interpLon - location.longitude
+            let x = cx + lonDiff * geoScale
+            let y = cy - latDiff * geoScale
+            let iconSize = lerp(value: min(flight.distance, 10), inMin: 0, inMax: 10, outMin: 36, outMax: 16)
+
+            let dx = point.x - x
+            let dy = point.y - y
+            if sqrt(dx * dx + dy * dy) < iconSize {
+                var info = FlightInfoData(callsign: flight.callsign)
+                flightInfo = info
+                Task {
+                    do {
+                        let url = URL(string: "https://api.adsbdb.com/v0/callsign/\(flight.callsign)")!
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        if let json = try? JSONSerialization.jsonObject(with: data),
+                           let pretty = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+                           let str = String(data: pretty, encoding: .utf8) {
+                            info.json = str
+                        } else {
+                            info.json = String(data: data, encoding: .utf8) ?? "No data"
+                        }
+                    } catch {
+                        info.json = "{ \"error\": \"Failed to fetch\" }"
+                    }
+                    flightInfo = info
+                }
+                return
             }
         }
     }
@@ -95,7 +163,7 @@ struct ListenView: View {
 
             guard x > -50 && x < size.width + 50 && y > -50 && y < size.height + 50 else { continue }
 
-            let iconSize: CGFloat = lerp(value: 1 / flight.distance, inMin: 0, inMax: 1, outMin: 16, outMax: 36)
+            let iconSize: CGFloat = lerp(value: min(flight.distance, 10), inMin: 0, inMax: 10, outMin: 36, outMax: 16)
 
             // Glow behind airplane
             let glowRect = CGRect(x: x - iconSize * 0.8, y: y - iconSize * 0.8, width: iconSize * 1.6, height: iconSize * 1.6)
@@ -255,5 +323,32 @@ struct ListenView: View {
 
     private func lerp(value: Double, inMin: Double, inMax: Double, outMin: Double, outMax: Double) -> Double {
         outMin + ((value - inMin) / (inMax - inMin)) * (outMax - outMin)
+    }
+}
+
+private struct FlightInfoSheet: View {
+    let info: ListenView.FlightInfoData
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(info.json)
+                    .font(.custom("SpaceGrotesk-Regular", size: 12))
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Theme.bgPrimary)
+            .navigationTitle(info.callsign)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }

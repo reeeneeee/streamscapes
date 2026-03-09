@@ -5,6 +5,7 @@ import { useStore } from '@/store';
 import { STREAM_COLORS } from '@/lib/stream-constants';
 import SampleEngineControls from './SampleEngineControls';
 import EventControls from './EventControls';
+import { ARP_SHAPES } from '@/lib/audio-engine';
 import type { AlertTier, AmbientMode, BehaviorType, ChannelConfig, SonificationMode, SynthType } from '@/types/sonification';
 
 const SYNTH_TYPES: { value: SynthType; label: string }[] = [
@@ -305,6 +306,26 @@ export default function SonificationPanel() {
             {behaviorType === 'ambient' && (
               <div className="text-[10px] text-gray-500">
                 {AMBIENT_MODES.find((m) => m.value === ambientMode)?.description}
+              </div>
+            )}
+            {ambientMode === 'arpeggio' && (
+              <div>
+                <div className="text-[10px] text-gray-500 mb-1">Arp Shape</div>
+                <div className="grid grid-cols-5 gap-1">
+                  {Object.entries(ARP_SHAPES).map(([key, { label }]) => (
+                    <button
+                      key={key}
+                      onClick={() => onUpdate({ patternType: key })}
+                      className="text-[10px] px-1 py-1 rounded transition-colors"
+                      style={{
+                        background: (config.patternType ?? 'skip') === key ? '#5c7285' : '#333',
+                        color: (config.patternType ?? 'skip') === key ? '#fff' : '#888',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <div>

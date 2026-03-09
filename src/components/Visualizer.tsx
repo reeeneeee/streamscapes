@@ -245,7 +245,7 @@ const Visualizer = ({
       const lonDiff = interpLon - myLon;
       const x = cx + lonDiff * lonScale;
       const y = cy - latDiff * latScale;
-      const size = lerp(1 / flight.distance, 0, 1, 20, 60);
+      const size = lerp(Math.min(flight.distance, 10), 0, 10, 36, 16);
       const margin = 100;
 
       if (x < -margin || x > w + margin || y < -margin || y > h + margin) continue;
@@ -350,13 +350,20 @@ const Visualizer = ({
     const latScale = scale * GEO_SCALE;
     const lonScale = scale * GEO_SCALE;
 
+    const nowMs = Date.now();
     for (const flight of flightsRef.current) {
       if (!flight.callsign) continue;
-      const latDiff = flight.lat - myLat;
-      const lonDiff = flight.lon - myLon;
+      // Dead-reckoning must match draw loop
+      const elapsed = Math.min((nowMs - flight.lastSeen) / 1000, 30);
+      const degPerSec = flight.gspeed / 216000;
+      const trackRad = (flight.track * Math.PI) / 180;
+      const dLat = degPerSec * Math.cos(trackRad) * elapsed;
+      const dLon = degPerSec * Math.sin(trackRad) * elapsed / Math.cos((flight.lat * Math.PI) / 180);
+      const latDiff = (flight.lat + dLat) - myLat;
+      const lonDiff = (flight.lon + dLon) - myLon;
       const x = cx + lonDiff * lonScale;
       const y = cy - latDiff * latScale;
-      const size = lerp(1 / flight.distance, 0, 1, 20, 60);
+      const size = lerp(Math.min(flight.distance, 10), 0, 10, 36, 16);
       const dx = mx - x;
       const dy = my - y;
       if (Math.sqrt(dx * dx + dy * dy) < size / 2) {
