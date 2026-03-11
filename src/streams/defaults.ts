@@ -315,10 +315,50 @@ export function createOtlpChannelConfig(serviceName: string): ChannelConfig {
   };
 }
 
+/** Parent channel for the OTLP plugin — controls whether the SSE stream connects.
+ *  Disabled by default; user enables via Stream Browser or Connections panel.
+ *  Does not produce sound — sub-channels (otlp:<service>) handle audio. */
+export const DEFAULT_OTLP_CHANNEL: ChannelConfig = {
+  streamId: 'otlp',
+  enabled: false,
+  mode: 'triggered',
+  synthType: 'Synth',
+  synthOptions: { oscillator: { type: 'triangle' } },
+  mappings: [],
+  effects: [],
+  volume: -60,
+  pan: 0,
+  mute: true,
+  solo: false,
+  behaviorType: 'event',
+  eventCooldownMs: 50,
+  eventBurstCap: 0,
+  eventBurstWindowMs: 1000,
+  eventArticulation: 'neutral',
+  eventTriggerThreshold: 0,
+  preMapWindow: 1,
+  preMapStatistic: 'mean',
+  preMapChangeThreshold: 0,
+  preMapDerivative: false,
+  preMapPercentileClamp: 100,
+  alertTier: 'advisory',
+  beaconThreshold: 0,
+  beaconPeriodicSec: 0,
+  beaconOnExtrema: false,
+  hybridAccent: 0.6,
+  sampleSource: '',
+  samplePlaybackRateMin: 0.8,
+  samplePlaybackRateMax: 1.5,
+  sampleDensity: 1,
+  sampleFilterCutoff: 4000,
+  sampleReverbSend: 0,
+};
+
 export const ALL_DEFAULT_CHANNELS: ChannelConfig[] = [
   DEFAULT_WEATHER_CHANNEL,
   DEFAULT_FLIGHTS_CHANNEL,
   DEFAULT_WIKIPEDIA_CHANNEL,
   DEFAULT_RSS_CHANNEL,
   DEFAULT_STOCKS_CHANNEL,
+  DEFAULT_OTLP_CHANNEL,
 ];

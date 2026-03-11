@@ -13,6 +13,10 @@ export const otlpPlugin: StreamPlugin = {
     const queue: DataPoint[] = [];
     let resolve: (() => void) | null = null;
 
+    eventSource.addEventListener('error', () => {
+      // SSE auto-reconnects; silence expected errors
+    });
+
     const handler = (event: MessageEvent) => {
       try {
         const msg: SpanMessage = JSON.parse(event.data);

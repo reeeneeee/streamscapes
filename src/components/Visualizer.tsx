@@ -65,12 +65,11 @@ const Visualizer = ({
   // Check if any enabled+unmuted stream is still connecting
   const isPlaying = useStore((s) => s.isPlaying);
   const enabledIds = Object.entries(channels)
-    .filter(([, ch]) => ch.enabled && !ch.mute)
+    .filter(([id, ch]) => ch.enabled && !ch.mute && !ch.parentPluginId && !id.startsWith('otlp'))
     .map(([id]) => id);
-  const anyLoading = isPlaying && enabledIds.length > 0 && enabledIds.some((id) => {
-    const state = activeStreams[id];
-    return state?.status === 'connecting';
-  });
+  // Show loading blur only until the first stream connects (not while stragglers catch up)
+  const anyConnected = enabledIds.some((id) => activeStreams[id]?.status === 'connected');
+  const anyLoading = isPlaying && enabledIds.length > 0 && !anyConnected;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

@@ -91,7 +91,8 @@ export const ARP_SHAPES: Record<string, { label: string; degrees: number[] }> = 
   up:        { label: 'Up',           degrees: [0, 1, 2, 3, 4] },
   down:      { label: 'Down',         degrees: [4, 3, 2, 1, 0] },
   upDown:    { label: 'Up-Down',      degrees: [0, 1, 2, 3, 4, 3, 2, 1] },
-  skip:      { label: 'Skip (1-3-5)', degrees: [0, 2, 4, 2, 4, 2] },         // ABCBCB — original
+  skip:      { label: 'Skip (1-3-5)', degrees: [0, 2, 4, 2, 4, 2] },         // ABCBCB
+  fadada:    { label: 'FADADA',       degrees: [4, 0, 3, 0, 3, 0] },         // F(low) A D A D A
 
   // Walking bass / melodic patterns
   walk:      { label: 'Walk',         degrees: [0, 1, 2, 4, 2, 1] },          // climb-and-fall
@@ -278,14 +279,16 @@ export class AudioEngine {
   }
 
   private createChannel(id: string, config: ChannelConfig) {
-    const targetVolume = config.volume;
+    const allChannels = this.store.getState().channels;
+    const anySoloed = Object.values(allChannels).some((c) => c.solo);
+    const shouldMute = config.mute || (anySoloed && !config.solo);
+    const targetVolume = shouldMute ? -100 : config.volume;
     const initialVolume = Tone.context.state === 'running' ? -60 : targetVolume;
     const channel = new Tone.Channel({
       volume: initialVolume,
       pan: config.pan,
-      mute: config.mute,
     });
-    if (Tone.context.state === 'running') {
+    if (Tone.context.state === 'running' && !shouldMute) {
       const now = Tone.now();
       channel.volume.cancelScheduledValues(now);
       channel.volume.rampTo(targetVolume, 0.05);
@@ -706,7 +709,7 @@ export class AudioEngine {
         const dur = Math.max(Tone.Time('8n').toSeconds(), minDur);
         synth.triggerAttackRelease(note, dur, time);
       },
-      expandArpShape(initialNotes, config.patternType ?? 'skip'),
+      expandArpShape(initialNotes, config.patternType ?? 'fadada'),
       'up' // Shape is pre-expanded, just traverse in order
     );
 
@@ -786,13 +789,17 @@ export class AudioEngine {
 
   private updateChannel(nodes: ChannelNodes, config: ChannelConfig) {
     nodes.behaviorKey = AudioEngine.behaviorKey(config);
-    nodes.channel.volume.value = config.volume;
-    nodes.channel.pan.value = config.pan;
 
     // Solo logic: if any channel is soloed, mute non-soloed channels
     const allChannels = this.store.getState().channels;
     const anySoloed = Object.values(allChannels).some((c) => c.solo);
-    nodes.channel.mute = config.mute || (anySoloed && !config.solo);
+    const shouldMute = config.mute || (anySoloed && !config.solo);
+
+    // Don't rely on Tone.Channel.mute — it has internal state issues when
+    // volume is set externally between mute toggles. Directly set volume
+    // to -Infinity for muted channels.
+    nodes.channel.volume.value = shouldMute ? -100 : config.volume;
+    nodes.channel.pan.value = config.pan;
 
     if (nodes.synthOptionsKey !== AudioEngine.synthOptionsKey(config)) {
       nodes.synthOptionsKey = AudioEngine.synthOptionsKey(config);
@@ -1020,7 +1027,7 @@ export class AudioEngine {
       const cfg = state.channels[streamId];
       const sampleMode = cfg?.ambientMode === 'sample';
       const hybridSustain = cfg?.behaviorType === 'hybrid' && cfg?.ambientMode === 'sustain';
-      nodes.pattern.values = expandArpShape(notes, cfg?.patternType ?? 'skip');
+      nodes.pattern.values = expandArpShape(notes, cfg?.patternType ?? 'fadada');
       if (sampleMode) {
         if (nodes.pattern.state === 'started') {
           nodes.pattern.stop();
@@ -1375,7 +1382,7 @@ export class AudioEngine {
             scaleNotes[Math.min(scaleNotes.length - 1, 6)],
           ];
         }
-        nodes.pattern.values = expandArpShape(arpNotes, config.patternType ?? 'skip');
+        nodes.pattern.values = expandArpShape(arpNotes, config.patternType ?? 'fadada');
       }
     }
 

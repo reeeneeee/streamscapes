@@ -10,139 +10,169 @@ const VOLUME_RANGES: Record<string, { min: number; max: number }> = {
   wikipedia: { min: -20, max: 10 },
 };
 
+function ChannelRow({ id }: { id: string }) {
+  const config = useStore((s) => s.channels[id]);
+  const updateChannel = useStore((s) => s.updateChannel);
+  const status = useStore((s) => s.activeStreams[id]?.status);
+
+  if (!config) return null;
+
+  const color = getStreamColor(id);
+  const label = getStreamLabel(id);
+  const isMuted = config.mute;
+  const isSolo = config.solo;
+  const isOff = !config.enabled;
+  const dimmed = isOff || isMuted;
+  const range = VOLUME_RANGES[id] ?? { min: -30, max: 6 };
+
+  return (
+    <div
+      className="flex items-center gap-2 sm:gap-3 rounded-lg transition-opacity"
+      style={{
+        padding: '12px 14px',
+        background: 'rgba(255, 255, 255, 0.025)',
+        opacity: dimmed ? 0.4 : 1,
+      }}
+    >
+      <div
+        style={{
+          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+          background: status === 'error' ? '#ef4444' : color,
+          boxShadow: status === 'connected' ? `0 0 6px ${color}` : 'none',
+        }}
+      />
+      <span
+        style={{
+          fontFamily: 'var(--font-body, var(--ff-body))',
+          fontSize: 14, fontWeight: 500,
+          color: 'var(--text-primary)',
+          width: 70, flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <input
+        type="range"
+        min={range.min}
+        max={range.max}
+        step={0.5}
+        value={config.volume}
+        onChange={(e) => updateChannel(id, { volume: parseFloat(e.target.value) })}
+        className="flex-1 h-1 rounded-sm appearance-none cursor-pointer"
+        style={{
+          accentColor: 'rgba(245, 240, 235, 0.4)',
+          background: 'rgba(255, 255, 255, 0.08)',
+          touchAction: 'none',
+        }}
+      />
+      <span
+        style={{
+          fontFamily: 'var(--font-display, var(--ff-display))',
+          fontSize: 11, fontWeight: 400,
+          color: 'rgba(245, 240, 235, 0.3)',
+          width: 46, textAlign: 'right', flexShrink: 0,
+        }}
+      >
+        {config.volume.toFixed(1)} dB
+      </span>
+      <button
+        onClick={() => {
+          if (isSolo) {
+            updateChannel(id, { solo: false });
+          } else {
+            updateChannel(id, { enabled: true, solo: true, mute: false });
+          }
+        }}
+        title={isSolo ? 'Un-solo' : 'Solo — hear only this stream'}
+        style={{
+          fontFamily: 'var(--font-display, var(--ff-display))',
+          fontSize: 11, fontWeight: 600, lineHeight: '26px',
+          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+          textAlign: 'center',
+          background: isSolo ? 'rgba(250, 204, 21, 0.15)' : 'transparent',
+          color: isSolo ? 'rgba(250, 204, 21, 0.9)' : 'rgba(245, 240, 235, 0.2)',
+          border: `1px solid ${isSolo ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
+          cursor: 'pointer',
+        }}
+      >
+        S
+      </button>
+      <button
+        onClick={() => {
+          if (isOff) {
+            updateChannel(id, { enabled: true, mute: false });
+          } else {
+            updateChannel(id, { mute: !isMuted });
+          }
+        }}
+        title={isMuted ? 'Unmute' : isOff ? 'Enable' : 'Mute'}
+        style={{
+          fontFamily: 'var(--font-display, var(--ff-display))',
+          fontSize: 11, fontWeight: 600, lineHeight: '26px',
+          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+          textAlign: 'center',
+          background: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+          color: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.8)' : 'rgba(245, 240, 235, 0.2)',
+          border: `1px solid ${(isMuted || isOff) ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
+          cursor: 'pointer',
+        }}
+      >
+        M
+      </button>
+    </div>
+  );
+}
 
 export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
-  const updateChannel = useStore((s) => s.updateChannel);
   const updateGlobal = useStore((s) => s.updateGlobal);
-  const activeStreams = useStore((s) => s.activeStreams);
 
-  const channelIds = Object.keys(channels);
+  // Separate primary channels from OTLP sub-channels
+  const primaryIds: string[] = [];
+  const otlpSubIds: string[] = [];
+  for (const [id, config] of Object.entries(channels)) {
+    if (id === 'otlp') continue; // skip parent — it's a group header, not a mixer row
+    if (config.parentPluginId === 'otlp') {
+      otlpSubIds.push(id);
+    } else {
+      primaryIds.push(id);
+    }
+  }
+
+  const activeCount = Object.entries(channels)
+    .filter(([, ch]) => ch.enabled && !ch.mute).length;
 
   return (
     <div className="flex flex-col gap-0.5">
-      {/* Channel rows */}
-      {channelIds.map((id) => {
-        const config = channels[id];
-        const color = getStreamColor(id);
-        const label = getStreamLabel(id);
-        const status = activeStreams[id]?.status;
-        const isMuted = config.mute;
-        const isSolo = config.solo;
-        const isOff = !config.enabled;
-        const dimmed = isOff || isMuted;
-        const range = VOLUME_RANGES[id] ?? { min: -30, max: 6 };
+      {/* Primary channel rows */}
+      {primaryIds.map((id) => <ChannelRow key={id} id={id} />)}
 
-        return (
+      {/* OTLP group */}
+      {otlpSubIds.length > 0 && (
+        <div
+          style={{
+            marginTop: 8,
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: 8,
+            padding: '6px 0',
+          }}
+        >
           <div
-            key={id}
-            className="flex items-center gap-2 sm:gap-3 rounded-lg transition-opacity"
             style={{
-              padding: '12px 14px',
-              background: 'rgba(255, 255, 255, 0.025)',
-              opacity: dimmed ? 0.4 : 1,
+              padding: '4px 14px 6px',
+              fontFamily: 'var(--font-display, var(--ff-display))',
+              fontSize: 10, fontWeight: 500,
+              color: 'rgba(245, 240, 235, 0.3)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase' as const,
             }}
           >
-            {/* Accent dot + connection status */}
-            <div
-              style={{
-                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                background: status === 'error' ? '#ef4444' : color,
-                boxShadow: status === 'connected' ? `0 0 6px ${color}` : 'none',
-              }}
-            />
-
-            {/* Stream name */}
-            <span
-              style={{
-                fontFamily: 'var(--font-body, var(--ff-body))',
-                fontSize: 14, fontWeight: 500,
-                color: 'var(--text-primary)',
-                width: 70, flexShrink: 0,
-              }}
-            >
-              {label}
-            </span>
-
-            {/* Volume slider */}
-            <input
-              type="range"
-              min={range.min}
-              max={range.max}
-              step={0.5}
-              value={config.volume}
-              onChange={(e) => updateChannel(id, { volume: parseFloat(e.target.value) })}
-              className="flex-1 h-1 rounded-sm appearance-none cursor-pointer"
-              style={{
-                accentColor: 'rgba(245, 240, 235, 0.4)',
-                background: 'rgba(255, 255, 255, 0.08)',
-                touchAction: 'none',
-              }}
-            />
-
-            {/* dB readout */}
-            <span
-              style={{
-                fontFamily: 'var(--font-display, var(--ff-display))',
-                fontSize: 11, fontWeight: 400,
-                color: 'rgba(245, 240, 235, 0.3)',
-                width: 46, textAlign: 'right', flexShrink: 0,
-              }}
-            >
-              {config.volume.toFixed(1)} dB
-            </span>
-
-            {/* Solo */}
-            <button
-              onClick={() => {
-                if (isSolo) {
-                  updateChannel(id, { solo: false });
-                } else {
-                  updateChannel(id, { enabled: true, solo: true, mute: false });
-                }
-              }}
-              title={isSolo ? 'Un-solo' : 'Solo — hear only this stream'}
-              style={{
-                fontFamily: 'var(--font-display, var(--ff-display))',
-                fontSize: 11, fontWeight: 600, lineHeight: '26px',
-                width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-                textAlign: 'center',
-                background: isSolo ? 'rgba(250, 204, 21, 0.15)' : 'transparent',
-                color: isSolo ? 'rgba(250, 204, 21, 0.9)' : 'rgba(245, 240, 235, 0.2)',
-                border: `1px solid ${isSolo ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
-                cursor: 'pointer',
-              }}
-            >
-              S
-            </button>
-
-            {/* Mute */}
-            <button
-              onClick={() => {
-                if (isOff) {
-                  updateChannel(id, { enabled: true, mute: false });
-                } else {
-                  updateChannel(id, { mute: !isMuted });
-                }
-              }}
-              title={isMuted ? 'Unmute' : isOff ? 'Enable' : 'Mute'}
-              style={{
-                fontFamily: 'var(--font-display, var(--ff-display))',
-                fontSize: 11, fontWeight: 600, lineHeight: '26px',
-                width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-                textAlign: 'center',
-                background: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                color: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.8)' : 'rgba(245, 240, 235, 0.2)',
-                border: `1px solid ${(isMuted || isOff) ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
-                cursor: 'pointer',
-              }}
-            >
-              M
-            </button>
+            OpenTelemetry
           </div>
-        );
-      })}
+          {otlpSubIds.map((id) => <ChannelRow key={id} id={id} />)}
+        </div>
+      )}
 
       {/* Master volume */}
       <div
@@ -208,7 +238,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
         <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.06)' }} />
         <div className="flex items-center gap-2">
           <span style={{ fontFamily: 'var(--font-body, var(--ff-body))', fontSize: 11, fontWeight: 400, color: 'rgba(245,240,235,0.25)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
-            {channelIds.filter((id) => channels[id].enabled && !channels[id].mute).length} active
+            {activeCount} active
           </span>
         </div>
       </div>

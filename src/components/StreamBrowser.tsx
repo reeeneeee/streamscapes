@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from '@/store';
-import { STREAM_COLORS } from '@/lib/stream-constants';
+import { STREAM_COLORS, getStreamColor } from '@/lib/stream-constants';
 import type { StreamPlugin } from '@/types/stream';
 import { genericChannelPatch } from '@/lib/generic-settings';
 
@@ -10,6 +10,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   information: 'Information',
   financial: 'Financial',
   social: 'Social',
+  observability: 'Observability',
 };
 
 export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) {
@@ -58,7 +59,7 @@ export default function StreamBrowser({ plugins }: { plugins: StreamPlugin[] }) 
             const isSolo = config.solo;
             const isSelected = selectedChannelId === plugin.id;
             const status = activeStreams[plugin.id]?.status;
-            const color = STREAM_COLORS[plugin.id] ?? '#888';
+            const color = STREAM_COLORS[plugin.id] ?? getStreamColor(plugin.id);
 
             const stateLabel = isSolo ? 'SOLO' : isActive ? 'ACTIVE' : '';
             const btnLabel = isSolo ? 'Solo' : isActive ? 'Active' : 'Off';

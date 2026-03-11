@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
+import { useStore } from '@/store';
 
 interface DdStatus {
   configured: boolean;
