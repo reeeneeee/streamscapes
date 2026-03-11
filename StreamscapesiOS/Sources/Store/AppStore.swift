@@ -10,6 +10,12 @@ final class AppStore {
     var activeStreams: [String: StreamState] = [:]
     var selectedChannelId: String? = "weather"
     var lockGlobalFrame: Bool = true
+    var weatherDisplay: WeatherDisplayData?
+
+    struct WeatherDisplayData {
+        var feelsLike: Double
+        var clouds: Double
+    }
 
     /// Called after every mutation that should trigger engine reconciliation.
     var onReconcileNeeded: (() -> Void)?
@@ -92,7 +98,7 @@ final class AppStore {
                 SonificationMapping(
                     sourceField: "feelsLike",
                     targetParam: "patternSelect",
-                    inputRange: [0, 100],
+                    inputRange: [-10, 110],
                     outputRange: [0, 2],
                     curve: .step,
                     invert: false

@@ -6,6 +6,7 @@ struct StreamscapesApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store = AppStore()
     @State private var coordinator = AudioCoordinator()
+    @State private var location = LocationManager()
 
     init() {
         Self.activateAudioSession()
@@ -16,6 +17,7 @@ struct StreamscapesApp: App {
             RootView()
                 .environment(store)
                 .environment(coordinator)
+                .environment(location)
                 .ignoresSafeArea()
                 .preferredColorScheme(.dark)
                 .onAppear {

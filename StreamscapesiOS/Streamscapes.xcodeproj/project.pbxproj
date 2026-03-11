@@ -28,6 +28,7 @@
 		64D804D538875199BCB36D70 /* VisualizerData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D643625E40B2E7D2603891 /* VisualizerData.swift */; };
 		694F25B8FF7F61CD779AC898 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4778315E48C61CCD6588B667 /* Theme.swift */; };
 		72C03E23BA0814B8202C568B /* audio-bridge.js in Resources */ = {isa = PBXBuildFile; fileRef = F55D280F3F10A358EED0C008 /* audio-bridge.js */; };
+		88DBF9021DF6292953AF52D8 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B906169003069C1F9B1623C /* LocationManager.swift */; };
 		8A178777C4FC182BBD0D139A /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CE79C45C5975B7A075CF0E /* StartView.swift */; };
 		8DB3DBB25B693A3848B81D95 /* AudioCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A018A3723F2B6161B6C248B3 /* AudioCoordinator.swift */; };
 		9305B13B134A87970F37CFBF /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A0DAF0DCB09C7ECE4F211C36 /* DMSans-Regular.ttf */; };
@@ -65,7 +66,7 @@
 		29E142AE6D01C3B27ACD33DF /* GlobalConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalConfig.swift; sourceTree = "<group>"; };
 		2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		31539198BBEE43B82AD0D64E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		3757410AF3795556FF8C69C2 /* Streamscapes.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Streamscapes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3757410AF3795556FF8C69C2 /* Streamscapes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Streamscapes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37CE79C45C5975B7A075CF0E /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		387AFBC9405D9ADEA1C5CAD9 /* WikiStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiStreamPlugin.swift; sourceTree = "<group>"; };
 		3E2F248C7F58134CA146811F /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
@@ -76,6 +77,7 @@
 		801CF04FF22A105E533F4A92 /* EffectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsView.swift; sourceTree = "<group>"; };
 		82523C4E9E09306FAD1D0091 /* MappingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingsView.swift; sourceTree = "<group>"; };
 		877BFD89B7F8DB68A6E64944 /* SonificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonificationView.swift; sourceTree = "<group>"; };
+		9B906169003069C1F9B1623C /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		9E6FFE74060E617651385ADA /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
 		A018A3723F2B6161B6C248B3 /* AudioCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCoordinator.swift; sourceTree = "<group>"; };
 		A0DAF0DCB09C7ECE4F211C36 /* DMSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Regular.ttf"; sourceTree = "<group>"; };
@@ -91,7 +93,7 @@
 		C97A7C4E68D66877707925E7 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		CAE40E776EF26366BB69F824 /* WebAudioBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAudioBridge.swift; sourceTree = "<group>"; };
 		CD8A7906A35D974589312EDE /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
-		DD12484096EA9E0236691F8D /* Secrets.example */ = {isa = PBXFileReference; path = Secrets.example; sourceTree = "<group>"; };
+		DD12484096EA9E0236691F8D /* Secrets.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Secrets.example; sourceTree = "<group>"; };
 		E1B3965A24D156E90A8C074C /* StreamManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamManager.swift; sourceTree = "<group>"; };
 		E9A270D84960CD3174EC8904 /* StreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPlugin.swift; sourceTree = "<group>"; };
 		F55D280F3F10A358EED0C008 /* audio-bridge.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "audio-bridge.js"; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 				FFC9F4F8377AC451FDF79222 /* App */,
 				DF68C0F4AF5F193D0C1AB6C3 /* Audio */,
 				73C7E9045AC153BDC2759895 /* Config */,
+				74E87692B138AD3E8C420415 /* Location */,
 				09B796C4848C8F508DB634DF /* Models */,
 				A6B14FFA287E631BB6019254 /* Resources */,
 				B0EDAC9E79B10481B1C972F7 /* Store */,
@@ -170,6 +173,14 @@
 				2E0B5AE32B44A4C4FECC1CC4 /* Secrets.swift */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		74E87692B138AD3E8C420415 /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				9B906169003069C1F9B1623C /* LocationManager.swift */,
+			);
+			path = Location;
 			sourceTree = "<group>";
 		};
 		86FB32BBEFBB8B1B3A31F54D /* Fonts */ = {
@@ -314,8 +325,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 37A73FB855CE810ECDE3AC16 /* Build configuration list for PBXProject "Streamscapes" */;
 			developmentRegion = en;
@@ -375,6 +384,7 @@
 				0146D24831365AB3EEE861F2 /* GlobalConfig.swift in Sources */,
 				5715D256A9BF2E66E0A9DE2C /* GlobalSettingsView.swift in Sources */,
 				25B5946E97B91A1180BAB5D6 /* ListenView.swift in Sources */,
+				88DBF9021DF6292953AF52D8 /* LocationManager.swift in Sources */,
 				AE1B487300AE7DF7604A67E0 /* MainView.swift in Sources */,
 				953B6118B947677CA2954590 /* MappingsView.swift in Sources */,
 				B40BBE4AD4B333828FD1DE35 /* MixerView.swift in Sources */,
@@ -461,6 +471,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = MAG2WYD297;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -477,6 +488,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = MAG2WYD297;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

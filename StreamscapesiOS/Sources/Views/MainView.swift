@@ -23,7 +23,7 @@ struct MainView: View {
                     ControlsView()
                 }
 
-                // Tab bar
+                // Tab bar + status
                 tabBar
             }
         }

@@ -31,14 +31,14 @@ export default function InstallPrompt() {
     // Chrome/Edge: capture the native install prompt
     const handler = (e: Event) => {
       e.preventDefault();
+      setHint(null); // Clear fallback hint — native button takes over
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Safari/Firefox: show manual hint
+    // Browser-specific install hints
     const ua = navigator.userAgent;
     if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
-      // Safari (macOS or iOS)
       if (/iPhone|iPad|iPod/.test(ua)) {
         setHint("Tap the share button, then \"Add to Home Screen\"");
       } else {
@@ -46,6 +46,16 @@ export default function InstallPrompt() {
       }
     } else if (/Firefox/.test(ua)) {
       setHint("Firefox doesn't support PWA install — try Chrome or Edge");
+    } else if (/Chrome/.test(ua)) {
+      // Chrome/Edge: beforeinstallprompt may not fire (incognito, already installed, etc.)
+      // Show fallback after a short delay if native prompt doesn't appear
+      const fallbackTimer = setTimeout(() => {
+        setHint("Click \u22EE → \"Install streamscapes\" to add as a desktop app");
+      }, 2000);
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handler);
+        clearTimeout(fallbackTimer);
+      };
     }
 
     return () => window.removeEventListener("beforeinstallprompt", handler);

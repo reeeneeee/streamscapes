@@ -2,11 +2,124 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Streamscapes Audio Bridge</title>
-<style>body { background: #000; margin: 0; }</style>
+<style>
+* { margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+#tap-target {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: transparent; -webkit-tap-highlight-color: transparent;
+}
+</style>
 </head>
 <body>
+<!-- Silent looping audio to keep WebContent process alive in background -->
+<audio id="keepalive" loop preload="auto"></audio>
+<!-- Full-screen transparent tap target to capture the real user gesture -->
+<div id="tap-target"></div>
 <script src="audio-bridge.js"></script>
+<script>
+// Generate a WAV blob from an AudioBuffer (used for silent keepalive)
+function bufferToWav(buffer) {
+  var numChannels = buffer.numberOfChannels;
+  var sampleRate = buffer.sampleRate;
+  var length = buffer.length * numChannels * 2;
+  var arrayBuffer = new ArrayBuffer(44 + length);
+  var view = new DataView(arrayBuffer);
+  function writeString(offset, str) {
+    for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length, true);
+  // All zeros = silence
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+(function() {
+  var tapped = false;
+  document.getElementById('tap-target').addEventListener('touchend', function(e) {
+    if (tapped) return;
+    tapped = true;
+    e.preventDefault();
+    console.log('[html] User tap received — unlocking audio');
+
+    // This runs inside a real user gesture — AudioContext can now start
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume().then(function() {
+      console.log('[html] AudioContext resumed, state:', ctx.state);
+    });
+
+    // Start silent keepalive audio — tricks iOS into keeping WebContent alive in background
+    var keepalive = document.getElementById('keepalive');
+    var silenceDuration = 10; // seconds
+    var sampleRate = ctx.sampleRate;
+    var buffer = ctx.createBuffer(1, sampleRate * silenceDuration, sampleRate);
+    var blob = bufferToWav(buffer);
+    keepalive.src = URL.createObjectURL(blob);
+    keepalive.play().then(function() {
+      console.log('[html] Keepalive audio playing');
+    }).catch(function(e) {
+      console.error('[html] Keepalive play failed:', e);
+    });
+
+    // Tell AudioBridge to use this gesture-unlocked context
+    if (window.AudioBridge) {
+      window.AudioBridge.unlockWithContext(ctx);
+    }
+
+    // Notify Swift that audio is unlocked
+    try {
+      window.webkit.messageHandlers.audioUnlocked.postMessage('ok');
+    } catch(err) {
+      console.error('[html] Failed to notify Swift:', err);
+    }
+  });
+
+  // Also handle click for simulator (which may not fire touchend)
+  document.getElementById('tap-target').addEventListener('click', function() {
+    if (tapped) return;
+    tapped = true;
+    console.log('[html] Click received — unlocking audio');
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume().then(function() {
+      console.log('[html] AudioContext resumed, state:', ctx.state);
+    });
+
+    // Start keepalive
+    var keepalive = document.getElementById('keepalive');
+    var silenceDuration = 10;
+    var sampleRate = ctx.sampleRate;
+    var buffer = ctx.createBuffer(1, sampleRate * silenceDuration, sampleRate);
+    var blob = bufferToWav(buffer);
+    keepalive.src = URL.createObjectURL(blob);
+    keepalive.play().catch(function() {});
+
+    if (window.AudioBridge) {
+      window.AudioBridge.unlockWithContext(ctx);
+    }
+    try {
+      window.webkit.messageHandlers.audioUnlocked.postMessage('ok');
+    } catch(err) {}
+  });
+
+  if (window.AudioBridge) {
+    console.log('[html] AudioBridge loaded successfully');
+  } else {
+    console.error('[html] AudioBridge NOT found on window');
+  }
+})();
+</script>
 </body>
 </html>

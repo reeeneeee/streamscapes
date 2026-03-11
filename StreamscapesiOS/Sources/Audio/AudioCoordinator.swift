@@ -9,15 +9,32 @@ final class AudioCoordinator {
     private var reconcileTask: Task<Void, Never>?
     let visualizerData = VisualizerData()
 
-    func start(store: AppStore) {
-        print("[Audio] Starting WebAudioBridge...")
-        bridge.start(store: store)
-        bridge.initialize(store: store)
-        print("[Audio] Bridge initialized with \(store.channels.filter { $0.value.enabled && !$0.value.mute }.count) active channels")
-        visualizerData.startAging()
+    /// Call early (e.g. on app launch) to preload the WKWebView.
+    /// The WKWebView is shown as a transparent overlay to capture the user's tap.
+    func preload() {
+        bridge.preload()
+    }
 
-        let lat = 37.7749
-        let lon = -122.4194
+    private var location: LocationManager?
+
+    /// Set up the bridge and wait for the user's tap to unlock audio.
+    func start(store: AppStore, location: LocationManager) {
+        self.location = location
+        print("[Audio] Setting up bridge, waiting for audio unlock from user tap...")
+
+        bridge.start(store: store) { [weak self] in
+            guard let self else { return }
+            print("[Audio] Audio unlocked! Starting streams...")
+            store.setPlaying(true)
+            self.visualizerData.startAging()
+            self.startStreams(store: store)
+        }
+    }
+
+    private func startStreams(store: AppStore) {
+        let lat = location?.latitude ?? 40.6681
+        let lon = location?.longitude ?? -73.9822
+        print("[Audio] Starting streams at \(lat), \(lon)")
 
         let plugins: [any StreamPlugin] = [
             WeatherStreamPlugin(
@@ -65,7 +82,7 @@ final class AudioCoordinator {
         guard store.channels[dp.streamId] != nil else { return }
         bridge.handleDataPoint(dp)
 
-        // Feed visualizer
+        // Feed visualizer + weather display
         switch dp.streamId {
         case "flights":
             flightBuffer.append(dp)
@@ -75,6 +92,11 @@ final class AudioCoordinator {
                     self.visualizerData.updateFlights(from: self.flightBuffer)
                     self.flightBuffer.removeAll()
                 }
+            }
+        case "weather":
+            if let feelsLike = dp.fields["feelsLike"],
+               let clouds = dp.fields["clouds"] {
+                store.weatherDisplay = .init(feelsLike: feelsLike, clouds: clouds)
             }
         case "wikipedia":
             visualizerData.addWikiEdit(from: dp)

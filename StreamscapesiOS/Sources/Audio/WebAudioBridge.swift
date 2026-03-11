@@ -2,42 +2,175 @@ import Foundation
 import WebKit
 import AVFoundation
 
+/// Forwards JS console.log/error/warn to Xcode console.
+private final class JSConsoleHandler: NSObject, WKScriptMessageHandler {
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        if let text = message.body as? String {
+            print("[WebAudioBridge:JS] \(text)")
+        }
+    }
+}
+
+/// Receives "audioUnlocked" message from the HTML tap handler.
+@MainActor
+private final class AudioUnlockHandler: NSObject, WKScriptMessageHandler {
+    var onUnlock: (() -> Void)?
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        print("[WebAudioBridge] Audio unlocked by user gesture!")
+        onUnlock?()
+    }
+}
+
 /// Runs the web Tone.js AudioEngine inside a hidden WKWebView.
 /// Replaces the native AudioKit SonificationEngine with 100% web parity.
+///
+/// Audio unlock flow:
+/// 1. WKWebView starts full-screen + transparent, overlaying the SwiftUI start screen
+/// 2. User taps "PLUG IN" — the tap hits the WKWebView's HTML tap handler
+/// 3. The HTML handler creates an AudioContext inside the real gesture (required by iOS)
+/// 4. The handler calls AudioBridge.unlockWithContext() and notifies Swift
+/// 5. Swift shrinks the WKWebView to 1x1, initializes the engine, and starts streams
 @MainActor
 final class WebAudioBridge: NSObject {
     private var webView: WKWebView?
     private var isReady = false
     private var pendingCalls: [String] = []
+    private let consoleHandler = JSConsoleHandler()
+    private let unlockHandler = AudioUnlockHandler()
+    private var onAudioUnlocked: (() -> Void)?
 
     // MARK: - Setup
 
-    func start(store: AppStore) {
+    /// Load the WKWebView as a full-screen transparent overlay.
+    /// Call this early (before the user taps) so the page is loaded and ready.
+    func preload() {
         guard webView == nil else { return }
 
-        // Audio session
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try? session.setActive(true)
-
-        // WKWebView config — no user gesture required for audio
+        // WKWebView config — no user gesture required for media (belt-and-suspenders)
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
 
-        let wv = WKWebView(frame: CGRect(x: 0, y: 0, width: 1, height: 1), configuration: config)
+        // JS console forwarding → Xcode console
+        let contentController = config.userContentController
+        contentController.add(consoleHandler, name: "jsConsole")
+        contentController.add(unlockHandler, name: "audioUnlocked")
+
+        let consoleScript = WKUserScript(source: """
+        (function() {
+            var orig = { log: console.log.bind(console), error: console.error.bind(console), warn: console.warn.bind(console) };
+            function send(level, args) {
+                try {
+                    window.webkit.messageHandlers.jsConsole.postMessage(
+                        level + ': ' + Array.prototype.map.call(args, function(a) {
+                            if (a instanceof Error) return a.message;
+                            if (typeof a === 'object') try { return JSON.stringify(a); } catch(e) { return String(a); }
+                            return String(a);
+                        }).join(' ')
+                    );
+                } catch(e) {}
+            }
+            console.log = function() { send('LOG', arguments); orig.log.apply(console, arguments); };
+            console.error = function() { send('ERR', arguments); orig.error.apply(console, arguments); };
+            console.warn = function() { send('WRN', arguments); orig.warn.apply(console, arguments); };
+            window.onerror = function(msg, src, line, col, err) {
+                send('ERR', ['Uncaught: ' + msg + ' at ' + src + ':' + line + ':' + col]);
+            };
+            window.onunhandledrejection = function(e) {
+                send('ERR', ['Unhandled rejection: ' + (e.reason || e)]);
+            };
+        })();
+        """, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        contentController.addUserScript(consoleScript)
+
+        // Start full-screen so it can capture the user's tap
+        let screenBounds = UIScreen.main.bounds
+        let wv = WKWebView(frame: screenBounds, configuration: config)
+        wv.isInspectable = true
         wv.navigationDelegate = self
+        wv.backgroundColor = .clear
+        wv.isOpaque = false
+        wv.scrollView.backgroundColor = .clear
+        wv.scrollView.isScrollEnabled = false
         self.webView = wv
+
+        // Add to key window as overlay
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.addSubview(wv)
+            print("[WebAudioBridge] WKWebView added as full-screen overlay")
+        }
 
         // Load HTML from bundle
         guard let htmlURL = Bundle.main.url(forResource: "audio-bridge", withExtension: "html") else {
             print("[WebAudioBridge] audio-bridge.html not found in bundle")
             return
         }
-        // Load with access to the directory so the JS file can be found
         wv.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
 
+        print("[WebAudioBridge] Preloading audio bridge...")
+    }
+
+    /// Set up the unlock callback. When the user taps the WKWebView overlay,
+    /// the audio context is unlocked, then this initializes the engine and calls back.
+    func start(store: AppStore, onAudioUnlocked: @escaping () -> Void) {
+        self.onAudioUnlocked = onAudioUnlocked
+
+        // Set up unlock callback — fires when the HTML tap handler posts a message
+        unlockHandler.onUnlock = { [weak self] in
+            guard let self else { return }
+
+            // Set up AVAudioSession now that the user has interacted
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try? session.setActive(true)
+
+            // Shrink WKWebView — no longer needs to capture taps
+            self.webView?.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+            self.webView?.isUserInteractionEnabled = false
+            print("[WebAudioBridge] WKWebView shrunk to 1x1 after unlock")
+
+            // Initialize the engine now that audio context is unlocked
+            self.initialize(store: store)
+
+            // Notify coordinator that audio is ready
+            self.onAudioUnlocked?()
+        }
+
+        print("[WebAudioBridge] Waiting for user tap to unlock audio...")
+    }
+
+    func stop() {
+        callJS("AudioBridge.stop()")
+        if let wv = webView {
+            wv.configuration.userContentController.removeScriptMessageHandler(forName: "jsConsole")
+            wv.configuration.userContentController.removeScriptMessageHandler(forName: "audioUnlocked")
+            wv.removeFromSuperview()
+        }
+        webView?.stopLoading()
+        webView = nil
+        isReady = false
+        pendingCalls.removeAll()
+        onAudioUnlocked = nil
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Engine interface
+
+    private func initialize(store: AppStore) {
+        let channelsJson = encodeChannels(store.channels)
+        let globalJson = encodeGlobal(store.global)
+        print("[WebAudioBridge] Initializing with \(store.channels.count) channels")
+        callJS("AudioBridge.init(\(quote(channelsJson)), \(quote(globalJson)))")
+
+        // Check status after delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.callJS("AudioBridge.status()")
+        }
+
         // Listen for interruptions
+        let session = AVAudioSession.sharedInstance()
         NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
             object: session,
@@ -60,25 +193,6 @@ final class WebAudioBridge: NSObject {
                 self?.resumeAudio()
             }
         }
-
-        print("[WebAudioBridge] Loading audio bridge...")
-    }
-
-    func stop() {
-        callJS("AudioBridge.stop()")
-        webView?.stopLoading()
-        webView = nil
-        isReady = false
-        pendingCalls.removeAll()
-        NotificationCenter.default.removeObserver(self)
-    }
-
-    // MARK: - Engine interface
-
-    func initialize(store: AppStore) {
-        let channelsJson = encodeChannels(store.channels)
-        let globalJson = encodeGlobal(store.global)
-        callJS("AudioBridge.init(\(quote(channelsJson)), \(quote(globalJson)))")
     }
 
     func reconcile(channels: [String: ChannelConfig], global: GlobalConfig) {
@@ -121,12 +235,15 @@ final class WebAudioBridge: NSObject {
             return
         }
 
+        let logJs = js.count > 120 ? String(js.prefix(120)) + "..." : js
+        print("[WebAudioBridge] callJS: \(logJs)")
+
         wv.evaluateJavaScript(js) { result, error in
             if let error {
                 print("[WebAudioBridge] JS error: \(error.localizedDescription)")
             }
-            if let result = result as? String, result.hasPrefix("error:") {
-                print("[WebAudioBridge] Bridge error: \(result)")
+            if let result {
+                print("[WebAudioBridge] JS result: \(result)")
             }
         }
     }
@@ -164,7 +281,6 @@ final class WebAudioBridge: NSObject {
         for (key, value) in dp.fields {
             fields[key] = value
         }
-        // Also include metadata as string fields (web DataPoint supports string fields)
         for (key, value) in dp.metadata {
             fields[key] = value
         }
@@ -188,7 +304,6 @@ final class WebAudioBridge: NSObject {
             "solo": c.solo,
         ]
 
-        // synthOptions
         var synthOpts: [String: Any] = [:]
         if let env = c.synthOptions.envelope {
             synthOpts["envelope"] = [
@@ -203,7 +318,6 @@ final class WebAudioBridge: NSObject {
         }
         dict["synthOptions"] = synthOpts
 
-        // mappings
         dict["mappings"] = c.mappings.map { m -> [String: Any] in
             var md: [String: Any] = [
                 "sourceField": m.sourceField,
@@ -219,7 +333,6 @@ final class WebAudioBridge: NSObject {
             return md
         }
 
-        // effects
         dict["effects"] = c.effects.map { e -> [String: Any] in
             [
                 "type": e.type,
@@ -229,11 +342,9 @@ final class WebAudioBridge: NSObject {
             ]
         }
 
-        // non-optional enums
         dict["behaviorType"] = c.behaviorType.rawValue
         dict["ambientMode"] = c.ambientMode.rawValue
 
-        // optional fields — only include if set
         if let v = c.eventCooldownMs { dict["eventCooldownMs"] = v }
         if let v = c.eventTriggerThreshold { dict["eventTriggerThreshold"] = v }
         if let v = c.eventBurstCap { dict["eventBurstCap"] = v }
@@ -271,9 +382,7 @@ final class WebAudioBridge: NSObject {
         }
     }
 
-    /// Escape a JSON string for embedding as a JS string argument.
     private func quote(_ json: String) -> String {
-        // Wrap in single quotes, escaping internal single quotes and backslashes
         let escaped = json
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
@@ -296,7 +405,7 @@ final class WebAudioBridge: NSObject {
 extension WebAudioBridge: WKNavigationDelegate {
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task { @MainActor in
-            print("[WebAudioBridge] Page loaded, bridge ready")
+            print("[WebAudioBridge] Page loaded, bridge ready — waiting for user tap")
             self.isReady = true
             self.flushPendingCalls()
         }
