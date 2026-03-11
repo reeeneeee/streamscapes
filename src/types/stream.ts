@@ -8,6 +8,6 @@ export interface StreamPlugin {
   readonly id: string;
   readonly name: string;
   readonly description: string;
-  readonly category: 'environment' | 'information' | 'financial' | 'social';
+  readonly category: 'environment' | 'information' | 'financial' | 'social' | 'observability';
   connect(signal: AbortSignal): AsyncIterable<DataPoint>;
 }

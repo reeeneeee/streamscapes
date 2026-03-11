@@ -82,6 +82,9 @@ export interface ChannelConfig {
   readonly entityField?: string;
   // Pattern mode: pattern type for Tone.Pattern
   readonly patternType?: string;
+  // Multiplexed plugin: sub-channels set this to the parent plugin id.
+  // Orchestration skips connectStream() for channels with a parentPluginId.
+  readonly parentPluginId?: string;
 }
 
 export interface GlobalConfig {

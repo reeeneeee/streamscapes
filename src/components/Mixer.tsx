@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from '@/store';
-import { STREAM_COLORS, STREAM_LABELS } from '@/lib/stream-constants';
+import { getStreamColor, getStreamLabel } from '@/lib/stream-constants';
 import type { AudioEngine } from '@/lib/audio-engine';
 
 const VOLUME_RANGES: Record<string, { min: number; max: number }> = {
@@ -25,8 +25,8 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
       {/* Channel rows */}
       {channelIds.map((id) => {
         const config = channels[id];
-        const color = STREAM_COLORS[id] ?? '#888';
-        const label = STREAM_LABELS[id] ?? id;
+        const color = getStreamColor(id);
+        const label = getStreamLabel(id);
         const status = activeStreams[id]?.status;
         const isMuted = config.mute;
         const isSolo = config.solo;

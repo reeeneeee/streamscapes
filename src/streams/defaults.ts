@@ -267,6 +267,54 @@ export const DEFAULT_STOCKS_CHANNEL: ChannelConfig = {
   hybridAccent: 0.6,
 };
 
+/**
+ * Template for dynamically-created OTLP service channels.
+ * streamId is set at creation time to "otlp:<serviceName>".
+ */
+export function createOtlpChannelConfig(serviceName: string): ChannelConfig {
+  return {
+    streamId: `otlp:${serviceName}`,
+    enabled: true,
+    mode: 'triggered',
+    synthType: 'Synth',
+    synthOptions: { oscillator: { type: 'triangle' } },
+    volume: -12,
+    pan: 0,
+    mute: false,
+    solo: false,
+    effects: [],
+    parentPluginId: 'otlp',
+    mappings: [
+      { sourceField: 'durationMs', targetParam: 'scaleIndex', curve: 'logarithmic', inputRange: [1, 10000], outputRange: [0, 14], invert: false },
+      { sourceField: 'durationMs', targetParam: 'duration', curve: 'logarithmic', inputRange: [1, 10000], outputRange: [0.05, 0.8], invert: false },
+      { sourceField: 'isError', targetParam: 'filterCutoff', curve: 'step', inputRange: [0, 1], outputRange: [8000, 800], invert: false },
+      { sourceField: 'isError', targetParam: 'detune', curve: 'step', inputRange: [0, 1], outputRange: [0, 50], invert: false },
+    ],
+    behaviorType: 'event',
+    eventCooldownMs: 50,
+    eventBurstCap: 8,
+    eventBurstWindowMs: 1000,
+    eventArticulation: 'neutral',
+    eventTriggerThreshold: 0,
+    preMapWindow: 1,
+    preMapStatistic: 'mean',
+    preMapChangeThreshold: 0,
+    preMapDerivative: false,
+    preMapPercentileClamp: 100,
+    alertTier: 'advisory',
+    beaconThreshold: 0,
+    beaconPeriodicSec: 0,
+    beaconOnExtrema: false,
+    hybridAccent: 0.6,
+    sampleSource: '',
+    samplePlaybackRateMin: 0.8,
+    samplePlaybackRateMax: 1.5,
+    sampleDensity: 1,
+    sampleFilterCutoff: 4000,
+    sampleReverbSend: 0,
+  };
+}
+
 export const ALL_DEFAULT_CHANNELS: ChannelConfig[] = [
   DEFAULT_WEATHER_CHANNEL,
   DEFAULT_FLIGHTS_CHANNEL,

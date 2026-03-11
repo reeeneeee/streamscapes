@@ -4,6 +4,7 @@ import { createFlightPlugin } from './flights';
 import { createWeatherPlugin } from './weather';
 import { createRssPlugin } from './rss';
 import { stocksPlugin } from './stocks';
+import { otlpPlugin } from './otlp';
 
 export function createPlugins(lat: number, lon: number): StreamPlugin[] {
   return [
@@ -12,5 +13,6 @@ export function createPlugins(lat: number, lon: number): StreamPlugin[] {
     wikipediaPlugin,
     createRssPlugin(),
     stocksPlugin,
+    otlpPlugin,
   ];
 }

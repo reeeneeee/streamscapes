@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from '@/store';
-import { STREAM_CSS_COLORS } from '@/lib/stream-constants';
+import { STREAM_CSS_COLORS, getStreamColor } from '@/lib/stream-constants';
 import type { AudioEngine } from '@/lib/audio-engine';
 
 export default function TransportBar({
@@ -38,7 +38,7 @@ export default function TransportBar({
           const status = activeStreams[id]?.status;
           const enabled = channels[id]?.enabled;
           if (!enabled) return null;
-          const color = STREAM_CSS_COLORS[id] ?? '#888';
+          const color = STREAM_CSS_COLORS[id] ?? getStreamColor(id);
           return (
             <div
               key={id}

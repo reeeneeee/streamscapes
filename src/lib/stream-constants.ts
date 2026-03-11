@@ -21,3 +21,32 @@ export const STREAM_LABELS: Record<string, string> = {
   rss: 'RSS',
   stocks: 'Stocks',
 };
+
+// 12-color palette for dynamically-created OTLP service channels,
+// distinct from the 5 built-in stream accent colors.
+const OTLP_COLORS = [
+  '#6A8CAF', '#A47B8E', '#7BA68A', '#C49A5C', '#8B7BB5',
+  '#5C9E9E', '#B57A5A', '#6D8F5E', '#9E6A8C', '#7A9AB5',
+  '#B08A5B', '#5E8A7A',
+];
+
+let otlpColorIndex = 0;
+const otlpColorMap = new Map<string, string>();
+
+export function getStreamColor(id: string): string {
+  if (STREAM_COLORS[id]) return STREAM_COLORS[id];
+  if (id.startsWith('otlp:')) {
+    if (!otlpColorMap.has(id)) {
+      otlpColorMap.set(id, OTLP_COLORS[otlpColorIndex % OTLP_COLORS.length]);
+      otlpColorIndex++;
+    }
+    return otlpColorMap.get(id)!;
+  }
+  return '#888';
+}
+
+export function getStreamLabel(id: string): string {
+  if (STREAM_LABELS[id]) return STREAM_LABELS[id];
+  if (id.startsWith('otlp:')) return id.slice(5);
+  return id;
+}

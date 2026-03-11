@@ -5,7 +5,7 @@ import { AudioEngine } from '@/lib/audio-engine';
 import { StreamManager } from '@/lib/stream-manager';
 import { setupVisibilityHandler } from '@/lib/visibility-handler';
 import { createPlugins } from '@/streams';
-import { ALL_DEFAULT_CHANNELS } from '@/streams/defaults';
+import { ALL_DEFAULT_CHANNELS, createOtlpChannelConfig } from '@/streams/defaults';
 import type { StreamPlugin } from '@/types/stream';
 
 /**
@@ -45,7 +45,41 @@ export function useStreamscapes(lat: number, lon: number) {
       }
     }
 
+    // Disable stale OTLP channels on startup — they re-enable when data arrives
+    const currentChannelsForCleanup = store.getState().channels;
+    for (const [id, ch] of Object.entries(currentChannelsForCleanup)) {
+      if (ch.parentPluginId && ch.enabled) {
+        store.getState().updateChannel(id, { enabled: false });
+      }
+    }
+
     const engine = new AudioEngine(store);
+
+    // Maximum number of auto-created OTLP channels
+    const MAX_OTLP_CHANNELS = 12;
+
+    // Register callback for auto-creating channels from multiplexed plugins
+    engine.onUnknownStreamId = (streamId: string) => {
+      if (!streamId.startsWith('otlp:')) return;
+
+      // Check if channel already exists but is disabled (stale) — re-enable it
+      const existingCh = store.getState().channels[streamId];
+      if (existingCh) {
+        if (!existingCh.enabled) {
+          store.getState().updateChannel(streamId, { enabled: true });
+        }
+        return;
+      }
+
+      // Check channel cap
+      const otlpCount = Object.values(store.getState().channels)
+        .filter((ch) => ch.parentPluginId === 'otlp').length;
+      if (otlpCount >= MAX_OTLP_CHANNELS) return;
+
+      const serviceName = streamId.slice(5);
+      store.getState().addChannel(createOtlpChannelConfig(serviceName));
+    };
+
     const plugins = pluginsRef.current;
     const { setStreamState } = store.getState();
     const manager = new StreamManager({ setStreamState }, engine, plugins);
@@ -65,6 +99,7 @@ export function useStreamscapes(lat: number, lon: number) {
         const channels = useStore.getState().channels;
         const activeStreams = useStore.getState().activeStreams;
         for (const [streamId, config] of Object.entries(channels)) {
+          if (config.parentPluginId) continue;
           if (config.enabled && !activeStreams[streamId]) {
             manager.connectStream(streamId);
           }
@@ -88,6 +123,8 @@ export function useStreamscapes(lat: number, lon: number) {
     if (!manager || !isPlaying) return;
 
     for (const [streamId, config] of Object.entries(channels)) {
+      // Sub-channels (e.g. otlp:synapse) are fed by their parent plugin's connection
+      if (config.parentPluginId) continue;
       const streamState = useStore.getState().activeStreams[streamId];
       if (config.enabled && !streamState) {
         manager.connectStream(streamId);

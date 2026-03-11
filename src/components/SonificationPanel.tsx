@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useStore } from '@/store';
-import { STREAM_COLORS } from '@/lib/stream-constants';
+import { STREAM_COLORS, getStreamColor } from '@/lib/stream-constants';
 import SampleEngineControls from './SampleEngineControls';
 import EventControls from './EventControls';
 import { ARP_SHAPES } from '@/lib/audio-engine';
@@ -99,7 +99,7 @@ export default function SonificationPanel() {
   const envelope = (config.synthOptions.envelope as Record<string, number>) ?? {
     attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3,
   };
-  const color = STREAM_COLORS[activeId] ?? '#888';
+  const color = getStreamColor(activeId);
   const behaviorType: BehaviorType = config.behaviorType ?? 'event';
   const ambientMode: AmbientMode = config.ambientMode ?? 'arpeggio';
   const recommendation = STREAM_RECOMMENDATIONS[activeId];
@@ -229,7 +229,7 @@ export default function SonificationPanel() {
             onClick={() => setSelected(id)}
             className="text-[11px] px-2 py-1 rounded transition-colors"
             style={{
-              background: id === activeId ? (STREAM_COLORS[id] ?? '#555') : '#333',
+              background: id === activeId ? (getStreamColor(id)) : '#333',
               color: id === activeId ? '#fff' : '#888',
             }}
           >

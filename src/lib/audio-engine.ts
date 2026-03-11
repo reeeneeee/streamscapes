@@ -146,6 +146,9 @@ export class AudioEngine {
   private beaconLastEmitAt = new Map<string, number>();
   private patternSmoothingState = new Map<string, { updatedAt: number; patternSelect?: number; noiseVolume?: number }>();
   private patternHysteresis = new Map<string, number>(); // current locked pattern index per stream
+  // Called when handleDataPoint receives a streamId with no matching channel.
+  // The orchestration layer can use this to auto-create channels for multiplexed plugins.
+  onUnknownStreamId?: (streamId: string) => void;
   // Callbacks for UI data (flights for visualizer, weather display, mapping preview, etc.)
   private dataListeners = new Map<string, { streamId: string; listener: (data: DataPoint) => void }>();
 
@@ -1058,7 +1061,11 @@ export class AudioEngine {
 
     const { channels, global } = this.store.getState();
     const config = channels[dataPoint.streamId];
-    if (!config || !config.enabled) return;
+    if (!config) {
+      this.onUnknownStreamId?.(dataPoint.streamId);
+      return;
+    }
+    if (!config.enabled) return;
     const processed = this.applyPreMapFilters(dataPoint, config);
     this.lastDataPointByStream.set(dataPoint.streamId, processed);
 

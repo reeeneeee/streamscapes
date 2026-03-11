@@ -14,6 +14,8 @@ import EffectsChain from './EffectsChain';
 import MappingEditor from './MappingEditor';
 import Presets from './Presets';
 import TransportBar from './TransportBar';
+import ErrorFeed from './ErrorFeed';
+import ConnectionsPanel from './ConnectionsPanel';
 import InstallPrompt from './InstallPrompt';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
@@ -405,9 +407,23 @@ export default function Main() {
             >
               <EffectsChain />
             </SettingsStep>
+
+            <SettingsStep
+              step={6}
+              title="Connect Live Data"
+              description="Ingest OTLP traces or connect to Datadog for live system sonification."
+              collapsible
+              expanded={guidedStep === 6}
+              onToggle={() => setGuidedStep(guidedStep === 6 ? 0 : 6)}
+            >
+              <ConnectionsPanel />
+            </SettingsStep>
           </div>
         </div>
       )}
+
+      {/* Error feed overlay for OTLP errors */}
+      <ErrorFeed engine={engine} />
 
       {/* Install prompt — web only, dismissable */}
       <InstallPrompt />
