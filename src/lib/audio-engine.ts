@@ -1067,9 +1067,11 @@ export class AudioEngine {
     }
 
     const { channels, global } = this.store.getState();
-    const config = channels[dataPoint.streamId];
+    let config = channels[dataPoint.streamId];
     if (!config) {
       this.onUnknownStreamId?.(dataPoint.streamId);
+      // Retry after a tick — channel may have been created by the callback
+      setTimeout(() => this.handleDataPoint(dataPoint), 100);
       return;
     }
     if (!config.enabled) return;
@@ -1136,9 +1138,15 @@ export class AudioEngine {
     const articulation = config.eventArticulation ?? 'neutral';
     const velocity = eventArticulationVelocity(params.velocity ?? 0.5, articulation);
     const dur = this.mappedDuration(params.duration, articulation);
-    nodes.synth.triggerAttackRelease(
-      note, dur, Tone.now() + Math.random() * 0.02, velocity
-    );
+    const when = Tone.now() + Math.random() * 0.02;
+    nodes.synth.triggerAttackRelease(note, dur, when, velocity);
+
+    // Error double-strike: add a tritone stab shortly after for dissonance
+    if (dataPoint.fields.isError) {
+      const freq = typeof note === 'number' ? note : Tone.Frequency(note).toFrequency();
+      const tritone = freq * Math.SQRT2; // +6 semitones (tritone = devil's interval)
+      nodes.synth.triggerAttackRelease(tritone, '32n', when + 0.06, velocity * 0.7);
+    }
   }
 
   private handleContinuous(

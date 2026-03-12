@@ -13,44 +13,85 @@ const VOLUME_RANGES: Record<string, { min: number; max: number }> = {
 function ChannelRow({ id }: { id: string }) {
   const config = useStore((s) => s.channels[id]);
   const updateChannel = useStore((s) => s.updateChannel);
+  const removeChannel = useStore((s) => s.removeChannel);
   const status = useStore((s) => s.activeStreams[id]?.status);
 
   if (!config) return null;
 
   const color = getStreamColor(id);
   const label = getStreamLabel(id);
-  const isMuted = config.mute;
-  const isSolo = config.solo;
-  const isOff = !config.enabled;
-  const dimmed = isOff || isMuted;
+  const isOn = config.enabled && !config.mute;
   const range = VOLUME_RANGES[id] ?? { min: -30, max: 6 };
+  const isDismissable = id.startsWith('otlp:') || id.startsWith('dd:');
+
+  const toggle = () => {
+    if (isOn) {
+      updateChannel(id, { enabled: false, solo: false });
+    } else {
+      updateChannel(id, { enabled: true, mute: false });
+    }
+  };
 
   return (
     <div
       className="flex items-center gap-2 sm:gap-3 rounded-lg transition-opacity"
       style={{
-        padding: '12px 14px',
+        padding: '10px 14px',
         background: 'rgba(255, 255, 255, 0.025)',
-        opacity: dimmed ? 0.4 : 1,
+        opacity: isOn ? 1 : 0.4,
       }}
     >
+      {/* On/off toggle */}
+      <button
+        onClick={toggle}
+        title={isOn ? 'Turn off' : 'Turn on'}
+        style={{
+          width: 32, height: 18, borderRadius: 9, flexShrink: 0,
+          background: isOn ? color : 'rgba(255, 255, 255, 0.08)',
+          position: 'relative',
+          cursor: 'pointer',
+          border: 'none',
+          transition: 'background 0.15s',
+        }}
+      >
+        <div
+          style={{
+            width: 14, height: 14, borderRadius: '50%',
+            background: '#fff',
+            position: 'absolute',
+            top: 2,
+            left: isOn ? 16 : 2,
+            transition: 'left 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          }}
+        />
+      </button>
+
+      {/* Status dot */}
       <div
         style={{
-          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-          background: status === 'error' ? '#ef4444' : color,
+          width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+          background: status === 'error' ? '#ef4444'
+            : status === 'connected' ? color
+            : status === 'connecting' ? 'rgba(250, 204, 21, 0.6)'
+            : 'rgba(255, 255, 255, 0.1)',
           boxShadow: status === 'connected' ? `0 0 6px ${color}` : 'none',
         }}
       />
+
+      {/* Label */}
       <span
         style={{
           fontFamily: 'var(--font-body, var(--ff-body))',
-          fontSize: 14, fontWeight: 500,
+          fontSize: 13, fontWeight: 500,
           color: 'var(--text-primary)',
           width: 70, flexShrink: 0,
         }}
       >
         {label}
       </span>
+
+      {/* Volume slider */}
       <input
         type="range"
         min={range.min}
@@ -65,6 +106,8 @@ function ChannelRow({ id }: { id: string }) {
           touchAction: 'none',
         }}
       />
+
+      {/* dB readout */}
       <span
         style={{
           fontFamily: 'var(--font-display, var(--ff-display))',
@@ -75,50 +118,105 @@ function ChannelRow({ id }: { id: string }) {
       >
         {config.volume.toFixed(1)} dB
       </span>
+
+      {/* Dismiss button for sub-channels */}
+      {isDismissable && (
+        <button
+          onClick={() => removeChannel(id)}
+          title="Remove channel"
+          style={{
+            width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+            background: 'transparent',
+            color: 'rgba(245, 240, 235, 0.15)',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 14, lineHeight: '20px',
+            textAlign: 'center',
+            padding: 0,
+          }}
+        >
+          &times;
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** OTLP parent toggle — controls the SSE connection, no volume slider */
+function OtlpToggleRow() {
+  const config = useStore((s) => s.channels['otlp']);
+  const updateChannel = useStore((s) => s.updateChannel);
+  const status = useStore((s) => s.activeStreams['otlp']?.status);
+
+  if (!config) return null;
+
+  const isOn = config.enabled;
+
+  const toggle = () => {
+    updateChannel('otlp', { enabled: !isOn, mute: !isOn ? false : config.mute });
+  };
+
+  return (
+    <div
+      className="flex items-center gap-2 rounded-lg transition-opacity"
+      style={{
+        padding: '8px 14px',
+        opacity: isOn ? 1 : 0.65,
+      }}
+    >
       <button
-        onClick={() => {
-          if (isSolo) {
-            updateChannel(id, { solo: false });
-          } else {
-            updateChannel(id, { enabled: true, solo: true, mute: false });
-          }
-        }}
-        title={isSolo ? 'Un-solo' : 'Solo — hear only this stream'}
+        onClick={toggle}
+        title={isOn ? 'Disconnect personal signals' : 'Connect personal signals'}
         style={{
-          fontFamily: 'var(--font-display, var(--ff-display))',
-          fontSize: 11, fontWeight: 600, lineHeight: '26px',
-          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-          textAlign: 'center',
-          background: isSolo ? 'rgba(250, 204, 21, 0.15)' : 'transparent',
-          color: isSolo ? 'rgba(250, 204, 21, 0.9)' : 'rgba(245, 240, 235, 0.2)',
-          border: `1px solid ${isSolo ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
+          width: 32, height: 18, borderRadius: 9, flexShrink: 0,
+          background: isOn ? '#6A8CAF' : 'rgba(255, 255, 255, 0.08)',
+          position: 'relative',
           cursor: 'pointer',
+          border: 'none',
+          transition: 'background 0.15s',
         }}
       >
-        S
+        <div
+          style={{
+            width: 14, height: 14, borderRadius: '50%',
+            background: '#fff',
+            position: 'absolute',
+            top: 2,
+            left: isOn ? 16 : 2,
+            transition: 'left 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          }}
+        />
       </button>
-      <button
-        onClick={() => {
-          if (isOff) {
-            updateChannel(id, { enabled: true, mute: false });
-          } else {
-            updateChannel(id, { mute: !isMuted });
-          }
+      <div
+        style={{
+          width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+          background: status === 'connected' ? '#6A8CAF'
+            : status === 'connecting' ? 'rgba(250, 204, 21, 0.6)'
+            : 'rgba(255, 255, 255, 0.1)',
         }}
-        title={isMuted ? 'Unmute' : isOff ? 'Enable' : 'Mute'}
+      />
+      <span
         style={{
           fontFamily: 'var(--font-display, var(--ff-display))',
-          fontSize: 11, fontWeight: 600, lineHeight: '26px',
-          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-          textAlign: 'center',
-          background: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-          color: (isMuted || isOff) ? 'rgba(239, 68, 68, 0.8)' : 'rgba(245, 240, 235, 0.2)',
-          border: `1px solid ${(isMuted || isOff) ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
-          cursor: 'pointer',
+          fontSize: 11, fontWeight: 500,
+          color: isOn ? 'rgba(245, 240, 235, 0.5)' : 'rgba(245, 240, 235, 0.35)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase' as const,
         }}
       >
-        M
-      </button>
+        Personal Signals
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--font-body, var(--ff-body))',
+          fontSize: 10,
+          color: 'rgba(245, 240, 235, 0.2)',
+          marginLeft: 'auto',
+        }}
+      >
+        {isOn ? 'connected' : 'off'}
+      </span>
     </div>
   );
 }
@@ -127,57 +225,117 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
   const updateGlobal = useStore((s) => s.updateGlobal);
+  const removeChannel = useStore((s) => s.removeChannel);
 
-  // Separate primary channels from OTLP sub-channels
+  // Separate primary channels from OTLP/Datadog sub-channels
   const primaryIds: string[] = [];
   const otlpSubIds: string[] = [];
+  const ddSubIds: string[] = [];
   for (const [id, config] of Object.entries(channels)) {
-    if (id === 'otlp') continue; // skip parent — it's a group header, not a mixer row
-    if (config.parentPluginId === 'otlp') {
+    if (id === 'otlp') continue;
+    if (id.startsWith('dd:')) {
+      ddSubIds.push(id);
+    } else if (config.parentPluginId === 'otlp') {
       otlpSubIds.push(id);
     } else {
       primaryIds.push(id);
     }
   }
 
-  const activeCount = Object.entries(channels)
-    .filter(([, ch]) => ch.enabled && !ch.mute).length;
+  const activeCount = Object.values(channels)
+    .filter((ch) => ch.enabled && !ch.mute).length;
 
   return (
     <div className="flex flex-col gap-0.5">
       {/* Primary channel rows */}
       {primaryIds.map((id) => <ChannelRow key={id} id={id} />)}
 
-      {/* OTLP group */}
-      {otlpSubIds.length > 0 && (
-        <div
-          style={{
-            marginTop: 8,
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            padding: '6px 0',
-          }}
-        >
-          <div
-            style={{
-              padding: '4px 14px 6px',
-              fontFamily: 'var(--font-display, var(--ff-display))',
-              fontSize: 10, fontWeight: 500,
-              color: 'rgba(245, 240, 235, 0.3)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase' as const,
-            }}
-          >
-            OpenTelemetry
+      {/* Live Signal section — OTLP + Datadog */}
+      <div
+        style={{
+          marginTop: 8,
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          borderRadius: 8,
+          padding: '4px 0',
+        }}
+      >
+        <OtlpToggleRow />
+
+        {/* OTLP sub-channels */}
+        {otlpSubIds.length > 0 && (
+          <div style={{ padding: '0 0 4px' }}>
+            <div className="flex items-center" style={{
+              padding: '4px 14px 2px',
+            }}>
+              <span style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 9, fontWeight: 500,
+                color: 'rgba(245, 240, 235, 0.2)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase' as const,
+              }}>
+                OTLP
+              </span>
+              <button
+                onClick={() => otlpSubIds.forEach((id) => removeChannel(id))}
+                title="Remove all OTLP channels"
+                style={{
+                  marginLeft: 'auto',
+                  fontFamily: 'var(--font-body, var(--ff-body))',
+                  fontSize: 9, color: 'rgba(245, 240, 235, 0.15)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '0 2px',
+                }}
+              >
+                clear all
+              </button>
+            </div>
+            {otlpSubIds.map((id) => <ChannelRow key={id} id={id} />)}
           </div>
-          {otlpSubIds.map((id) => <ChannelRow key={id} id={id} />)}
-        </div>
-      )}
+        )}
+
+        {/* Datadog sub-channels */}
+        {ddSubIds.length > 0 && (
+          <div style={{
+            padding: '0 0 4px',
+            marginTop: otlpSubIds.length > 0 ? 4 : 0,
+            borderTop: otlpSubIds.length > 0 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none',
+          }}>
+            <div className="flex items-center" style={{
+              padding: '4px 14px 2px',
+            }}>
+              <span style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 9, fontWeight: 500,
+                color: 'rgba(245, 240, 235, 0.2)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase' as const,
+              }}>
+                Datadog
+              </span>
+              <button
+                onClick={() => ddSubIds.forEach((id) => removeChannel(id))}
+                title="Remove all Datadog channels"
+                style={{
+                  marginLeft: 'auto',
+                  fontFamily: 'var(--font-body, var(--ff-body))',
+                  fontSize: 9, color: 'rgba(245, 240, 235, 0.15)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '0 2px',
+                }}
+              >
+                clear all
+              </button>
+            </div>
+            {ddSubIds.map((id) => <ChannelRow key={id} id={id} />)}
+          </div>
+        )}
+      </div>
 
       {/* Master volume */}
       <div
         className="flex items-center gap-3"
-        style={{ padding: '18px 14px', marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}
+        style={{ padding: '14px 14px', marginTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}
       >
         <span
           style={{
@@ -217,7 +375,7 @@ export default function Mixer({ engine }: { engine: AudioEngine | null }) {
       </div>
 
       {/* Footer metadata */}
-      <div className="flex items-center gap-4" style={{ padding: '12px 14px 0' }}>
+      <div className="flex items-center gap-4" style={{ padding: '8px 14px 0' }}>
         <div className="flex items-center gap-2">
           <span style={{ fontFamily: 'var(--font-body, var(--ff-body))', fontSize: 11, fontWeight: 400, color: 'rgba(245,240,235,0.25)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>BPM</span>
           <input
