@@ -7,7 +7,6 @@ import { useStreamscapes } from '../hooks/useStreamscapes';
 import { useStore } from '@/store';
 import Visualizer from './Visualizer';
 import Mixer from './Mixer';
-import StreamBrowser from './StreamBrowser';
 import GlobalControls from './GlobalControls';
 import SonificationPanel from './SonificationPanel';
 import EffectsChain from './EffectsChain';
@@ -17,27 +16,21 @@ import TransportBar from './TransportBar';
 import ErrorFeed from './ErrorFeed';
 import ConnectionsPanel from './ConnectionsPanel';
 import InstallPrompt from './InstallPrompt';
+import AuthButton from './AuthButton';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
 
 type Tab = 'listen' | 'controls';
 
 const STEP_ICONS: Record<number, ReactNode> = {
-  1: ( // Equalizer bars
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="8" width="2.5" height="6" rx="1" fill="rgba(245,240,235,0.5)" />
-      <rect x="6.75" y="4" width="2.5" height="10" rx="1" fill="rgba(245,240,235,0.5)" />
-      <rect x="11.5" y="6" width="2.5" height="8" rx="1" fill="rgba(245,240,235,0.5)" />
-    </svg>
-  ),
-  2: ( // Flowing streams
+  1: ( // Flowing streams — Pick A Starting Intent
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M2 4Q5 3 8 4Q11 5 14 4" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
       <path d="M2 8Q5 7 8 8Q11 9 14 8" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
       <path d="M2 12Q5 11 8 12Q11 13 14 12" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
-  3: ( // Tuning/resonance circle
+  2: ( // Tuning/resonance — Shape Behavior
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="8" r="5" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" />
       <circle cx="8" cy="8" r="1.5" fill="rgba(245,240,235,0.5)" />
@@ -47,26 +40,21 @@ const STEP_ICONS: Record<number, ReactNode> = {
       <line x1="13" y1="8" x2="15" y2="8" stroke="rgba(245,240,235,0.35)" strokeWidth="1" strokeLinecap="round" />
     </svg>
   ),
-  4: ( // Diamond compass
+  3: ( // Diamond compass — Map Data
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M8 2L13 8L8 14L3 8Z" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinejoin="round" />
       <circle cx="8" cy="8" r="1.5" fill="rgba(245,240,235,0.5)" />
     </svg>
   ),
-  5: ( // Sine wave
+  4: ( // Sine wave — Polish Tone
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M1 8Q3 4 5 8Q7 12 9 8Q11 4 13 8Q14 10 15 8" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
-  6: ( // Mapping arrows
+  5: ( // Mapping arrows — Connect Live Data
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M2 4H10M10 4L7 1.5M10 4L7 6.5" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M14 12H6M6 12L9 9.5M6 12L9 14.5" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  7: ( // Polish/sparkle
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1L9.5 6.5L15 8L9.5 9.5L8 15L6.5 9.5L1 8L6.5 6.5Z" stroke="rgba(245,240,235,0.5)" strokeWidth="1.2" strokeLinejoin="round" />
     </svg>
   ),
 };
@@ -130,7 +118,7 @@ function SettingsStep({
 
 export default function Main() {
   const { location } = useUserLocation();
-  const { engine, plugins, startAudio, stopAudio, isPlaying } = useStreamscapes(location.lat, location.lon);
+  const { engine, startAudio, stopAudio, isPlaying } = useStreamscapes(location.lat, location.lon);
 
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
@@ -234,6 +222,7 @@ export default function Main() {
       >
         <div className="atmosphere"><div className="atmosphere-blob atmosphere-rose" /><div className="atmosphere-blob atmosphere-blue" /><div className="atmosphere-blob atmosphere-green" /></div>
         <div className="vignette" />
+        <AuthButton className="absolute top-4 right-4 z-20" />
         <h1
           className="relative z-10"
           style={{
@@ -309,26 +298,25 @@ export default function Main() {
             {weatherDisplay.clouds}% cloud cover
           </div>
         )}
+        <AuthButton />
       </div>
 
-      {/* Tab content */}
-      {tab === 'listen' ? (
-        <div className="relative z-[5]" style={{ height: vizHeight }}>
-          <Visualizer
-            weatherAnalyzer={weatherAnalyzer}
-            flights={processedFlights}
-            flightAnalyzer={flightAnalyzer}
-            myLat={location.lat}
-            myLon={location.lon}
-            wikiAnalyzer={wikiAnalyzer}
-            engine={engine}
-          />
-        </div>
-      ) : (
-        <div
-          className="controls-scroll p-4 space-y-6 relative z-[5]"
-          style={{ height: vizHeight }}
-        >
+      {/* Tab content — both rendered, hidden via display to preserve state */}
+      <div className="relative z-[5]" style={{ height: vizHeight, display: tab === 'listen' ? 'block' : 'none' }}>
+        <Visualizer
+          weatherAnalyzer={weatherAnalyzer}
+          flights={processedFlights}
+          flightAnalyzer={flightAnalyzer}
+          myLat={location.lat}
+          myLon={location.lon}
+          wikiAnalyzer={wikiAnalyzer}
+          engine={engine}
+        />
+      </div>
+      <div
+        className="controls-scroll p-4 space-y-6 relative z-[5]"
+        style={{ height: vizHeight, display: tab === 'controls' ? 'block' : 'none' }}
+      >
           <Mixer engine={engine} />
 
           {/* Global Musical Frame — always visible, outside steps */}
@@ -353,74 +341,62 @@ export default function Main() {
           <div className="space-y-3">
             <SettingsStep
               step={1}
-              title="Choose Stream"
-              description="Activate streams to listen. Solo a stream to hear it alone."
-              collapsible
-              expanded={guidedStep === 1}
-              onToggle={() => setGuidedStep(guidedStep === 1 ? 0 : 1)}
-            >
-              <StreamBrowser plugins={plugins} />
-            </SettingsStep>
-
-            <SettingsStep
-              step={2}
               title="Pick A Starting Intent"
               description={lockGlobalFrame
                 ? 'Use presets to land quickly on a coherent listening mode. Global frame is locked.'
                 : 'Use presets to land quickly on a coherent listening mode.'}
               collapsible
-              expanded={guidedStep === 2}
-              onToggle={() => setGuidedStep(guidedStep === 2 ? 0 : 2)}
+              expanded={guidedStep === 1}
+              onToggle={() => setGuidedStep(guidedStep === 1 ? 0 : 1)}
             >
               <Presets lockGlobalFrame={lockGlobalFrame} />
             </SettingsStep>
 
             <SettingsStep
-              step={3}
+              step={2}
               title="Shape Active Stream Behavior"
               description="Choose ambient/event/hybrid behavior and stream-level articulation."
               collapsible
-              expanded={guidedStep === 3}
-              onToggle={() => setGuidedStep(guidedStep === 3 ? 0 : 3)}
+              expanded={guidedStep === 2}
+              onToggle={() => setGuidedStep(guidedStep === 2 ? 0 : 2)}
             >
               <SonificationPanel />
             </SettingsStep>
 
             <SettingsStep
-              step={4}
+              step={3}
               title="Map Data To Sound"
               description="Decide what each data field controls and how sensitive it is."
               collapsible
-              expanded={guidedStep === 4}
-              onToggle={() => setGuidedStep(guidedStep === 4 ? 0 : 4)}
+              expanded={guidedStep === 3}
+              onToggle={() => setGuidedStep(guidedStep === 3 ? 0 : 3)}
             >
               <MappingEditor engine={engine} />
             </SettingsStep>
 
             <SettingsStep
-              step={5}
+              step={4}
               title="Polish Tone And Space"
               description="Use effects after mapping to refine color without changing semantics."
               collapsible
-              expanded={guidedStep === 5}
-              onToggle={() => setGuidedStep(guidedStep === 5 ? 0 : 5)}
+              expanded={guidedStep === 4}
+              onToggle={() => setGuidedStep(guidedStep === 4 ? 0 : 4)}
             >
               <EffectsChain />
             </SettingsStep>
 
             <SettingsStep
-              step={6}
+              step={5}
               title="Connect Live Data"
               description="Ingest OTLP traces or connect to Datadog for live system sonification."
               collapsible
-              expanded={guidedStep === 6}
-              onToggle={() => setGuidedStep(guidedStep === 6 ? 0 : 6)}
+              expanded={guidedStep === 5}
+              onToggle={() => setGuidedStep(guidedStep === 5 ? 0 : 5)}
             >
               <ConnectionsPanel />
             </SettingsStep>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Error feed overlay for OTLP errors */}
       <ErrorFeed engine={engine} />

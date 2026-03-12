@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import { useStore } from '@/store';
 
 const DD_POLL_INTERVAL = 5; // must match POLL_INTERVAL_MS / 1000 in datadog-adapter
@@ -52,9 +53,11 @@ const DD_SITES = [
 ];
 
 export default function ConnectionsPanel() {
+  const { data: session } = useSession();
+  const isAuthed = !!session?.user;
   const [copied, setCopied] = useState<string | null>(null);
 
-  // Datadog form state — persisted in localStorage (lightly obscured, not encrypted)
+  // Datadog form state
   const [ddApiKey, setDdApiKey] = useState('');
   const [ddAppKey, setDdAppKey] = useState('');
   const [ddSite, setDdSite] = useState('datadoghq.com');
@@ -64,19 +67,34 @@ export default function ConnectionsPanel() {
   const [playedSpans, setPlayedSpans] = useState<Set<number>>(new Set());
   const [sseSpans, setSseSpans] = useState<RecentSpan[]>([]);
 
-  // Load DD config from localStorage on mount
+  // Load DD config on mount — from API if authenticated, localStorage if not
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ss-dd-config');
-      if (raw) {
-        const cfg = JSON.parse(atob(raw));
-        if (cfg.apiKey) setDdApiKey(cfg.apiKey);
-        if (cfg.appKey) setDdAppKey(cfg.appKey);
-        if (cfg.site) setDdSite(cfg.site);
-        if (cfg.query) setDdQuery(cfg.query);
-      }
-    } catch { /* ignore corrupt data */ }
-  }, []);
+    if (isAuthed) {
+      fetch('/api/user/configs')
+        .then((r) => r.json())
+        .then((configs: Array<{ type: string; credentials?: { apiKey?: string; appKey?: string; site?: string; query?: string } }>) => {
+          const dd = configs.find((c) => c.type === 'datadog');
+          if (dd?.credentials) {
+            if (dd.credentials.apiKey) setDdApiKey(dd.credentials.apiKey);
+            if (dd.credentials.appKey) setDdAppKey(dd.credentials.appKey);
+            if (dd.credentials.site) setDdSite(dd.credentials.site);
+            if (dd.credentials.query) setDdQuery(dd.credentials.query);
+          }
+        })
+        .catch(() => {});
+    } else {
+      try {
+        const raw = localStorage.getItem('ss-dd-config');
+        if (raw) {
+          const cfg = JSON.parse(atob(raw));
+          if (cfg.apiKey) setDdApiKey(cfg.apiKey);
+          if (cfg.appKey) setDdAppKey(cfg.appKey);
+          if (cfg.site) setDdSite(cfg.site);
+          if (cfg.query) setDdQuery(cfg.query);
+        }
+      } catch { /* ignore corrupt data */ }
+    }
+  }, [isAuthed]);
 
   const countdown = useCountdown(ddStatus.lastPoll?.time, ddStatus.polling);
 
@@ -126,21 +144,38 @@ export default function ConnectionsPanel() {
         .then((r) => r.json())
         .then((s: DdStatus) => {
           setDdStatus(s);
-          // Auto-reconnect if we have saved keys but server lost config (cold start)
+          // Auto-reconnect if server lost config (cold start)
           if (!s.configured) {
-            try {
-              const raw = localStorage.getItem('ss-dd-config');
-              if (raw) {
-                const cfg = JSON.parse(atob(raw));
-                if (cfg.apiKey && cfg.appKey) {
-                  fetch('/api/ingest/datadog', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cfg),
-                  }).then(() => poll());
+            if (isAuthed) {
+              // Reconnect from DB-persisted config
+              fetch('/api/user/configs')
+                .then((r) => r.json())
+                .then((configs: Array<{ type: string; credentials?: { apiKey?: string; appKey?: string; site?: string; query?: string } }>) => {
+                  const dd = configs.find((c) => c.type === 'datadog');
+                  if (dd?.credentials?.apiKey && dd?.credentials?.appKey) {
+                    fetch('/api/ingest/datadog', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(dd.credentials),
+                    }).then(() => poll());
+                  }
+                })
+                .catch(() => {});
+            } else {
+              try {
+                const raw = localStorage.getItem('ss-dd-config');
+                if (raw) {
+                  const cfg = JSON.parse(atob(raw));
+                  if (cfg.apiKey && cfg.appKey) {
+                    fetch('/api/ingest/datadog', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(cfg),
+                    }).then(() => poll());
+                  }
                 }
-              }
-            } catch { /* ignore */ }
+              } catch { /* ignore */ }
+            }
           }
         })
         .catch(() => {});
@@ -148,7 +183,7 @@ export default function ConnectionsPanel() {
     poll();
     const id = setInterval(poll, 10_000);
     return () => clearInterval(id);
-  }, []);
+  }, [isAuthed]);
 
   const copyToClipboard = useCallback((text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -184,18 +219,31 @@ export default function ConnectionsPanel() {
   }, []);
 
   const configureDd = useCallback(async () => {
+    // Always POST to the ingest adapter so polling starts immediately
     await fetch('/api/ingest/datadog', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey: ddApiKey, appKey: ddAppKey, site: ddSite, query: ddQuery }),
     });
-    // Persist config in localStorage (base64 obscured)
-    try {
-      localStorage.setItem('ss-dd-config', btoa(JSON.stringify({ apiKey: ddApiKey, appKey: ddAppKey, site: ddSite, query: ddQuery })));
-    } catch { /* quota exceeded etc */ }
+    // Persist: API if authenticated, localStorage if not
+    if (isAuthed) {
+      fetch('/api/user/configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'datadog',
+          name: 'Datadog',
+          credentials: { provider: 'datadog', apiKey: ddApiKey, appKey: ddAppKey, site: ddSite, query: ddQuery },
+        }),
+      }).catch(() => {});
+    } else {
+      try {
+        localStorage.setItem('ss-dd-config', btoa(JSON.stringify({ apiKey: ddApiKey, appKey: ddAppKey, site: ddSite, query: ddQuery })));
+      } catch { /* quota exceeded etc */ }
+    }
     setDdStatus({ configured: true, polling: true, site: ddSite, query: ddQuery });
     setDdEditing(false);
-  }, [ddApiKey, ddAppKey, ddSite, ddQuery]);
+  }, [ddApiKey, ddAppKey, ddSite, ddQuery, isAuthed]);
 
   const clearDd = useCallback(async () => {
     await fetch('/api/ingest/datadog', {
@@ -203,10 +251,20 @@ export default function ConnectionsPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'clear' }),
     });
+    if (isAuthed) {
+      // Find and delete the DD config from the API
+      fetch('/api/user/configs')
+        .then((r) => r.json())
+        .then((configs: Array<{ id: string; type: string }>) => {
+          const dd = configs.find((c) => c.type === 'datadog');
+          if (dd) fetch(`/api/user/configs?id=${dd.id}`, { method: 'DELETE' });
+        })
+        .catch(() => {});
+    }
     localStorage.removeItem('ss-dd-config');
     setDdStatus({ configured: false, polling: false });
     setDdEditing(false);
-  }, []);
+  }, [isAuthed]);
 
   const inputStyle = {
     fontFamily: 'var(--font-display, var(--ff-display))',
