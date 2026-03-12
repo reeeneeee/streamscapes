@@ -29,12 +29,13 @@ export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
 
     const handler = (dp: DataPoint) => {
       if (!dp.fields.isError) return;
-      if (!dp.streamId.startsWith('otlp:')) return;
+      if (dp.fields.replay) return; // Don't toast replayed spans
+      if (!dp.streamId.startsWith('otlp:') && !dp.streamId.startsWith('dd:')) return;
 
       const entry: ErrorEntry = {
         id: nextId++,
         timestamp: Date.now(),
-        serviceName: dp.streamId.slice(5),
+        serviceName: dp.streamId.slice(dp.streamId.indexOf(':') + 1),
         spanName: String(dp.fields.spanName ?? 'unknown'),
         errorMessage: dp.fields.errorMessage ? String(dp.fields.errorMessage) : undefined,
         httpStatusCode: dp.fields.httpStatusCode ? Number(dp.fields.httpStatusCode) : undefined,
@@ -210,7 +211,7 @@ export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
                   fontWeight: 500,
                   color,
                   flexShrink: 0,
-                  width: 70,
+                  width: 100,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

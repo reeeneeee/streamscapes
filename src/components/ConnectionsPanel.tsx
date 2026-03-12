@@ -1,13 +1,45 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useStore } from '@/store';
+
+const DD_POLL_INTERVAL = 5; // must match POLL_INTERVAL_MS / 1000 in datadog-adapter
+
+function useCountdown(lastPollTime: string | undefined, polling: boolean): number {
+  const [remaining, setRemaining] = useState(DD_POLL_INTERVAL);
+  const lastPollRef = useRef(lastPollTime);
+
+  useEffect(() => {
+    if (!polling || !lastPollTime) { setRemaining(DD_POLL_INTERVAL); return; }
+    lastPollRef.current = lastPollTime;
+
+    const tick = () => {
+      const elapsed = (Date.now() - new Date(lastPollRef.current!).getTime()) / 1000;
+      setRemaining(Math.max(0, Math.ceil(DD_POLL_INTERVAL - elapsed)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastPollTime, polling]);
+
+  return remaining;
+}
+
+interface RecentSpan {
+  serviceName: string;
+  spanName: string;
+  durationMs: number;
+  isError: boolean;
+  timestamp: number;
+}
 
 interface DdStatus {
   configured: boolean;
   polling: boolean;
   site?: string;
   query?: string;
+  recentSpans?: RecentSpan[];
+  lastPoll?: { time: string; status: number; spanCount: number } | null;
 }
 
 const DD_SITES = [
@@ -21,25 +53,96 @@ const DD_SITES = [
 
 export default function ConnectionsPanel() {
   const [copied, setCopied] = useState<string | null>(null);
-  const [testSent, setTestSent] = useState(false);
 
-  // Datadog form state
+  // Datadog form state — persisted in localStorage (lightly obscured, not encrypted)
   const [ddApiKey, setDdApiKey] = useState('');
   const [ddAppKey, setDdAppKey] = useState('');
   const [ddSite, setDdSite] = useState('datadoghq.com');
   const [ddQuery, setDdQuery] = useState('');
   const [ddStatus, setDdStatus] = useState<DdStatus>({ configured: false, polling: false });
+  const [ddEditing, setDdEditing] = useState(false);
+  const [playedSpans, setPlayedSpans] = useState<Set<number>>(new Set());
+  const [sseSpans, setSseSpans] = useState<RecentSpan[]>([]);
+
+  // Load DD config from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('ss-dd-config');
+      if (raw) {
+        const cfg = JSON.parse(atob(raw));
+        if (cfg.apiKey) setDdApiKey(cfg.apiKey);
+        if (cfg.appKey) setDdAppKey(cfg.appKey);
+        if (cfg.site) setDdSite(cfg.site);
+        if (cfg.query) setDdQuery(cfg.query);
+      }
+    } catch { /* ignore corrupt data */ }
+  }, []);
+
+  const countdown = useCountdown(ddStatus.lastPoll?.time, ddStatus.polling);
 
   const otlpEndpoint = typeof window !== 'undefined'
     ? `${window.location.origin}/api/ingest/otlp`
     : 'http://localhost:3000/api/ingest/otlp';
 
-  // Poll DD status
+  // Listen to SSE stream for real-time span updates (same stream the audio engine uses)
+  useEffect(() => {
+    const es = new EventSource('/api/ingest/stream');
+    es.addEventListener('message', (event) => {
+      try {
+        const msg = JSON.parse(event.data) as {
+          serviceName: string;
+          spanName: string;
+          durationMs: number;
+          statusCode: number;
+          timestamp: number;
+          source?: string;
+          replay?: boolean;
+        };
+        // Only show DD spans (not OTLP or replays)
+        if (msg.source !== 'datadog') return;
+        if (msg.replay) return;
+
+        const span: RecentSpan = {
+          serviceName: msg.serviceName,
+          spanName: msg.spanName,
+          durationMs: msg.durationMs,
+          isError: msg.statusCode === 2,
+          timestamp: msg.timestamp,
+        };
+        setSseSpans((prev) => {
+          const next = [span, ...prev];
+          if (next.length > 20) next.length = 20;
+          return next;
+        });
+      } catch { /* skip malformed */ }
+    });
+    return () => es.close();
+  }, []);
+
+  // Poll DD config status + auto-reconnect (slow poll, just for config info)
   useEffect(() => {
     const poll = () => {
       fetch('/api/ingest/datadog')
         .then((r) => r.json())
-        .then((s) => setDdStatus(s))
+        .then((s: DdStatus) => {
+          setDdStatus(s);
+          // Auto-reconnect if we have saved keys but server lost config (cold start)
+          if (!s.configured) {
+            try {
+              const raw = localStorage.getItem('ss-dd-config');
+              if (raw) {
+                const cfg = JSON.parse(atob(raw));
+                if (cfg.apiKey && cfg.appKey) {
+                  fetch('/api/ingest/datadog', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cfg),
+                  }).then(() => poll());
+                }
+              }
+            } catch { /* ignore */ }
+          }
+        })
         .catch(() => {});
     };
     poll();
@@ -53,29 +156,31 @@ export default function ConnectionsPanel() {
     setTimeout(() => setCopied(null), 2000);
   }, []);
 
-  const sendTestSpan = useCallback(async () => {
+  const replaySpan = useCallback(async (span: RecentSpan, index: number) => {
+    const now = Date.now();
+    // Ensure replayed spans have enough duration to be audible (min 50ms)
+    const durationNs = Math.round(Math.max(span.durationMs, 50) * 1_000_000);
     const body = {
       resourceSpans: [{
-        resource: { attributes: [{ key: 'service.name', value: { stringValue: 'test-service' } }] },
+        resource: { attributes: [{ key: 'service.name', value: { stringValue: span.serviceName } }] },
         scopeSpans: [{
           spans: [{
-            name: 'test-span',
+            name: span.spanName,
             kind: 2,
-            startTimeUnixNano: String(Date.now() * 1_000_000),
-            endTimeUnixNano: String(Date.now() * 1_000_000 + 250_000_000),
-            status: { code: 1 },
+            startTimeUnixNano: String(now * 1_000_000),
+            endTimeUnixNano: String(now * 1_000_000 + durationNs),
+            status: { code: span.isError ? 2 : 1 },
             attributes: [],
           }],
         }],
       }],
     };
-    await fetch('/api/ingest/otlp/v1/traces', {
+    await fetch('/api/ingest/otlp/v1/traces?source=datadog&replay=1', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 2000);
+    setPlayedSpans((prev) => new Set(prev).add(index));
   }, []);
 
   const configureDd = useCallback(async () => {
@@ -84,7 +189,12 @@ export default function ConnectionsPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey: ddApiKey, appKey: ddAppKey, site: ddSite, query: ddQuery }),
     });
+    // Persist config in localStorage (base64 obscured)
+    try {
+      localStorage.setItem('ss-dd-config', btoa(JSON.stringify({ apiKey: ddApiKey, appKey: ddAppKey, site: ddSite, query: ddQuery })));
+    } catch { /* quota exceeded etc */ }
     setDdStatus({ configured: true, polling: true, site: ddSite, query: ddQuery });
+    setDdEditing(false);
   }, [ddApiKey, ddAppKey, ddSite, ddQuery]);
 
   const clearDd = useCallback(async () => {
@@ -93,10 +203,9 @@ export default function ConnectionsPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'clear' }),
     });
+    localStorage.removeItem('ss-dd-config');
     setDdStatus({ configured: false, polling: false });
-    setDdApiKey('');
-    setDdAppKey('');
-    setDdQuery('');
+    setDdEditing(false);
   }, []);
 
   const inputStyle = {
@@ -201,11 +310,6 @@ exporters:
           </div>
         </details>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={sendTestSpan} style={smallBtnStyle}>
-            {testSent ? 'Sent!' : 'Send test span'}
-          </button>
-        </div>
       </div>
 
       {/* Divider */}
@@ -215,26 +319,85 @@ exporters:
       <div>
         <div style={{ ...labelStyle, marginBottom: 10 }}>Datadog</div>
 
-        {ddStatus.configured ? (
+        {ddStatus.configured && (
           <div>
             <div
               style={{
                 fontFamily: 'var(--font-body, var(--ff-body))',
                 fontSize: 12,
                 color: ddStatus.polling ? 'rgba(74, 222, 128, 0.7)' : 'rgba(245, 240, 235, 0.4)',
-                marginBottom: 8,
+                marginBottom: 4,
               }}
             >
-              {ddStatus.polling ? 'Polling every 15s' : 'Configured (not polling)'}
+              {ddStatus.polling ? `Next poll in ${countdown}s` : 'Configured (not polling)'}
               {ddStatus.site && ` \u00B7 ${ddStatus.site}`}
-              {ddStatus.query && ` \u00B7 ${ddStatus.query}`}
             </div>
-            <button onClick={clearDd} style={{ ...smallBtnStyle, color: 'rgba(239, 68, 68, 0.7)' }}>
-              Disconnect
-            </button>
+            {ddStatus.query && (
+              <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(245, 240, 235, 0.3)', marginBottom: 6 }}>
+                {ddStatus.query}
+              </div>
+            )}
+            {ddStatus.lastPoll && (
+              <div style={{ fontFamily: 'var(--font-body, var(--ff-body))', fontSize: 10, color: 'rgba(245, 240, 235, 0.2)', marginBottom: 8 }}>
+                Last poll: {new Date(ddStatus.lastPoll.time).toLocaleTimeString()} — {ddStatus.lastPoll.status === 200 ? `${ddStatus.lastPoll.spanCount} spans` : `HTTP ${ddStatus.lastPoll.status}`}
+              </div>
+            )}
+
+            {/* Recent spans — fed directly from SSE stream */}
+            {sseSpans.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ ...labelStyle, marginBottom: 4 }}>Recent <span style={{ opacity: 0.5, textTransform: 'none', letterSpacing: 0 }}>(click to replay)</span></div>
+                {sseSpans.map((span, i) => (
+                  <div
+                    key={i}
+                    onClick={() => replaySpan(span, i)}
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                      color: span.isError ? 'rgba(239, 68, 68, 0.7)' : 'rgba(245, 240, 235, 0.35)',
+                      padding: '3px 4px',
+                      display: 'flex',
+                      gap: 8,
+                      cursor: 'pointer',
+                      borderRadius: 4,
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ color: 'rgba(245, 240, 235, 0.25)', width: 14, flexShrink: 0, textAlign: 'center', fontSize: 6 }}>
+                      {'\u25CF'}
+                    </span>
+                    <span style={{ color: 'rgba(245, 240, 235, 0.15)', width: 58, flexShrink: 0 }}>
+                      {new Date(span.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span style={{ width: 80, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {span.serviceName}
+                    </span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {span.spanName}
+                    </span>
+                    <span style={{ flexShrink: 0 }}>
+                      {span.durationMs.toFixed(0)}ms
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setDdEditing(true)} style={smallBtnStyle}>
+                Edit
+              </button>
+              <button onClick={clearDd} style={{ ...smallBtnStyle, color: 'rgba(239, 68, 68, 0.7)' }}>
+                Disconnect
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="flex flex-col gap-2.5">
+        )}
+
+        {(!ddStatus.configured || ddEditing) && (
+          <div className="flex flex-col gap-2.5" style={{ marginTop: ddStatus.configured ? 10 : 0 }}>
             <div>
               <div style={labelStyle}>API Key</div>
               <input
@@ -275,17 +438,23 @@ exporters:
                 style={inputStyle}
               />
             </div>
-            <button
-              onClick={configureDd}
-              disabled={!ddApiKey || !ddAppKey}
-              style={{
-                ...smallBtnStyle,
-                opacity: (!ddApiKey || !ddAppKey) ? 0.3 : 1,
-                marginTop: 4,
-              }}
-            >
-              Connect
-            </button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button
+                onClick={configureDd}
+                disabled={!ddApiKey || !ddAppKey}
+                style={{
+                  ...smallBtnStyle,
+                  opacity: (!ddApiKey || !ddAppKey) ? 0.3 : 1,
+                }}
+              >
+                {ddStatus.configured ? 'Reconnect' : 'Connect'}
+              </button>
+              {ddEditing && (
+                <button onClick={() => setDdEditing(false)} style={{ ...smallBtnStyle, color: 'rgba(245, 240, 235, 0.3)' }}>
+                  Cancel
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

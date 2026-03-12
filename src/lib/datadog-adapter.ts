@@ -17,14 +17,28 @@ export interface DatadogConfig {
   query: string; // e.g. "service:synapse"
 }
 
-const POLL_INTERVAL_MS = 15_000; // 240 req/hr, under 300 limit
+const POLL_INTERVAL_MS = 5_000; // 720 req/hr — backs off on 429
 const PAGE_LIMIT = 50;
 
 // Module-level state (survives across requests in same process)
+export interface RecentSpan {
+  serviceName: string;
+  spanName: string;
+  durationMs: number;
+  isError: boolean;
+  timestamp: number;
+}
+
+const MAX_RECENT = 5;
+const LOOKBACK_MS = 60_000; // Look back 60s to catch DD indexing lag
+
 const g = globalThis as unknown as {
   __ddConfig?: DatadogConfig | null;
   __ddInterval?: ReturnType<typeof setInterval> | null;
   __ddLastPollTime?: string | null;
+  __ddSeenIds?: Set<string>;
+  __ddRecentSpans?: RecentSpan[];
+  __ddLastPollResult?: { time: string; status: number; spanCount: number } | null;
 };
 
 function getConfig(): DatadogConfig | null {
@@ -38,6 +52,9 @@ export function setDatadogConfig(config: DatadogConfig | null): void {
     clearInterval(g.__ddInterval);
     g.__ddInterval = null;
     g.__ddLastPollTime = null;
+    g.__ddSeenIds = new Set();
+    g.__ddRecentSpans = [];
+    g.__ddLastPollResult = null;
   }
   // If setting config and there are subscribers, start polling
   if (config && ingestBus.subscriberCount > 0 && !g.__ddInterval) {
@@ -50,6 +67,8 @@ export function getDatadogStatus(): {
   polling: boolean;
   site?: string;
   query?: string;
+  recentSpans: RecentSpan[];
+  lastPoll?: { time: string; status: number; spanCount: number } | null;
 } {
   const config = getConfig();
   return {
@@ -57,6 +76,8 @@ export function getDatadogStatus(): {
     polling: !!g.__ddInterval,
     site: config?.site,
     query: config?.query,
+    recentSpans: g.__ddRecentSpans ?? [],
+    lastPoll: g.__ddLastPollResult ?? null,
   };
 }
 
@@ -90,7 +111,9 @@ async function pollDatadog(): Promise<void> {
   if (!config) return;
 
   const now = new Date().toISOString();
-  const from = g.__ddLastPollTime ?? new Date(Date.now() - POLL_INTERVAL_MS).toISOString();
+  // Always look back 60s to catch DD indexing lag; deduplicate via seen IDs
+  const from = new Date(Date.now() - LOOKBACK_MS).toISOString();
+  if (!g.__ddSeenIds) g.__ddSeenIds = new Set();
 
   try {
     const url = `https://api.${config.site}/api/v2/spans/events/search`;
@@ -109,6 +132,8 @@ async function pollDatadog(): Promise<void> {
       },
     };
 
+    console.log('[DatadogAdapter] Request:', JSON.stringify({ url, query: config.query, from, to: now }));
+
     const resp = await fetch(url, {
       method: 'POST',
       headers: {
@@ -120,22 +145,61 @@ async function pollDatadog(): Promise<void> {
     });
 
     if (resp.status === 429) {
-      // Rate limited — back off by skipping this cycle
       console.warn('[DatadogAdapter] Rate limited, skipping cycle');
+      g.__ddLastPollResult = { time: now, status: 429, spanCount: 0 };
       return;
     }
 
     if (!resp.ok) {
       console.warn(`[DatadogAdapter] API error: ${resp.status} ${resp.statusText}`);
+      g.__ddLastPollResult = { time: now, status: resp.status, spanCount: 0 };
       return;
     }
 
     const json = await resp.json();
     const spans = json?.data ?? [];
+    g.__ddLastPollResult = { time: now, status: 200, spanCount: spans.length };
+    if (spans.length === 0) {
+      console.log('[DatadogAdapter] 0 spans. Response keys:', Object.keys(json), 'meta:', JSON.stringify(json?.meta)?.slice(0, 300));
+    }
 
+    if (!g.__ddRecentSpans) g.__ddRecentSpans = [];
+
+    // Collect new (unseen) spans first
+    const newSpans: SpanMessage[] = [];
     for (const span of spans) {
+      const spanId = span?.id ?? span?.attributes?.span_id ?? JSON.stringify(span).slice(0, 100);
+      const idStr = String(spanId);
+      if (g.__ddSeenIds!.has(idStr)) continue;
+      g.__ddSeenIds!.add(idStr);
+
       const msg = convertSpan(span);
-      if (msg) ingestBus.publish(msg);
+      if (msg) newSpans.push(msg);
+    }
+
+    // Stagger publishing across the poll interval so spans arrive realistically
+    if (newSpans.length > 0) {
+      const intervalMs = POLL_INTERVAL_MS / newSpans.length;
+      newSpans.forEach((msg, i) => {
+        setTimeout(() => {
+          ingestBus.publish(msg);
+          g.__ddRecentSpans!.unshift({
+            serviceName: msg.serviceName,
+            spanName: msg.spanName,
+            durationMs: msg.durationMs,
+            isError: msg.statusCode === 2,
+            timestamp: msg.timestamp,
+          });
+          g.__ddRecentSpans = g.__ddRecentSpans!.slice(0, MAX_RECENT);
+        }, i * intervalMs);
+      });
+      console.log(`[DatadogAdapter] Staggering ${newSpans.length} spans over ${(POLL_INTERVAL_MS / 1000).toFixed(0)}s`);
+    }
+
+    // Prune seen IDs to prevent memory growth (keep last 1000)
+    if (g.__ddSeenIds!.size > 1000) {
+      const arr = [...g.__ddSeenIds!];
+      g.__ddSeenIds = new Set(arr.slice(-500));
     }
 
     g.__ddLastPollTime = now;
@@ -173,5 +237,6 @@ function convertSpan(span: Record<string, unknown>): SpanMessage | null {
     timestamp: Date.now(),
     errorMessage: statusStr === 'error' ? String(custom.error_message ?? custom['error.message'] ?? '') || undefined : undefined,
     httpStatusCode: custom['http.status_code'] ? Number(custom['http.status_code']) : undefined,
+    source: 'datadog',
   };
 }

@@ -57,7 +57,7 @@ export const DEFAULT_WEATHER_CHANNEL: ChannelConfig = {
 
 export const DEFAULT_FLIGHTS_CHANNEL: ChannelConfig = {
   streamId: 'flights',
-  enabled: true,
+  enabled: false,
   mode: 'continuous',
   synthType: 'Synth',
   synthOptions: {
@@ -277,8 +277,8 @@ export function createOtlpChannelConfig(serviceName: string): ChannelConfig {
     enabled: true,
     mode: 'triggered',
     synthType: 'Synth',
-    synthOptions: { oscillator: { type: 'triangle' } },
-    volume: -12,
+    synthOptions: { oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.25, sustain: 0.1, release: 0.3 } },
+    volume: -8,
     pan: 0,
     mute: false,
     solo: false,
@@ -286,9 +286,10 @@ export function createOtlpChannelConfig(serviceName: string): ChannelConfig {
     parentPluginId: 'otlp',
     mappings: [
       { sourceField: 'durationMs', targetParam: 'scaleIndex', curve: 'logarithmic', inputRange: [1, 10000], outputRange: [0, 14], invert: false },
-      { sourceField: 'durationMs', targetParam: 'duration', curve: 'logarithmic', inputRange: [1, 10000], outputRange: [0.05, 0.8], invert: false },
-      { sourceField: 'isError', targetParam: 'filterCutoff', curve: 'step', inputRange: [0, 1], outputRange: [8000, 800], invert: false },
-      { sourceField: 'isError', targetParam: 'detune', curve: 'step', inputRange: [0, 1], outputRange: [0, 50], invert: false },
+      { sourceField: 'durationMs', targetParam: 'duration', curve: 'logarithmic', inputRange: [1, 10000], outputRange: [0.2, 1.2], invert: false },
+      { sourceField: 'isError', targetParam: 'velocity', curve: 'step', inputRange: [0, 1], outputRange: [0.75, 0.95], invert: false },
+      { sourceField: 'isError', targetParam: 'filterCutoff', curve: 'step', inputRange: [0, 1], outputRange: [8000, 600], invert: false },
+      { sourceField: 'isError', targetParam: 'detune', curve: 'step', inputRange: [0, 1], outputRange: [0, 400], invert: false },
     ],
     behaviorType: 'event',
     eventCooldownMs: 50,

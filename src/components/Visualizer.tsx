@@ -14,7 +14,9 @@ interface WikiEdit {
   size: number;
   age: number;
   id: string;
-  position: { x: number; y: number };
+  /** Normalised 0-1 position derived from hash — converted to pixels at draw time */
+  nx: number;
+  ny: number;
 }
 
 interface VisualizerProps {
@@ -97,12 +99,11 @@ const Visualizer = ({
       const title = String(f.title ?? '');
       const absLen = typeof f.absLengthDelta === 'number' ? f.absLengthDelta : 10;
       const editSize = Math.min(100, Math.max(10, absLen));
-      const w = containerRef.current?.clientWidth || 400;
-      const h = containerRef.current?.clientHeight || 400;
       const hx = hash32(title, 0x811c9dc5);
       const hy = hash32(title, 0x6c62272e);
-      const x = (hx / 0xffffffff) * (w - 100) + 50;
-      const y = (hy / 0xffffffff) * (h - 100) + 50;
+      // Store normalised 0-1 coords — converted to pixels at draw time
+      const nx = (hx >>> 0) / 0xffffffff;
+      const ny = (hy >>> 0) / 0xffffffff;
       const url = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
 
       editsRef.current = [{
@@ -111,7 +112,8 @@ const Visualizer = ({
         size: editSize,
         age: 0,
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-        position: { x, y },
+        nx,
+        ny,
       }, ...editsRef.current].slice(0, 50);
     }, 'wikipedia');
 
@@ -128,23 +130,28 @@ const Visualizer = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Canvas resize — fill container (no longer square)
+  // Canvas resize — fill container. Uses ResizeObserver so the canvas
+  // re-sizes when the tab switches from display:none → block.
   useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
     const resize = () => {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (!canvas || !container) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
+      if (w === 0 || h === 0) return; // still hidden
       const dpr = window.devicePixelRatio || 1;
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
     };
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
     resize();
-    window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
+    return () => ro.disconnect();
   }, []);
 
   // Draw function
@@ -269,9 +276,11 @@ const Visualizer = ({
       ctx.fillText(`${Math.round(flight.distance)} mi`, x, y - size / 2 - 8);
     }
 
-    // Wiki edits
+    // Wiki edits — compute pixel position from normalised coords each frame
     for (const edit of editsRef.current) {
-      const { x, y } = edit.position;
+      const margin = 50;
+      const x = margin + edit.nx * (w - margin * 2);
+      const y = margin + edit.ny * (h - margin * 2);
       const maxSize = edit.size;
       const currentSize = maxSize * (1 - edit.age / 60);
 
@@ -377,8 +386,11 @@ const Visualizer = ({
     }
 
     for (const edit of editsRef.current) {
-      const dx = mx - edit.position.x;
-      const dy = my - edit.position.y;
+      const editMargin = 50;
+      const ex = editMargin + edit.nx * (w - editMargin * 2);
+      const ey = editMargin + edit.ny * (h - editMargin * 2);
+      const dx = mx - ex;
+      const dy = my - ey;
       if (Math.sqrt(dx * dx + dy * dy) < 20 && edit.url) {
         window.open(edit.url, '_blank');
         return;
