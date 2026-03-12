@@ -16,23 +16,40 @@ export interface SpanMessage {
 type Listener = (msg: SpanMessage) => void;
 
 class IngestBus {
-  private listeners = new Set<Listener>();
+  private channels = new Map<string, Set<Listener>>();
 
-  publish(msg: SpanMessage) {
-    for (const fn of this.listeners) {
-      fn(msg);
+  /** Publish a message to a specific user's channel */
+  publishToUser(userId: string, msg: SpanMessage) {
+    const listeners = this.channels.get(userId);
+    if (listeners) {
+      for (const fn of listeners) fn(msg);
     }
   }
 
-  subscribe(fn: Listener): () => void {
-    this.listeners.add(fn);
+  /** Subscribe to a specific user's channel. Returns unsubscribe function. */
+  subscribeToUser(userId: string, fn: Listener): () => void {
+    let set = this.channels.get(userId);
+    if (!set) {
+      set = new Set();
+      this.channels.set(userId, set);
+    }
+    set.add(fn);
     return () => {
-      this.listeners.delete(fn);
+      set!.delete(fn);
+      if (set!.size === 0) this.channels.delete(userId);
     };
   }
 
-  get subscriberCount() {
-    return this.listeners.size;
+  /** Get subscriber count for a specific user */
+  subscriberCountForUser(userId: string): number {
+    return this.channels.get(userId)?.size ?? 0;
+  }
+
+  /** Total subscriber count across all channels */
+  get subscriberCount(): number {
+    let total = 0;
+    for (const set of this.channels.values()) total += set.size;
+    return total;
   }
 }
 

@@ -72,15 +72,15 @@ Per-user webhook URLs: `/api/ingest/webhooks/github/<configId>`. The route looks
 
 ## Acceptance Criteria
 
-- [ ] Each user's SSE stream only contains their own ingest data
-- [ ] Multiple users can configure Datadog simultaneously without overwriting each other
-- [ ] Per-user Datadog polling starts/stops based on that user's SSE connections
-- [ ] OTLP POST requires a valid API key, spans route to the key owner's bus channel
-- [ ] GitHub webhook route uses per-config URL, routes to the config owner's bus channel
-- [ ] Notify route requires a Bearer API key, routes to the key owner's bus channel
-- [ ] Anonymous users see public streams (client-side), no SSE connection
-- [ ] Per-user API key with regenerate UI in ConnectionsPanel
-- [ ] No regression on public streams (weather, flights, wikipedia, stocks, RSS)
+- [x] Each user's SSE stream only contains their own ingest data
+- [x] Multiple users can configure Datadog simultaneously without overwriting each other
+- [x] Per-user Datadog polling starts/stops based on that user's SSE connections
+- [x] OTLP POST requires a valid API key, spans route to the key owner's bus channel
+- [x] GitHub webhook route uses per-config URL, routes to the config owner's bus channel
+- [x] Notify route requires a Bearer API key, routes to the key owner's bus channel
+- [x] Anonymous users see public streams (client-side), no SSE connection
+- [x] Per-user API key with regenerate UI in ConnectionsPanel
+- [x] No regression on public streams (weather, flights, wikipedia, stocks, RSS)
 
 ## What's Deferred
 

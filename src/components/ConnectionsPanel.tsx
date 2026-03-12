@@ -57,6 +57,14 @@ export default function ConnectionsPanel() {
   const isAuthed = !!session?.user;
   const [copied, setCopied] = useState<string | null>(null);
 
+  // API key state
+  const [apiKeyPrefix, setApiKeyPrefix] = useState<string | null>(null);
+  const [apiKeyFull, setApiKeyFull] = useState<string | null>(null);
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+
+  // GitHub webhook configs state
+  const [ghConfigs, setGhConfigs] = useState<Array<{ id: string; name: string }>>([]);
+
   // Datadog form state
   const [ddApiKey, setDdApiKey] = useState('');
   const [ddAppKey, setDdAppKey] = useState('');
@@ -66,6 +74,41 @@ export default function ConnectionsPanel() {
   const [ddEditing, setDdEditing] = useState(false);
   const [playedSpans, setPlayedSpans] = useState<Set<number>>(new Set());
   const [sseSpans, setSseSpans] = useState<RecentSpan[]>([]);
+
+  // Load API key status + GitHub webhook configs on mount
+  useEffect(() => {
+    if (!isAuthed) return;
+    fetch('/api/user/api-key')
+      .then((r) => r.json())
+      .then((data: { hasKey: boolean; prefix: string | null }) => {
+        setApiKeyPrefix(data.prefix);
+      })
+      .catch(() => {});
+    fetch('/api/user/configs')
+      .then((r) => r.json())
+      .then((configs: Array<{ id: string; type: string; name: string }>) => {
+        setGhConfigs(configs.filter((c) => c.type === 'github'));
+      })
+      .catch(() => {});
+  }, [isAuthed]);
+
+  const generateApiKeyHandler = useCallback(async () => {
+    setApiKeyLoading(true);
+    try {
+      const res = await fetch('/api/user/api-key', { method: 'POST' });
+      const data = await res.json();
+      setApiKeyFull(data.key);
+      setApiKeyPrefix(data.prefix);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  }, []);
+
+  const revokeApiKey = useCallback(async () => {
+    await fetch('/api/user/api-key', { method: 'DELETE' });
+    setApiKeyPrefix(null);
+    setApiKeyFull(null);
+  }, []);
 
   // Load DD config on mount — from API if authenticated, localStorage if not
   useEffect(() => {
@@ -110,8 +153,9 @@ export default function ConnectionsPanel() {
     ? `${window.location.origin}/api/ingest/otlp`
     : 'http://localhost:3000/api/ingest/otlp';
 
-  // Listen to SSE stream for real-time span updates (same stream the audio engine uses)
+  // Listen to SSE stream for real-time span updates (only when authenticated)
   useEffect(() => {
+    if (!isAuthed) return;
     const es = new EventSource('/api/ingest/stream');
     es.addEventListener('message', (event) => {
       try {
@@ -143,7 +187,7 @@ export default function ConnectionsPanel() {
       } catch { /* skip malformed */ }
     });
     return () => es.close();
-  }, []);
+  }, [isAuthed]);
 
   // Poll DD config status + auto-reconnect (slow poll, just for config info)
   useEffect(() => {
@@ -308,8 +352,88 @@ export default function ConnectionsPanel() {
     cursor: 'pointer',
   };
 
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+
   return (
     <div className="flex flex-col gap-5">
+      {/* API Key Section — only for authenticated users */}
+      {isAuthed && (
+        <div>
+          <div style={{ ...labelStyle, marginBottom: 10 }}>API Key</div>
+
+          {apiKeyFull ? (
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-body, var(--ff-body))',
+                fontSize: 11,
+                color: 'rgba(239, 184, 56, 0.7)',
+                marginBottom: 6,
+              }}>
+                Copy this key now — it won't be shown again
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <code style={{
+                  fontFamily: 'var(--font-display, var(--ff-display))',
+                  fontSize: 11,
+                  color: 'rgba(245, 240, 235, 0.55)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: 6,
+                  padding: '6px 10px',
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  userSelect: 'all',
+                }}>
+                  {apiKeyFull}
+                </code>
+                <button onClick={() => copyToClipboard(apiKeyFull, 'apikey')} style={smallBtnStyle}>
+                  {copied === 'apikey' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <button onClick={() => setApiKeyFull(null)} style={{ ...smallBtnStyle, color: 'rgba(245, 240, 235, 0.3)' }}>
+                Dismiss
+              </button>
+            </div>
+          ) : apiKeyPrefix ? (
+            <div>
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: 'rgba(245, 240, 235, 0.4)',
+                marginBottom: 8,
+              }}>
+                {apiKeyPrefix}...
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={generateApiKeyHandler} disabled={apiKeyLoading} style={smallBtnStyle}>
+                  {apiKeyLoading ? 'Generating...' : 'Regenerate'}
+                </button>
+                <button onClick={revokeApiKey} style={{ ...smallBtnStyle, color: 'rgba(239, 68, 68, 0.7)' }}>
+                  Revoke
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-body, var(--ff-body))',
+                fontSize: 11,
+                color: 'rgba(245, 240, 235, 0.3)',
+                marginBottom: 8,
+              }}>
+                Generate an API key for OTLP, webhooks, and notify endpoints
+              </div>
+              <button onClick={generateApiKeyHandler} disabled={apiKeyLoading} style={smallBtnStyle}>
+                {apiKeyLoading ? 'Generating...' : 'Generate API Key'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isAuthed && <div style={{ height: 1, background: 'rgba(255, 255, 255, 0.05)' }} />}
+
       {/* OTLP Section */}
       <div>
         <div style={{ ...labelStyle, marginBottom: 10 }}>OTLP Ingest</div>
@@ -465,7 +589,7 @@ exporters:
         {(!ddStatus.configured || ddEditing) && (
           <div className="flex flex-col gap-2.5" style={{ marginTop: ddStatus.configured ? 10 : 0 }}>
             <div>
-              <div style={labelStyle}>API Key</div>
+              <div style={labelStyle}>DD API Key</div>
               <input
                 type="password"
                 value={ddApiKey}
@@ -524,6 +648,45 @@ exporters:
           </div>
         )}
       </div>
+
+      {/* GitHub Webhook URLs — show per-config URLs for authenticated users */}
+      {isAuthed && ghConfigs.length > 0 && (
+        <>
+          <div style={{ height: 1, background: 'rgba(255, 255, 255, 0.05)' }} />
+          <div>
+            <div style={{ ...labelStyle, marginBottom: 10 }}>GitHub Webhooks</div>
+            {ghConfigs.map((cfg) => {
+              const webhookUrl = `${baseUrl}/api/ingest/webhooks/github/${cfg.id}`;
+              return (
+                <div key={cfg.id} style={{ marginBottom: 8 }}>
+                  <div style={{ fontFamily: 'var(--font-body, var(--ff-body))', fontSize: 11, color: 'rgba(245, 240, 235, 0.4)', marginBottom: 4 }}>
+                    {cfg.name}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <code style={{
+                      fontFamily: 'var(--font-display, var(--ff-display))',
+                      fontSize: 10,
+                      color: 'rgba(245, 240, 235, 0.4)',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      borderRadius: 6,
+                      padding: '5px 8px',
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {webhookUrl}
+                    </code>
+                    <button onClick={() => copyToClipboard(webhookUrl, `gh-${cfg.id}`)} style={smallBtnStyle}>
+                      {copied === `gh-${cfg.id}` ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
