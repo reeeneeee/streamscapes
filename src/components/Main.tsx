@@ -222,7 +222,9 @@ export default function Main() {
       >
         <div className="atmosphere"><div className="atmosphere-blob atmosphere-rose" /><div className="atmosphere-blob atmosphere-blue" /><div className="atmosphere-blob atmosphere-green" /></div>
         <div className="vignette" />
-        <AuthButton className="absolute top-4 right-4 z-20" />
+        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
+          <AuthButton />
+        </div>
         <h1
           className="relative z-10"
           style={{
@@ -289,16 +291,18 @@ export default function Main() {
           </button>
         </div>
         <div className="flex-1" />
-        {weatherDisplay && (
-          <div className="text-[12px]" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
-            {location.lat.toFixed(2)}, {location.lon.toFixed(2)}
-            {' \u00B7 '}
-            {Math.trunc(weatherDisplay.feelsLike)}{'°F'}
-            {' \u00B7 '}
-            {weatherDisplay.clouds}% cloud cover
-          </div>
-        )}
-        <AuthButton />
+        <div className="flex items-center gap-3">
+          {weatherDisplay && (
+            <div className="text-[12px]" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+              {location.lat.toFixed(2)}, {location.lon.toFixed(2)}
+              {' \u00B7 '}
+              {Math.trunc(weatherDisplay.feelsLike)}{'°F'}
+              {' \u00B7 '}
+              {weatherDisplay.clouds}% cloud cover
+            </div>
+          )}
+          <AuthButton />
+        </div>
       </div>
 
       {/* Tab content — both rendered, hidden via display to preserve state */}

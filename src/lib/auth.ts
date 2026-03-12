@@ -12,4 +12,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verificationTokensTable: schema.verificationTokens,
   }),
   providers: [Google],
+  callbacks: {
+    session({ session, user }) {
+      session.user.id = user.id;
+      if (user?.image) session.user.image = user.image;
+      return session;
+    },
+  },
 });

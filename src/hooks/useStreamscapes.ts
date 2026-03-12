@@ -45,14 +45,6 @@ export function useStreamscapes(lat: number, lon: number) {
       }
     }
 
-    // Disable stale OTLP channels on startup — they re-enable when data arrives
-    const currentChannelsForCleanup = store.getState().channels;
-    for (const [id, ch] of Object.entries(currentChannelsForCleanup)) {
-      if (ch.parentPluginId && ch.enabled) {
-        store.getState().updateChannel(id, { enabled: false });
-      }
-    }
-
     const engine = new AudioEngine(store);
 
     // Maximum number of auto-created sub-channels (OTLP + Datadog combined)
@@ -64,7 +56,13 @@ export function useStreamscapes(lat: number, lon: number) {
       if (colonIdx < 1) return; // no prefix — ignore
 
       const existingCh = store.getState().channels[streamId];
-      if (existingCh) return;
+      if (existingCh) {
+        // Re-enable persisted sub-channels on new data so they default to audible each session
+        if (!existingCh.enabled) {
+          store.getState().updateChannel(streamId, { enabled: true });
+        }
+        return;
+      }
 
       const subCount = Object.values(store.getState().channels)
         .filter((ch) => ch.parentPluginId).length;

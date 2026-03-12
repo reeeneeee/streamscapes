@@ -49,8 +49,8 @@ export default function AuthButton({ className = '' }: { className?: string }) {
           width: 28,
           height: 28,
           borderRadius: '50%',
-          border: '1px solid rgba(245, 240, 235, 0.2)',
-          background: 'rgba(245, 240, 235, 0.08)',
+          border: session.user?.image ? 'none' : '1px solid rgba(245, 240, 235, 0.2)',
+          background: session.user?.image ? 'none' : 'rgba(245, 240, 235, 0.08)',
           color: 'rgba(245, 240, 235, 0.6)',
           fontFamily: 'var(--font-body, var(--ff-body))',
           fontSize: 12,
@@ -59,10 +59,12 @@ export default function AuthButton({ className = '' }: { className?: string }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: 0,
+          overflow: 'hidden',
         }}
       >
         {session.user?.image ? (
-          <img src={session.user.image} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
+          <img src={session.user.image} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
         ) : initial}
       </button>
 
@@ -85,7 +87,7 @@ export default function AuthButton({ className = '' }: { className?: string }) {
             {session.user?.email}
           </div>
           <button
-            onClick={() => signOut()}
+            onClick={() => signOut({ callbackUrl: '/' })}
             style={{
               background: 'none',
               border: 'none',

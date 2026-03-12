@@ -177,10 +177,15 @@ async function pollDatadog(): Promise<void> {
       if (msg) newSpans.push(msg);
     }
 
-    // Stagger publishing across the poll interval so spans arrive realistically
+    // Stagger publishing with jitter so spans arrive at an organic pace
     if (newSpans.length > 0) {
-      const intervalMs = POLL_INTERVAL_MS / newSpans.length;
-      newSpans.forEach((msg, i) => {
+      const baseInterval = POLL_INTERVAL_MS / newSpans.length;
+      let cumulative = 0;
+      newSpans.forEach((msg) => {
+        // Random jitter: 0.3x–1.7x the base interval
+        const jittered = baseInterval * (0.3 + Math.random() * 1.4);
+        cumulative += jittered;
+        const delay = Math.min(cumulative, POLL_INTERVAL_MS - 100);
         setTimeout(() => {
           ingestBus.publish(msg);
           g.__ddRecentSpans!.unshift({
@@ -191,9 +196,9 @@ async function pollDatadog(): Promise<void> {
             timestamp: msg.timestamp,
           });
           g.__ddRecentSpans = g.__ddRecentSpans!.slice(0, MAX_RECENT);
-        }, i * intervalMs);
+        }, delay);
       });
-      console.log(`[DatadogAdapter] Staggering ${newSpans.length} spans over ${(POLL_INTERVAL_MS / 1000).toFixed(0)}s`);
+      console.log(`[DatadogAdapter] Staggering ${newSpans.length} spans over ${(POLL_INTERVAL_MS / 1000).toFixed(0)}s (jittered)`);
     }
 
     // Prune seen IDs to prevent memory growth (keep last 1000)

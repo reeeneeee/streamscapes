@@ -79,6 +79,14 @@ export default function ConnectionsPanel() {
             if (dd.credentials.appKey) setDdAppKey(dd.credentials.appKey);
             if (dd.credentials.site) setDdSite(dd.credentials.site);
             if (dd.credentials.query) setDdQuery(dd.credentials.query);
+            // Also start polling if not already running
+            if (dd.credentials.apiKey && dd.credentials.appKey) {
+              fetch('/api/ingest/datadog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dd.credentials),
+              });
+            }
           }
         })
         .catch(() => {});
@@ -144,8 +152,8 @@ export default function ConnectionsPanel() {
         .then((r) => r.json())
         .then((s: DdStatus) => {
           setDdStatus(s);
-          // Auto-reconnect if server lost config (cold start)
-          if (!s.configured) {
+          // Auto-reconnect if server lost config (cold start) or config set but not polling yet
+          if (!s.configured || !s.polling) {
             if (isAuthed) {
               // Reconnect from DB-persisted config
               fetch('/api/user/configs')
