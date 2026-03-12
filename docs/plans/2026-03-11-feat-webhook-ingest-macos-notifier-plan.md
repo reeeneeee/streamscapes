@@ -223,23 +223,23 @@ Force reseed of default channels to pick up any changes.
 
 ## Acceptance Criteria
 
-- [ ] `POST /api/ingest/webhooks/github` verifies HMAC, normalizes, publishes to bus
-- [ ] GitHub `ping` events return 200 without publishing
-- [ ] Duplicate deliveries are deduplicated via `X-GitHub-Delivery`
-- [ ] Invalid/missing HMAC returns 401
-- [ ] Missing `WEBHOOK_SECRET_GITHUB` env var returns 503
-- [ ] `request.text()` used for raw body (not `request.json()`)
-- [ ] `POST /api/ingest/notify` accepts `{ app, text }` and publishes
-- [ ] Notify route validates input types (rejects non-objects)
-- [ ] `IngestSource` union type (not `string`) with `'github'` and `'notify'`
-- [ ] `SOURCE_PREFIX` record is exhaustive (compile error on missing source)
-- [ ] `otlpPlugin` renamed to `ingestPlugin` in `src/streams/ingest.ts`
-- [ ] `onUnknownStreamId` creates channels for any prefixed stream ID
-- [ ] Reuses `createOtlpChannelConfig` (no separate webhook/notify factories)
+- [x] `POST /api/ingest/webhooks/github` verifies HMAC, normalizes, publishes to bus
+- [x] GitHub `ping` events return 200 without publishing
+- [x] Duplicate deliveries are deduplicated via `X-GitHub-Delivery`
+- [x] Invalid/missing HMAC returns 401
+- [x] Missing `WEBHOOK_SECRET_GITHUB` env var returns 503
+- [x] `request.text()` used for raw body (not `request.json()`)
+- [x] `POST /api/ingest/notify` accepts `{ app, text }` and publishes
+- [x] Notify route validates input types (rejects non-objects)
+- [x] `IngestSource` union type (not `string`) with `'github'` and `'notify'`
+- [x] `SOURCE_PREFIX` record is exhaustive (compile error on missing source)
+- [x] `otlpPlugin` renamed to `ingestPlugin` in `src/streams/ingest.ts`
+- [x] `onUnknownStreamId` creates channels for any prefixed stream ID
+- [x] Reuses `createOtlpChannelConfig` (no separate webhook/notify factories)
 - [ ] GitHub webhook events produce audible triggered notes
 - [ ] Notify events from curl produce audible triggered notes
-- [ ] `github:` has a distinct color in stream-constants
-- [ ] Store version bumped
+- [x] `github:` has a distinct color in stream-constants
+- [x] Store version bumped
 
 ## What's Deferred
 

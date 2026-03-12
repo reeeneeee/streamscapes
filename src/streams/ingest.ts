@@ -1,10 +1,18 @@
 import type { StreamPlugin, DataPoint } from '@/types/stream';
 import type { SpanMessage } from '@/lib/ingest-bus';
+import type { IngestSource } from '@/lib/ingest-bus';
 
-export const otlpPlugin: StreamPlugin = {
+const SOURCE_PREFIX: Record<IngestSource, string> = {
+  otlp: 'otlp',
+  datadog: 'dd',
+  github: 'github',
+  notify: 'notify',
+};
+
+export const ingestPlugin: StreamPlugin = {
   id: 'otlp',
-  name: 'OpenTelemetry',
-  description: 'Live OTLP traces from your instrumented services',
+  name: 'Ingest',
+  description: 'Live traces from OTLP, Datadog, webhooks, and notifications',
   category: 'observability',
 
   async *connect(signal: AbortSignal): AsyncIterable<DataPoint> {
@@ -20,19 +28,21 @@ export const otlpPlugin: StreamPlugin = {
     const handler = (event: MessageEvent) => {
       try {
         const msg: SpanMessage = JSON.parse(event.data);
-        const streamId = `otlp:${msg.serviceName}`;
+        const prefix = SOURCE_PREFIX[msg.source ?? 'otlp'];
+        const streamId = `${prefix}:${msg.serviceName}`;
         const dataPoint: DataPoint = {
           streamId,
           timestamp: msg.timestamp,
           fields: {
             durationMs: msg.durationMs,
             noteDurationMs: msg.durationMs,
-            isError: msg.statusCode === 2,
+            isError: msg.statusCode === 2 ? 1 : 0,
             statusCode: msg.statusCode,
             spanKind: msg.kind,
             spanName: msg.spanName,
             ...(msg.httpStatusCode !== undefined && { httpStatusCode: msg.httpStatusCode }),
             ...(msg.errorMessage !== undefined && { errorMessage: msg.errorMessage }),
+            ...(msg.replay && { replay: 1 }),
           },
         };
         queue.push(dataPoint);

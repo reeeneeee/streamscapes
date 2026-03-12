@@ -221,7 +221,7 @@ export const useStore = create<StreamscapesStore>()(
       }),
       {
         name: 'streamscapes-store',
-        version: 20,
+        version: 21,
         partialize: (state) => ({
           // Never persist isPlaying — audio must start from a user gesture
           global: state.global,

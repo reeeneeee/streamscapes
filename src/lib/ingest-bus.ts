@@ -1,3 +1,5 @@
+export type IngestSource = 'otlp' | 'datadog' | 'github' | 'notify';
+
 export interface SpanMessage {
   readonly serviceName: string;
   readonly spanName: string;
@@ -7,6 +9,8 @@ export interface SpanMessage {
   readonly timestamp: number;
   readonly errorMessage?: string;
   readonly httpStatusCode?: number;
+  readonly source?: IngestSource;
+  readonly replay?: boolean;
 }
 
 type Listener = (msg: SpanMessage) => void;

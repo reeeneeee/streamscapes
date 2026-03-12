@@ -55,29 +55,24 @@ export function useStreamscapes(lat: number, lon: number) {
 
     const engine = new AudioEngine(store);
 
-    // Maximum number of auto-created OTLP channels
-    const MAX_OTLP_CHANNELS = 12;
+    // Maximum number of auto-created sub-channels (OTLP + Datadog combined)
+    const MAX_SUB_CHANNELS = 12;
 
     // Register callback for auto-creating channels from multiplexed plugins
     engine.onUnknownStreamId = (streamId: string) => {
-      if (!streamId.startsWith('otlp:')) return;
+      const colonIdx = streamId.indexOf(':');
+      if (colonIdx < 1) return; // no prefix — ignore
 
-      // Check if channel already exists but is disabled (stale) — re-enable it
       const existingCh = store.getState().channels[streamId];
-      if (existingCh) {
-        if (!existingCh.enabled) {
-          store.getState().updateChannel(streamId, { enabled: true });
-        }
-        return;
-      }
+      if (existingCh) return;
 
-      // Check channel cap
-      const otlpCount = Object.values(store.getState().channels)
-        .filter((ch) => ch.parentPluginId === 'otlp').length;
-      if (otlpCount >= MAX_OTLP_CHANNELS) return;
+      const subCount = Object.values(store.getState().channels)
+        .filter((ch) => ch.parentPluginId).length;
+      if (subCount >= MAX_SUB_CHANNELS) return;
 
-      const serviceName = streamId.slice(5);
-      store.getState().addChannel(createOtlpChannelConfig(serviceName));
+      const serviceName = streamId.slice(colonIdx + 1);
+      const cfg = createOtlpChannelConfig(serviceName);
+      store.getState().addChannel({ ...cfg, streamId });
     };
 
     const plugins = pluginsRef.current;

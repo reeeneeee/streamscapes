@@ -35,7 +35,8 @@ const otlpColorMap = new Map<string, string>();
 
 export function getStreamColor(id: string): string {
   if (STREAM_COLORS[id]) return STREAM_COLORS[id];
-  if (id.startsWith('otlp:')) {
+  if (id === 'github:github') return '#6e7681';
+  if (id.startsWith('otlp:') || id.startsWith('dd:') || id.startsWith('github:') || id.startsWith('notify:')) {
     if (!otlpColorMap.has(id)) {
       otlpColorMap.set(id, OTLP_COLORS[otlpColorIndex % OTLP_COLORS.length]);
       otlpColorIndex++;
@@ -47,6 +48,7 @@ export function getStreamColor(id: string): string {
 
 export function getStreamLabel(id: string): string {
   if (STREAM_LABELS[id]) return STREAM_LABELS[id];
-  if (id.startsWith('otlp:')) return id.slice(5);
+  const colonIdx = id.indexOf(':');
+  if (colonIdx > 0) return id.slice(colonIdx + 1);
   return id;
 }

@@ -30,7 +30,7 @@ export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
     const handler = (dp: DataPoint) => {
       if (!dp.fields.isError) return;
       if (dp.fields.replay) return; // Don't toast replayed spans
-      if (!dp.streamId.startsWith('otlp:') && !dp.streamId.startsWith('dd:')) return;
+      if (!dp.streamId.includes(':')) return; // Only show errors from ingest sources
 
       const entry: ErrorEntry = {
         id: nextId++,
