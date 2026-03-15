@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --surface: #1a1a1e;
+      --border: #2a2a2e;
+      --text: #e8e6e3;
+      --text-muted: #8a8a8e;
+      --accent: #C4889A;
+      --accent-dim: rgba(196, 136, 154, 0.15);
+      --green: #A3C484;
+      --red: #e06060;
+      --yellow: #D4B87A;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      font-size: 13px;
+      -webkit-app-region: no-drag;
+      user-select: none;
+      overflow-y: auto;
+      max-height: 520px;
+    }
+    h1 {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      font-weight: 300;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      margin-top: 12px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: var(--accent);
+    }
+    .signals {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .signal-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+    }
+    .signal-row input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 14px;
+      height: 14px;
+    }
+    .signal-row span {
+      font-size: 13px;
+    }
+    .signal-interval {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .sub-config {
+      margin-left: 22px;
+      margin-top: 4px;
+    }
+    .sub-config input[type="text"], .sub-config input[type="password"] {
+      font-size: 11px;
+      padding: 5px 8px;
+      margin-bottom: 4px;
+    }
+    .sub-config .hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 16px;
+    }
+    button {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); }
+    #status {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      min-height: 14px;
+      line-height: 1.5;
+    }
+    #status.ok { color: var(--green); }
+    #status.err { color: var(--red); }
+    .fda-warning {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(212, 184, 122, 0.08);
+      border: 1px solid rgba(212, 184, 122, 0.2);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--yellow);
+      line-height: 1.5;
+      display: none;
+    }
+    .fda-warning button {
+      flex: none;
+      margin-top: 6px;
+      padding: 5px 10px;
+      font-size: 10px;
+      background: rgba(212, 184, 122, 0.15);
+      color: var(--yellow);
+      border: 1px solid rgba(212, 184, 122, 0.25);
+    }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 14px 0;
+    }
+    .saved-msg {
+      font-size: 10px;
+      color: var(--green);
+      opacity: 0;
+      transition: opacity 0.2s;
+      margin-left: 8px;
+    }
+    .saved-msg.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>streamscapes agent</h1>
+
+  <label for="endpoint">Streamscapes URL</label>
+  <input type="text" id="endpoint" placeholder="https://www.streamscapes.fm">
+
+  <label for="apiKey">API Key</label>
+  <input type="password" id="apiKey" placeholder="Paste from Connections panel">
+
+  <div class="signals">
+    <label style="margin-top:0">Modules</label>
+    <div class="signal-row">
+      <input type="checkbox" id="enableNotif" checked>
+      <span>Notifications</span>
+      <span class="signal-interval">3s</span>
+    </div>
+    <div class="signal-row">
+      <input type="checkbox" id="enableDd">
+      <span>Datadog</span>
+      <span class="signal-interval">5s</span>
+    </div>
+    <div class="sub-config" id="ddConfig" style="display: none;">
+      <input type="password" id="ddApiKey" placeholder="DD_API_KEY">
+      <input type="password" id="ddAppKey" placeholder="DD_APPLICATION_KEY">
+      <input type="text" id="ddSite" placeholder="datadoghq.com">
+      <div class="hint">Datadog site (default: datadoghq.com)</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="startBtn">Start</button>
+    <button class="btn-secondary" id="stopBtn">Stop</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="fda-warning" id="fdaWarning">
+    Full Disk Access required for macOS notifications.<br>
+    Add <strong>Streamscapes Agent</strong> in System Settings, then relaunch.
+    <button id="fdaBtn">Open System Settings</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <button class="btn-secondary" id="saveBtn" style="flex: none; padding: 6px 14px; font-size: 11px;">Save Config</button>
+    <span class="saved-msg" id="savedMsg">Saved</span>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

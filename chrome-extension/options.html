@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --surface: #1a1a1e;
+      --border: #2a2a2e;
+      --text: #e8e6e3;
+      --text-muted: #8a8a8e;
+      --accent: #C4889A;
+      --accent-dim: rgba(196, 136, 154, 0.15);
+      --green: #A3C484;
+      --red: #e06060;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      font-size: 13px;
+    }
+    h1 {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      font-weight: 300;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      margin-top: 12px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: var(--accent);
+    }
+    .signals {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .signal-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+    }
+    .signal-row input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 14px;
+      height: 14px;
+    }
+    .signal-row span {
+      font-size: 13px;
+    }
+    .signal-interval {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .sub-config {
+      margin-left: 22px;
+      margin-top: 4px;
+    }
+    .sub-config input[type="text"] {
+      font-size: 11px;
+      padding: 5px 8px;
+    }
+    .sub-config .hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    button {
+      margin-top: 16px;
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--bg);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    #status {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      min-height: 14px;
+    }
+    #status.ok { color: var(--green); }
+    #status.err { color: var(--red); }
+  </style>
+</head>
+<body>
+  <h1>streamscapes</h1>
+
+  <label for="targetUrl">Streamscapes URL</label>
+  <input type="text" id="targetUrl" placeholder="https://www.streamscapes.fm">
+
+  <label for="apiKey">API Key</label>
+  <input type="password" id="apiKey" placeholder="Paste from Connections panel">
+
+  <div class="signals">
+    <label style="margin-top:0">Signals</label>
+    <div class="signal-row">
+      <input type="checkbox" id="enableBattery" checked>
+      <span>Battery</span>
+      <span class="signal-interval">30s</span>
+    </div>
+    <div class="signal-row">
+      <input type="checkbox" id="enableCpu" checked>
+      <span>CPU</span>
+      <span class="signal-interval">30s</span>
+    </div>
+    <div class="signal-row">
+      <input type="checkbox" id="enableMemory" checked>
+      <span>Memory</span>
+      <span class="signal-interval">30s</span>
+    </div>
+    <div class="signal-row">
+      <input type="checkbox" id="enableTabs" checked>
+      <span>Tabs</span>
+      <span class="signal-interval">events</span>
+    </div>
+    <div class="sub-config" id="tabDomainsConfig">
+      <input type="text" id="tabDomains" placeholder="e.g. mail.google.com, reddit.com, github.com">
+      <div class="hint">Leave empty to create a channel for every domain. Add domains to filter to only those (e.g. gmail.com, youtube.com, zillow.com).</div>
+    </div>
+    <div class="signal-row">
+      <input type="checkbox" id="enableDownloads" checked>
+      <span>Downloads</span>
+      <span class="signal-interval">events</span>
+    </div>
+  </div>
+
+  <button id="save">Save</button>
+  <div id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

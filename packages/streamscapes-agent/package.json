@@ -1,0 +1,26 @@
+{
+  "name": "streamscapes-agent",
+  "version": "0.1.0",
+  "description": "Local poller daemon for Streamscapes — streams macOS notifications and Datadog traces into your mixer",
+  "bin": {
+    "streamscapes-agent": "./bin/agent.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reeeneeee/streamscapes"
+  },
+  "license": "MIT",
+  "keywords": [
+    "streamscapes",
+    "sonification",
+    "datadog",
+    "notifications",
+    "otlp"
+  ]
+}

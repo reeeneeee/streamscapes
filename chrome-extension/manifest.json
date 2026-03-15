@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Streamscapes System Monitor",
+  "version": "0.1.0",
+  "description": "Stream system signals to Streamscapes",
+  "permissions": ["system.cpu", "system.memory", "tabs", "downloads", "storage", "alarms"],
+  "host_permissions": ["https://www.streamscapes.fm/*", "http://localhost:3000/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "icons": {
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}

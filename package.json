@@ -9,12 +9,16 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:bridge": "esbuild src/lib/audio-bridge.ts --bundle --format=iife --target=es2017 --outfile=StreamscapesiOS/Sources/Resources/audio-bridge.js --minify"
+    "build:bridge": "esbuild src/lib/audio-bridge.ts --bundle --format=iife --target=es2017 --outfile=StreamscapesiOS/Sources/Resources/audio-bridge.js --minify",
+    "build:agent": "echo '#!/usr/bin/env node' > packages/streamscapes-agent/bin/agent.js && npx esbuild scripts/agent.ts --bundle --platform=node --target=node18 --format=cjs | tail -n +2 >> packages/streamscapes-agent/bin/agent.js && chmod +x packages/streamscapes-agent/bin/agent.js",
+    "build:menubar": "cd packages/streamscapes-menubar && node build.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
     "@neondatabase/serverless": "^1.0.2",
+    "@upstash/redis": "^1.37.0",
     "drizzle-orm": "^0.45.1",
+    "jose": "^6.2.1",
     "next": "^15.5.12",
     "next-auth": "^5.0.0-beta.30",
     "react": "^19.0.0",

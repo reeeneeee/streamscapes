@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -56,3 +56,7 @@ DerivedData/
 
 # iOS secrets (API keys)
 StreamscapesiOS/Sources/Config/Secrets.swift
+
+# Electron build output
+packages/streamscapes-menubar/release/
+packages/streamscapes-menubar/dist/
