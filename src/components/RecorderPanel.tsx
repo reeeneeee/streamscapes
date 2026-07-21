@@ -189,11 +189,14 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
               Your browser is blocking microphone access for this site, so only the
               soundscape is being recorded. To layer in your voice or surroundings:
               <ol style={{ margin: '10px 0 0', paddingLeft: 20 }}>
-                <li>Click the icon beside the address bar (padlock or sliders)</li>
-                <li>Open <b>Site settings</b></li>
-                <li>Set <b>Microphone</b> to <b>Allow</b></li>
+                <li>Click the crossed-out mic icon in the address bar and choose <b>Always allow</b> (or set <b>Microphone</b> to <b>Allow</b> under Site settings)</li>
                 <li>Reload the page and record again</li>
               </ol>
+              <div style={{ marginTop: 10 }}>
+                Already allowed here? Then the operating system is blocking the browser
+                itself: on macOS, open <b>System Settings → Privacy &amp; Security →
+                Microphone</b>, enable your browser, then quit and reopen it.
+              </div>
             </div>
           </div>
         </div>
