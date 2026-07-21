@@ -8,8 +8,16 @@ import type { SpanMessage } from '@/lib/ingest-bus';
 export const runtime = 'nodejs';
 export const maxDuration = 60; // Hobby plan max — EventSource auto-reconnects
 
-/** Poll interval for reading from Redis stream */
-const POLL_MS = 5000;
+/** Redis stream poll cadence: fast while events flow, backing off while idle
+ *  to conserve the Upstash daily command quota. */
+const POLL_MS_MIN = 5_000;
+const POLL_MS_MAX = 45_000;
+const POLL_BACKOFF = 1.7;
+
+// Poll cadence per user, persisted across the ≤60s SSE reconnect cycle —
+// without this the backoff would reset before it ever saved a command.
+const g = globalThis as unknown as { __ssePollMs?: Map<string, number> };
+g.__ssePollMs ??= new Map();
 
 export async function GET(req: NextRequest) {
   // Cookie auth or mobile JWT
@@ -56,17 +64,21 @@ export async function GET(req: NextRequest) {
 
       if (redis) {
         // Redis stream polling (cross-isolate — required for Vercel)
-        // Flush old entries on connect so page load/refresh never replays stale spans.
-        // New data arrives in real-time via the in-memory bus + fresh XREAD.
+        // Entry IDs are ms-timestamp based, so seeding the cursor at "now"
+        // skips stale backlog without deleting the stream out from under
+        // other connected tabs.
         const key = streamKey(userId);
-        redis.del(key).catch(() => {});
-        let lastId = '0';
+        let lastId = `${Date.now()}-0`;
+        let pollMs = g.__ssePollMs!.get(userId) ?? POLL_MS_MIN;
         // Track messages delivered via local bus to avoid duplicates
         const recentLocal = new Set<string>();
 
         // Wrap local enqueue to track deduplication
         const origEnqueue = enqueue;
         const localEnqueue = (msg: SpanMessage) => {
+          // Events are flowing — snap the Redis poll back to fast cadence
+          pollMs = POLL_MS_MIN;
+          g.__ssePollMs!.set(userId, pollMs);
           // Fingerprint: serviceName + spanName + timestamp
           const fp = `${msg.serviceName}:${msg.spanName}:${msg.timestamp}`;
           recentLocal.add(fp);
@@ -90,7 +102,13 @@ export async function GET(req: NextRequest) {
           if (closed) return;
           try {
             const results = await redis!.xread(key, lastId, { count: 50 });
-            if (!results || !Array.isArray(results) || results.length === 0) return;
+            if (!results || !Array.isArray(results) || results.length === 0) {
+              pollMs = Math.min(POLL_MS_MAX, pollMs * POLL_BACKOFF);
+              g.__ssePollMs!.set(userId, pollMs);
+              return;
+            }
+            pollMs = POLL_MS_MIN;
+            g.__ssePollMs!.set(userId, pollMs);
             // Upstash xread returns: [[streamName, [[entryId, [field, value, ...]], ...]]]
             // OR with auto-deserialization: [{id, fields}, ...] or similar
             // Handle both possible formats
@@ -138,11 +156,23 @@ export async function GET(req: NextRequest) {
             }
           } catch (err) {
             console.error(`[sse-poll] XREAD error:`, err);
+            pollMs = Math.min(POLL_MS_MAX, pollMs * POLL_BACKOFF);
+            g.__ssePollMs!.set(userId, pollMs);
           }
         };
 
-        const pollInterval = setInterval(poll, POLL_MS);
-        poll(); // Initial poll immediately
+        // Variable-cadence poll loop (setTimeout chain, not setInterval).
+        // No initial poll: the cursor starts at "now", so there is nothing
+        // to read until the first interval elapses.
+        let pollTimer: ReturnType<typeof setTimeout> | null = null;
+        const schedule = () => {
+          if (closed) return;
+          pollTimer = setTimeout(async () => {
+            await poll();
+            schedule();
+          }, pollMs);
+        };
+        schedule();
 
         // Keepalive ping every 30s to prevent gateway/proxy timeouts
         const pingInterval = setInterval(() => {
@@ -152,7 +182,7 @@ export async function GET(req: NextRequest) {
 
         cleanupFn = () => {
           closed = true;
-          clearInterval(pollInterval);
+          if (pollTimer) clearTimeout(pollTimer);
           clearInterval(pingInterval);
           unsubLocal2();
         };
