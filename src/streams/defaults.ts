@@ -765,13 +765,13 @@ export const DEFAULT_ARCHIVE_CHANNEL: ChannelConfig = {
       outputRange: [0.25, 0.9],
       invert: false,
     },
-    // Age: older items sustain longer (duration must clear the 0.6s envelope decay)
+    // Popularity also lengthens resonance (duration must clear the 0.6s envelope decay)
     {
-      sourceField: 'ageYears',
+      sourceField: 'downloads',
       targetParam: 'duration',
       curve: 'logarithmic',
-      inputRange: [1, 30],
-      outputRange: [0.7, 1.6],
+      inputRange: [1, 1_000_000],
+      outputRange: [0.7, 1.8],
       invert: false,
     },
   ],

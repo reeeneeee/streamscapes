@@ -133,8 +133,10 @@ export async function GET() {
 
 /**
  * Hydrate a batch of identifiers with one Advanced Search query instead of
- * N per-item Metadata API calls. Items too new for the search index fall
- * back to mediatype 'unknown' so the stream keeps flowing.
+ * N per-item Metadata API calls. Items absent from the public search index
+ * (access-restricted captures, not-yet-indexed uploads) are dropped so every
+ * event carries real metadata — unless the search query itself failed, in
+ * which case unhydrated items pass through so the stream keeps flowing.
  */
 async function hydrate(identifiers: string[]): Promise<ArchiveItem[]> {
   if (identifiers.length === 0) return [];
@@ -154,28 +156,34 @@ async function hydrate(identifiers: string[]): Promise<ArchiveItem[]> {
     publicdate?: string;
     downloads?: number;
   }> = [];
+  let searchOk = false;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       const json = await res.json();
       docs = json.response?.docs ?? [];
+      searchOk = true;
     }
   } catch {
     // fall through to unhydrated items
   }
 
+  if (!searchOk) {
+    return identifiers.map((id) => ({ identifier: id, mediatype: 'unknown' }));
+  }
+
   const byId = new Map(docs.map((d) => [d.identifier, d]));
 
-  return identifiers.map((id) => {
+  return identifiers.flatMap((id) => {
     const doc = byId.get(id);
-    if (!doc) return { identifier: id, mediatype: 'unknown' };
-    return {
+    if (!doc) return [];
+    return [{
       identifier: id,
       mediatype: doc.mediatype ?? 'unknown',
       title: (Array.isArray(doc.title) ? doc.title[0] : doc.title) ?? id,
       collection: Array.isArray(doc.collection) ? doc.collection[0] : doc.collection ?? '',
       publicdate: doc.publicdate,
       downloads: doc.downloads,
-    };
+    }];
   });
 }
