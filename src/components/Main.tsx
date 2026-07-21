@@ -14,12 +14,13 @@ import TransportBar from './TransportBar';
 import ErrorFeed from './ErrorFeed';
 import PresetsPanel from './PresetsPanel';
 import ConnectionsPanel from './ConnectionsPanel';
+import RecorderPanel from './RecorderPanel';
 import InstallPrompt from './InstallPrompt';
 import AuthButton from './AuthButton';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
 
-type Tab = 'main' | 'datastreams' | 'config';
+type Tab = 'main' | 'datastreams' | 'config' | 'record';
 
 function AdvancedConfig({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -94,13 +95,14 @@ export default function Main() {
       .catch(() => {});
   }, []);
 
-  // Keyboard shortcuts: 1 = Main, 2 = Inputs, 3 = Sonifications
+  // Keyboard shortcuts: 1 = Main, 2 = Inputs, 3 = Sonifications, 4 = Record
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
       if (e.key === '1') setTab('main');
       if (e.key === '2') setTab('datastreams');
       if (e.key === '3') setTab('config');
+      if (e.key === '4') setTab('record');
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -281,6 +283,9 @@ export default function Main() {
           <button data-active={tab === 'config'} onClick={() => setTab('config')}>
             Sonifications
           </button>
+          <button data-active={tab === 'record'} onClick={() => setTab('record')}>
+            Record
+          </button>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-3" style={{ flexShrink: 0 }}>
@@ -328,6 +333,14 @@ export default function Main() {
         <div className="hidden sm:block">
           <ConnectionsPanel />
         </div>
+      </div>
+
+      {/* Record tab — capture soundscape + mic */}
+      <div
+        className="controls-scroll px-2 py-3 sm:p-4 relative z-[5]"
+        style={{ height: vizHeight, display: tab === 'record' ? 'block' : 'none' }}
+      >
+        <RecorderPanel engine={engine} />
       </div>
 
       {/* Configure tab — sound shaping */}

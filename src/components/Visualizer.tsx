@@ -104,7 +104,12 @@ const Visualizer = ({
   wikiAnalyzer,
   engine,
 }: VisualizerProps) => {
-  const [infoPanel, setInfoPanel] = useState<{ title: string; json: string; url?: string } | null>(null);
+  const [infoPanel, setInfoPanel] = useState<{
+    title: string;
+    json: string;
+    url?: string;
+    media?: Array<{ label: string; href: string }>;
+  } | null>(null);
   const activeStreams = useStore((s) => s.activeStreams);
   const channels = useStore((s) => s.channels);
 
@@ -646,6 +651,16 @@ const Visualizer = ({
             const views = viewsRes.status === 'fulfilled'
               ? viewsRes.value?.[blob.identifier]
               : undefined;
+            // Direct links to playable derivative files (MP3 audio, MP4 video)
+            const files: Array<{ name: string; format?: string; length?: string }> =
+              metaRes.value.files ?? [];
+            const media = files
+              .filter((fl) => /MP3$|MPEG4$|h\.264/i.test(fl.format ?? ''))
+              .slice(0, 3)
+              .map((fl) => ({
+                label: `▶ ${fl.name}${fl.length ? ` · ${fl.length}` : ''}`,
+                href: `https://archive.org/download/${encodeURIComponent(blob.identifier)}/${encodeURIComponent(fl.name)}`,
+              }));
             const desc = typeof meta.description === 'string'
               ? meta.description.slice(0, 300)
               : Array.isArray(meta.description) ? meta.description[0]?.slice(0, 300) : undefined;
@@ -665,6 +680,7 @@ const Visualizer = ({
               title: `☞ ${meta.title ?? blob.title}`,
               json: details,
               url: iaUrl,
+              media,
             });
           });
         return;
@@ -710,7 +726,16 @@ const Visualizer = ({
                 color: 'var(--text-primary)',
                 letterSpacing: '0.04em',
               }}>
-                {infoPanel.title}
+                {infoPanel.url ? (
+                  <a
+                    href={infoPanel.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--text-muted)', textUnderlineOffset: 3 }}
+                  >
+                    {infoPanel.title}
+                  </a>
+                ) : infoPanel.title}
               </span>
               <button
                 onClick={() => setInfoPanel(null)}
@@ -733,6 +758,27 @@ const Visualizer = ({
             }}>
               {infoPanel.json}
             </pre>
+            {infoPanel.media && infoPanel.media.length > 0 && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {infoPanel.media.map((m) => (
+                  <a
+                    key={m.href}
+                    href={m.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontFamily: 'var(--font-geist-mono, monospace)',
+                      fontSize: 11,
+                      color: 'var(--accent, var(--text-primary))',
+                      textDecoration: 'none',
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    {m.label}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
