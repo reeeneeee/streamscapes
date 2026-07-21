@@ -23,6 +23,7 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
   const [micNote, setMicNote] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [takes, setTakes] = useState<Take[]>([]);
+  const [micHelpOpen, setMicHelpOpen] = useState(false);
 
   useEffect(() => {
     if (!recording) return;
@@ -51,7 +52,8 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
       } catch (err) {
         const name = err instanceof DOMException ? err.name : '';
         if (name === 'NotAllowedError' || name === 'SecurityError') {
-          setMicNote('Microphone blocked — click the icon by the address bar → Site settings → allow Microphone, then reload. Recording the soundscape only.');
+          setMicNote('Microphone blocked — recording the soundscape only.');
+          setMicHelpOpen(true);
         } else if (name === 'NotFoundError') {
           setMicNote('No microphone found — recording the soundscape only.');
         } else {
@@ -83,6 +85,11 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
       { url: URL.createObjectURL(blob), name, at: stamp.toLocaleTimeString() },
       ...prev,
     ]);
+  };
+
+  const deleteTake = (url: string) => {
+    URL.revokeObjectURL(url);
+    setTakes((prev) => prev.filter((t) => t.url !== url));
   };
 
   const mmss = (s: number) =>
@@ -143,6 +150,55 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{micNote}</div>
       )}
 
+      {micHelpOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 30,
+          }}
+          onClick={() => setMicHelpOpen(false)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 12,
+              padding: '20px 24px',
+              maxWidth: 420,
+              margin: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{
+                fontFamily: 'var(--font-display, var(--ff-display))',
+                fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '0.04em',
+              }}>
+                Enable your microphone
+              </span>
+              <button
+                onClick={() => setMicHelpOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer', padding: '0 4px' }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+              Your browser is blocking microphone access for this site, so only the
+              soundscape is being recorded. To layer in your voice or surroundings:
+              <ol style={{ margin: '10px 0 0', paddingLeft: 20 }}>
+                <li>Click the icon beside the address bar (padlock or sliders)</li>
+                <li>Open <b>Site settings</b></li>
+                <li>Set <b>Microphone</b> to <b>Allow</b></li>
+                <li>Reload the page and record again</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+
       {takes.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <div style={{
@@ -163,6 +219,17 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
                 >
                   ↓ {t.at}
                 </a>
+                <button
+                  onClick={() => deleteTake(t.url)}
+                  aria-label={`Delete take from ${t.at}`}
+                  title="Delete take"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', fontSize: 15, padding: '0 2px', lineHeight: 1,
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>
