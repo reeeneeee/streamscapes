@@ -51,7 +51,9 @@ export async function POST(
     .update(rawBody)
     .digest('hex');
 
-  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+  const expectedBuf = Buffer.from(expected);
+  const sigBuf = Buffer.from(sig);
+  if (expectedBuf.length !== sigBuf.length || !crypto.timingSafeEqual(expectedBuf, sigBuf)) {
     return new Response('Invalid signature', { status: 401 });
   }
 
