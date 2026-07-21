@@ -48,8 +48,15 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
         await mic.open();
         mic.connect(rec);
         micRef.current = mic;
-      } catch {
-        setMicNote('Microphone unavailable — recording the soundscape only.');
+      } catch (err) {
+        const name = err instanceof DOMException ? err.name : '';
+        if (name === 'NotAllowedError' || name === 'SecurityError') {
+          setMicNote('Microphone blocked — click the icon by the address bar → Site settings → allow Microphone, then reload. Recording the soundscape only.');
+        } else if (name === 'NotFoundError') {
+          setMicNote('No microphone found — recording the soundscape only.');
+        } else {
+          setMicNote('Microphone unavailable — recording the soundscape only.');
+        }
       }
     }
     setElapsed(0);
