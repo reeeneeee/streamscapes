@@ -24,6 +24,7 @@ node_modules/
 # misc
 .DS_Store
 *.pem
+*.p8
 
 # debug
 npm-debug.log*
@@ -60,3 +61,10 @@ StreamscapesiOS/Sources/Config/Secrets.swift
 # Electron build output
 packages/streamscapes-menubar/release/
 packages/streamscapes-menubar/dist/
+
+# Swift/app build artifacts
+.build/
+.swiftpm/
+packages/**/*.app/
+packages/**/*.zip
+/chrome-extension.zip
