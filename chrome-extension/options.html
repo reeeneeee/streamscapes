@@ -93,6 +93,32 @@
       margin-top: 3px;
       line-height: 1.4;
     }
+    .filter-mode {
+      display: flex;
+      gap: 0;
+      margin-bottom: 6px;
+    }
+    .filter-btn {
+      flex: 1;
+      margin: 0;
+      padding: 5px 0;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      width: auto;
+    }
+    .filter-btn:first-child { border-radius: 6px 0 0 6px; }
+    .filter-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+    .filter-btn.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .filter-btn:last-child.active { border-left: 1px solid var(--accent); }
     button {
       margin-top: 16px;
       width: 100%;
@@ -124,33 +150,23 @@
   <input type="text" id="targetUrl" placeholder="https://www.streamscapes.fm">
 
   <label for="apiKey">API Key</label>
-  <input type="password" id="apiKey" placeholder="Paste from Connections panel">
+  <input type="password" id="apiKey" placeholder="Paste from Inputs tab">
 
   <div class="signals">
     <label style="margin-top:0">Signals</label>
-    <div class="signal-row">
-      <input type="checkbox" id="enableBattery" checked>
-      <span>Battery</span>
-      <span class="signal-interval">30s</span>
-    </div>
-    <div class="signal-row">
-      <input type="checkbox" id="enableCpu" checked>
-      <span>CPU</span>
-      <span class="signal-interval">30s</span>
-    </div>
-    <div class="signal-row">
-      <input type="checkbox" id="enableMemory" checked>
-      <span>Memory</span>
-      <span class="signal-interval">30s</span>
-    </div>
     <div class="signal-row">
       <input type="checkbox" id="enableTabs" checked>
       <span>Tabs</span>
       <span class="signal-interval">events</span>
     </div>
     <div class="sub-config" id="tabDomainsConfig">
-      <input type="text" id="tabDomains" placeholder="e.g. mail.google.com, reddit.com, github.com">
-      <div class="hint">Leave empty to create a channel for every domain. Add domains to filter to only those (e.g. gmail.com, youtube.com, zillow.com).</div>
+      <div class="filter-mode">
+        <button type="button" id="filterInclude" class="filter-btn active">include</button>
+        <button type="button" id="filterExclude" class="filter-btn">exclude</button>
+      </div>
+      <input type="text" id="tabDomains" placeholder="e.g. mail.google.com, nyt.com, github.com">
+      <input type="hidden" id="tabFilterMode" value="include">
+      <div class="hint" id="filterHint">Leave empty to create a channel for every domain. Add domains to filter to only those.</div>
     </div>
     <div class="signal-row">
       <input type="checkbox" id="enableDownloads" checked>

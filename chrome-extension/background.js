@@ -12,13 +12,10 @@
 const DEFAULTS = {
   targetUrl: 'https://www.streamscapes.fm',
   apiKey: '',
-  enableBattery: true,
-  enableCpu: true,
-  enableMemory: true,
   enableTabs: true,
   enableDownloads: true,
-  // Comma-separated hostnames to track as individual channels (empty = [all] only)
   tabDomains: '',
+  tabFilterMode: 'include',
 };
 
 let config = { ...DEFAULTS };
@@ -74,18 +71,26 @@ async function postSpan(serviceName, spanName, fields) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${config.apiKey}`,
+        'X-Agent-Version': chrome.runtime.getManifest().version,
       },
       body: JSON.stringify(makeOtlpPayload(serviceName, spanName, fields)),
     });
     if (res.ok) {
-      chrome.storage.local.set({ lastPostOk: Date.now() });
+      chrome.storage.local.set({ lastPostOk: Date.now(), lastPostError: null });
     } else {
       console.warn(`[ss] POST failed: ${res.status}`);
-      chrome.storage.local.set({ lastPostError: `${res.status} at ${new Date().toISOString()}` });
+      const hint = res.status === 401 ? 'Invalid API key — check your key in the Inputs tab on streamscapes'
+        : res.status === 404 ? 'Endpoint not found — check your Streamscapes URL'
+        : res.status >= 500 ? 'Server error — streamscapes may be down'
+        : `HTTP ${res.status}`;
+      chrome.storage.local.set({ lastPostError: hint });
     }
   } catch (err) {
     console.warn('[ss] POST error:', err);
-    chrome.storage.local.set({ lastPostError: `${err.message} at ${new Date().toISOString()}` });
+    const hint = err.message.includes('Failed to fetch')
+      ? 'Cannot reach server — check your Streamscapes URL'
+      : err.message;
+    chrome.storage.local.set({ lastPostError: hint });
   }
 }
 
@@ -102,61 +107,7 @@ function hasChanged(key, value) {
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// Signal: Battery (30s alarm)
-// ---------------------------------------------------------------------------
-
-async function pollBattery() {
-  if (!config.enableBattery) return;
-  try {
-    const battery = await navigator.getBattery();
-    const level = Math.round(battery.level * 100);
-    const charging = battery.charging ? 1 : 0;
-    if (!hasChanged('battery', `${level}:${charging}`)) return;
-    await postSpan('battery', 'level', { level, charging });
-  } catch (err) {
-    console.warn('[ss] Battery API unavailable:', err.message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Signal: CPU (10s alarm)
-// ---------------------------------------------------------------------------
-
-async function pollCpu() {
-  if (!config.enableCpu) return;
-  try {
-    const info = await chrome.system.cpu.getInfo();
-    let totalUser = 0, totalTotal = 0;
-    for (const p of info.processors) {
-      totalUser += p.usage.user;
-      totalTotal += p.usage.total;
-    }
-    const usagePercent = totalTotal > 0 ? Math.round((totalUser / totalTotal) * 100) : 0;
-    if (!hasChanged('cpu', usagePercent)) return;
-    await postSpan('cpu', 'usage', { usagePercent });
-  } catch (err) {
-    console.warn('[ss] CPU API error:', err.message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Signal: Memory (30s alarm)
-// ---------------------------------------------------------------------------
-
-async function pollMemory() {
-  if (!config.enableMemory) return;
-  try {
-    const info = await chrome.system.memory.getInfo();
-    const totalMB = Math.round(info.capacity / (1024 * 1024));
-    const availableMB = Math.round(info.availableCapacity / (1024 * 1024));
-    const usedPercent = Math.round(((totalMB - availableMB) / totalMB) * 100);
-    if (!hasChanged('memory', usedPercent)) return;
-    await postSpan('memory', 'pressure', { usedPercent, availableMB });
-  } catch (err) {
-    console.warn('[ss] Memory API error:', err.message);
-  }
-}
+// System signals (battery, CPU, memory) moved to the Streamscapes Agent menubar app
 
 // ---------------------------------------------------------------------------
 // Signal: Tabs (event-driven) — per-domain sub-channels
@@ -182,15 +133,30 @@ function getTrackedDomains() {
   return set;
 }
 
+/** Check whether a host matches any domain in the set (exact or subdomain) */
+function matchesDomainSet(host, domainSet) {
+  for (const domain of domainSet) {
+    if (host === domain || host.endsWith('.' + domain)) return true;
+  }
+  return false;
+}
+
 /**
  * Returns the service name(s) for a tab event.
  * - Always includes "[all]" for the aggregate channel
  * - If tabDomains is empty → also includes the tab's hostname (every domain gets its own channel)
- * - If tabDomains is populated → only includes hostnames that match the filter
+ * - If tabDomains is populated:
+ *   - 'include' mode → only listed domains get their own channel
+ *   - 'exclude' mode → all domains EXCEPT listed ones get their own channel
  */
+function isInternalUrl(url) {
+  return /^(chrome|chrome-extension|about|edge|brave|devtools):/.test(url);
+}
+
 function tabServiceNames(url) {
+  if (isInternalUrl(url)) return [];
   const host = cleanHost(hostname(url));
-  const names = ['[all]'];
+  const names = [];
   if (!host) return names;
 
   const tracked = getTrackedDomains();
@@ -201,12 +167,13 @@ function tabServiceNames(url) {
     return names;
   }
 
-  // Populated filter = only matching domains
-  for (const domain of tracked) {
-    if (host === domain || host.endsWith('.' + domain)) {
-      names.push(domain);
-      break;
-    }
+  const matches = matchesDomainSet(host, tracked);
+  const mode = config.tabFilterMode || 'include';
+
+  if (mode === 'exclude') {
+    if (!matches) names.push(host);
+  } else {
+    if (matches) names.push(host);
   }
   return names;
 }
@@ -218,27 +185,31 @@ async function getTabCount() {
 
 chrome.tabs.onCreated.addListener(async (tab) => {
   if (!config.enableTabs) return;
-  const tabCount = await getTabCount();
   const url = tab.pendingUrl || tab.url || '';
-  for (const svc of tabServiceNames(url)) {
-    await postSpan(svc, 'opened', { tabCount, url: cleanHost(hostname(url)) });
+  if (isInternalUrl(url)) return;
+  const tabCount = await getTabCount();
+  const host = cleanHost(hostname(url));
+  const domains = tabServiceNames(url);
+  for (const domain of domains) {
+    await postSpan(domain, 'tab.opened', { tabCount, url: host });
   }
 });
 
 chrome.tabs.onRemoved.addListener(async () => {
   if (!config.enableTabs) return;
-  const tabCount = await getTabCount();
-  // Closed tabs don't carry a URL — only fire on [all]
-  await postSpan('[all]', 'closed', { tabCount });
+  // No URL available on remove — skip (tab.closed doesn't map to a domain)
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   if (!config.enableTabs) return;
   const tab = await chrome.tabs.get(activeInfo.tabId);
-  const tabCount = await getTabCount();
   const url = tab.url || '';
-  for (const svc of tabServiceNames(url)) {
-    await postSpan(svc, 'switched', { tabCount, url: cleanHost(hostname(url)) });
+  if (isInternalUrl(url)) return;
+  const tabCount = await getTabCount();
+  const host = cleanHost(hostname(url));
+  const domains = tabServiceNames(url);
+  for (const domain of domains) {
+    await postSpan(domain, 'tab.switched', { tabCount, url: host });
   }
 });
 
@@ -249,7 +220,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 if (config.enableDownloads !== false) {
   chrome.downloads.onCreated.addListener(async (item) => {
     if (!config.enableDownloads) return;
-    await postSpan('downloads', 'started', {
+    await postSpan('downloads', 'download.started', {
       fileSize: item.fileSize || 0,
       mimeType: item.mime || 'unknown',
     });
@@ -260,41 +231,14 @@ if (config.enableDownloads !== false) {
     if (delta.state) {
       const spanName = delta.state.current === 'complete' ? 'complete' : 'failed';
       if (delta.state.current === 'complete' || delta.state.current === 'interrupted') {
-        await postSpan('downloads', spanName, {});
+        await postSpan('downloads', `download.${spanName}`, {});
       }
     }
   });
 }
 
 // ---------------------------------------------------------------------------
-// Alarm scheduling
-// ---------------------------------------------------------------------------
-
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'battery') pollBattery();
-  if (alarm.name === 'cpu') pollCpu();
-  if (alarm.name === 'memory') pollMemory();
-});
-
-async function setupAlarms() {
-  await chrome.alarms.clearAll();
-  // chrome.alarms minimum period is 1 minute in production, but
-  // periodInMinutes < 1 is clamped to 1 in release builds.
-  // For CPU we want 10s ideally — alarm fires every minute, but
-  // we accept that as the MV3 minimum.
-  chrome.alarms.create('battery', { periodInMinutes: 0.5 });
-  chrome.alarms.create('cpu', { periodInMinutes: 0.5 });
-  chrome.alarms.create('memory', { periodInMinutes: 0.5 });
-}
-
-// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
-loadConfig().then(() => {
-  setupAlarms();
-  // Fire initial polls
-  pollBattery();
-  pollCpu();
-  pollMemory();
-});
+loadConfig();
