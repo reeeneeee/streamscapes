@@ -1,0 +1,309 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		7E70E5F6E63039E3F846E5C9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A7B24187CF20B6B1E52854 /* ContentView.swift */; };
+		8694B938E135AD4CDC60CCD3 /* WatchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A0A39A9B6450DE3808463F /* WatchViewModel.swift */; };
+		8B93368DB4BE1A6B50D80B8F /* StreamscapesWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DEECCBBB8E0785384C0714 /* StreamscapesWatchApp.swift */; };
+		9121E191160377897266A4E3 /* OTLPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D166475FADB0878773DD2C /* OTLPClient.swift */; };
+		ADEA2A158C1DD08CB3D25943 /* HealthPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3B64173126B588A8F71A12 /* HealthPoller.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2189EC2E4EC492AF5A95A6D9 /* StreamscapesWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StreamscapesWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D3B64173126B588A8F71A12 /* HealthPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthPoller.swift; sourceTree = "<group>"; };
+		71A7B24187CF20B6B1E52854 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		84DEECCBBB8E0785384C0714 /* StreamscapesWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamscapesWatchApp.swift; sourceTree = "<group>"; };
+		A6A0A39A9B6450DE3808463F /* WatchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchViewModel.swift; sourceTree = "<group>"; };
+		D0D166475FADB0878773DD2C /* OTLPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTLPClient.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		6B7697BC4F3FCA7D325E7B56 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				71A7B24187CF20B6B1E52854 /* ContentView.swift */,
+				3D3B64173126B588A8F71A12 /* HealthPoller.swift */,
+				D0D166475FADB0878773DD2C /* OTLPClient.swift */,
+				84DEECCBBB8E0785384C0714 /* StreamscapesWatchApp.swift */,
+				A6A0A39A9B6450DE3808463F /* WatchViewModel.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		E37465C7AC51775144CD1F5D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2189EC2E4EC492AF5A95A6D9 /* StreamscapesWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EFB3650DD4B75D31DFABF4DE = {
+			isa = PBXGroup;
+			children = (
+				6B7697BC4F3FCA7D325E7B56 /* Sources */,
+				E37465C7AC51775144CD1F5D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		57EB1F241BA90900A33ED03E /* StreamscapesWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23CE8900011F351EC1567801 /* Build configuration list for PBXNativeTarget "StreamscapesWatch" */;
+			buildPhases = (
+				0C3DA2C2FE87E15024A611FF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StreamscapesWatch;
+			packageProductDependencies = (
+			);
+			productName = StreamscapesWatch;
+			productReference = 2189EC2E4EC492AF5A95A6D9 /* StreamscapesWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AF9F5D82949634D4E60EC205 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					57EB1F241BA90900A33ED03E = {
+						DevelopmentTeam = MAG2WYD297;
+					};
+				};
+			};
+			buildConfigurationList = AE07873BC063891E8BF4196D /* Build configuration list for PBXProject "StreamscapesWatch" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = EFB3650DD4B75D31DFABF4DE;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E37465C7AC51775144CD1F5D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				57EB1F241BA90900A33ED03E /* StreamscapesWatch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0C3DA2C2FE87E15024A611FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E70E5F6E63039E3F846E5C9 /* ContentView.swift in Sources */,
+				ADEA2A158C1DD08CB3D25943 /* HealthPoller.swift in Sources */,
+				9121E191160377897266A4E3 /* OTLPClient.swift in Sources */,
+				8B93368DB4BE1A6B50D80B8F /* StreamscapesWatchApp.swift in Sources */,
+				8694B938E135AD4CDC60CCD3 /* WatchViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2B3F7DB01E6E7C03EF8F47D2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		953812ACADF4F5CC8D1B27D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Streamscapes.Watch.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Streamscapes streams your heart rate, steps, and calories as live sound.";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.streamscapes.app;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.app.watch;
+				PRODUCT_NAME = Streamscapes;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		C1C845C743189FA56F3990A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Streamscapes.Watch.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Streamscapes streams your heart rate, steps, and calories as live sound.";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.streamscapes.app;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.app.watch;
+				PRODUCT_NAME = Streamscapes;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		EEB9E92C7074E3FC859D5B82 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		23CE8900011F351EC1567801 /* Build configuration list for PBXNativeTarget "StreamscapesWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				953812ACADF4F5CC8D1B27D7 /* Debug */,
+				C1C845C743189FA56F3990A6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AE07873BC063891E8BF4196D /* Build configuration list for PBXProject "StreamscapesWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EEB9E92C7074E3FC859D5B82 /* Debug */,
+				2B3F7DB01E6E7C03EF8F47D2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AF9F5D82949634D4E60EC205 /* Project object */;
+}

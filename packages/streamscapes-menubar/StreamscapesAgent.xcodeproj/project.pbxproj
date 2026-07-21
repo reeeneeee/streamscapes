@@ -1,0 +1,344 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1CDF3445CF9E1E0C6DB666D8 /* DatadogPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEB97276B3EADD404EB62F4 /* DatadogPoller.swift */; };
+		271E8E4E8C2F83B0965E74B1 /* SystemHealthPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C5F5EA09A2C10480BF8A4E /* SystemHealthPoller.swift */; };
+		2A9C859AB3E14209DC395B90 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 20EEF764C00AC1E9F1591DC4 /* Assets.xcassets */; };
+		43E9AFA01C4F0B45C6E21083 /* StreamscapesAgentApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C176B353B00000E3505819 /* StreamscapesAgentApp.swift */; };
+		61A5423B4325D25A8CA4E026 /* OTLPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B905E79388A144196786A3C /* OTLPClient.swift */; };
+		7018D72717D7D1DCD4C244AF /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58EFDDB8B8F8F3823F78342A /* PopoverView.swift */; };
+		9F9E19F45F2D61FE7ACE1DE0 /* NotifPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1C2B241A1CCEF68E97618B /* NotifPoller.swift */; };
+		E342817EA0A553F1503D50EB /* AgentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E9D9AA365AE9F10E9B581C /* AgentViewModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0B905E79388A144196786A3C /* OTLPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTLPClient.swift; sourceTree = "<group>"; };
+		20EEF764C00AC1E9F1591DC4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		46C5F5EA09A2C10480BF8A4E /* SystemHealthPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHealthPoller.swift; sourceTree = "<group>"; };
+		58EFDDB8B8F8F3823F78342A /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
+		6EF968DEB648D5B3806C2B59 /* StreamscapesAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StreamscapesAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FEB97276B3EADD404EB62F4 /* DatadogPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogPoller.swift; sourceTree = "<group>"; };
+		B0E9D9AA365AE9F10E9B581C /* AgentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentViewModel.swift; sourceTree = "<group>"; };
+		BB1C2B241A1CCEF68E97618B /* NotifPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotifPoller.swift; sourceTree = "<group>"; };
+		C4C176B353B00000E3505819 /* StreamscapesAgentApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamscapesAgentApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		375347E53404B4007F29629A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6EF968DEB648D5B3806C2B59 /* StreamscapesAgent.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4C1449AB4921781D6625649B /* StreamscapesAgent */ = {
+			isa = PBXGroup;
+			children = (
+				B0E9D9AA365AE9F10E9B581C /* AgentViewModel.swift */,
+				20EEF764C00AC1E9F1591DC4 /* Assets.xcassets */,
+				8FEB97276B3EADD404EB62F4 /* DatadogPoller.swift */,
+				BB1C2B241A1CCEF68E97618B /* NotifPoller.swift */,
+				0B905E79388A144196786A3C /* OTLPClient.swift */,
+				58EFDDB8B8F8F3823F78342A /* PopoverView.swift */,
+				C4C176B353B00000E3505819 /* StreamscapesAgentApp.swift */,
+				46C5F5EA09A2C10480BF8A4E /* SystemHealthPoller.swift */,
+			);
+			name = StreamscapesAgent;
+			path = Sources/StreamscapesAgent;
+			sourceTree = "<group>";
+		};
+		8EBF776838CE33196AEFA695 = {
+			isa = PBXGroup;
+			children = (
+				4C1449AB4921781D6625649B /* StreamscapesAgent */,
+				375347E53404B4007F29629A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		92E9ED1E493462C5342F0B16 /* StreamscapesAgent */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A0D9C28A8C3B018F0B8642B /* Build configuration list for PBXNativeTarget "StreamscapesAgent" */;
+			buildPhases = (
+				30A788047717D37AF0281F61 /* Sources */,
+				DCC5DC3C1A1950BB1AA32856 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StreamscapesAgent;
+			packageProductDependencies = (
+			);
+			productName = StreamscapesAgent;
+			productReference = 6EF968DEB648D5B3806C2B59 /* StreamscapesAgent.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		80EBDDD81E11E20559C8407D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					92E9ED1E493462C5342F0B16 = {
+						DevelopmentTeam = MAG2WYD297;
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 30C1D8310F45564C65DF68F4 /* Build configuration list for PBXProject "StreamscapesAgent" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 8EBF776838CE33196AEFA695;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 375347E53404B4007F29629A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				92E9ED1E493462C5342F0B16 /* StreamscapesAgent */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DCC5DC3C1A1950BB1AA32856 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2A9C859AB3E14209DC395B90 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		30A788047717D37AF0281F61 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E342817EA0A553F1503D50EB /* AgentViewModel.swift in Sources */,
+				1CDF3445CF9E1E0C6DB666D8 /* DatadogPoller.swift in Sources */,
+				9F9E19F45F2D61FE7ACE1DE0 /* NotifPoller.swift in Sources */,
+				61A5423B4325D25A8CA4E026 /* OTLPClient.swift in Sources */,
+				7018D72717D7D1DCD4C244AF /* PopoverView.swift in Sources */,
+				43E9AFA01C4F0B45C6E21083 /* StreamscapesAgentApp.swift in Sources */,
+				271E8E4E8C2F83B0965E74B1 /* SystemHealthPoller.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		362AAC8EDD58385BC89FDF79 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		70EFCC87ED59A21A874818E9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Streamscapes.entitlements;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				OTHER_CODE_SIGN_FLAGS = "--timestamp --options runtime";
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.agent;
+				PRODUCT_NAME = "Streamscapes Agent";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5;
+			};
+			name = Debug;
+		};
+		7D1A98464CBFBDBDBC0F63CB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Streamscapes.entitlements;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				OTHER_CODE_SIGN_FLAGS = "--timestamp --options runtime";
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.agent;
+				PRODUCT_NAME = "Streamscapes Agent";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5;
+			};
+			name = Release;
+		};
+		AB2CCC9080DBD24CA557C94F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		30C1D8310F45564C65DF68F4 /* Build configuration list for PBXProject "StreamscapesAgent" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				362AAC8EDD58385BC89FDF79 /* Debug */,
+				AB2CCC9080DBD24CA557C94F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7A0D9C28A8C3B018F0B8642B /* Build configuration list for PBXNativeTarget "StreamscapesAgent" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				70EFCC87ED59A21A874818E9 /* Debug */,
+				7D1A98464CBFBDBDBC0F63CB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 80EBDDD81E11E20559C8407D /* Project object */;
+}

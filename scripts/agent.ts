@@ -1,53 +1,64 @@
+#!/usr/bin/env npx tsx
 /**
- * Streamscapes Agent — notification + Datadog pollers with a start/stop API.
+ * Streamscapes Agent — consolidated poller daemon.
  *
- * Ported from scripts/agent.ts for use in the Electron main process.
+ * Runs all local signal pollers in a single process:
+ *   - macOS notifications (sqlite3)
+ *   - Datadog spans (API)
+ *
+ * Usage:
+ *   npx tsx --env-file .env scripts/agent.ts              # local dev
+ *   npx tsx --env-file .env scripts/agent.ts --remote      # prod
+ *   npx tsx --env-file .env scripts/agent.ts --modules notif,dd   # pick modules
+ *
+ * Env:
+ *   SS_API_KEY / SS_LOCAL_API_KEY / SS_PROD_API_KEY — auth token
+ *   DD_API_KEY, DD_APPLICATION_KEY                  — Datadog (optional)
+ *   SS_ENDPOINT / SS_PROD_ENDPOINT                  — override ingest URL
  */
 
 import { execSync } from 'child_process';
-import { homedir, tmpdir } from 'os';
+import { homedir } from 'os';
 import { join } from 'path';
 
 // ---------------------------------------------------------------------------
-// Types
+// Config
 // ---------------------------------------------------------------------------
 
-export interface AgentConfig {
-  endpoint: string;
-  apiKey: string;
-  enableNotif: boolean;
-  enableDd: boolean;
-  ddApiKey?: string;
-  ddAppKey?: string;
-  ddSite?: string;
+const useRemote = process.argv.includes('--remote') || process.argv.includes('-r');
+const SS_API_KEY = useRemote
+  ? (process.env.SS_PROD_API_KEY ?? process.env.SS_API_KEY)
+  : (process.env.SS_LOCAL_API_KEY ?? process.env.SS_API_KEY);
+const SS_PROD_ENDPOINT = process.env.SS_PROD_ENDPOINT ?? 'https://www.streamscapes.fm/api/ingest/otlp/v1/traces';
+const SS_ENDPOINT = process.env.SS_ENDPOINT ?? (useRemote ? SS_PROD_ENDPOINT : 'http://localhost:3000/api/ingest/otlp/v1/traces');
+
+if (!SS_API_KEY) {
+  console.error('Missing SS_API_KEY — generate one in the Streamscapes Connections panel');
+  process.exit(1);
 }
 
-export interface AgentCallbacks {
-  onLog: (module: string, message: string) => void;
-  onSpanSent: (module: string, serviceName: string) => void;
-  onError: (module: string, error: string) => void;
-  onFdaRequired: () => void;
-}
+// Parse --modules flag (comma-separated), default = all available
+const modulesArg = process.argv.find(a => a.startsWith('--modules='))?.slice(10)
+  ?? process.argv[process.argv.indexOf('--modules') + 1];
+const requestedModules = modulesArg ? new Set(modulesArg.split(',').map(m => m.trim())) : null;
 
-export interface AgentStatus {
-  state: 'idle' | 'running' | 'error';
-  spanCount?: number;
-  error?: string;
-  fdaRequired?: boolean;
+function moduleEnabled(name: string, requiresEnv?: () => boolean): boolean {
+  if (requestedModules && !requestedModules.has(name)) return false;
+  if (requiresEnv && !requiresEnv()) return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
-// OTLP span helper
+// Shared: OTLP span POST
 // ---------------------------------------------------------------------------
 
 async function postSpan(
-  config: AgentConfig,
   source: string,
   serviceName: string,
   spanName: string,
   fields: Record<string, string | number>,
   extra?: { timestampMs?: number; statusCode?: number }
-): Promise<{ ok: boolean; status?: number }> {
+) {
   const ts = extra?.timestampMs ?? Date.now();
   const startNano = String(ts * 1_000_000);
   const endNano = String((ts + 1) * 1_000_000);
@@ -76,37 +87,33 @@ async function postSpan(
   };
 
   try {
-    const res = await fetch(`${config.endpoint}?source=${source}`, {
+    const res = await fetch(`${SS_ENDPOINT}?source=${source}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${SS_API_KEY}`,
       },
       body: JSON.stringify(body),
     });
-    return { ok: res.ok, status: res.status };
+    return res.ok;
   } catch {
-    return { ok: false };
+    return false;
   }
 }
 
+const tag = (mod: string) => `[${mod}]`;
+
 // ---------------------------------------------------------------------------
-// Notification poller
+// Module: macOS Notifications
 // ---------------------------------------------------------------------------
 
-function createNotifPoller(
-  config: AgentConfig,
-  callbacks: AgentCallbacks,
-  shared: { consecutive401s: number; onAuthError: () => void }
-) {
+function startNotifPoller() {
   const DB_PATH = join(homedir(), 'Library/Group Containers/group.com.apple.usernoted/db2/db');
   const MAC_EPOCH_OFFSET = 978307200;
-  const POLL_S = 3;
-  const PLIST_PATH = join(tmpdir(), `ss_notif_${process.pid}.plist`);
+  const POLL_S = Number(process.env.NOTIF_POLL_INTERVAL_S) || 3;
 
   const seenIds = new Set<number>();
   let lastDate = Date.now() / 1000 - MAC_EPOCH_OFFSET;
-  let timer: ReturnType<typeof setInterval> | null = null;
 
   function appName(bundleId: string): string {
     const parts = String(bundleId).split('.');
@@ -116,10 +123,10 @@ function createNotifPoller(
   function getContent(recId: number): { title?: string; body?: string } {
     try {
       execSync(
-        `sqlite3 "${DB_PATH}" "SELECT writefile('${PLIST_PATH}', data) FROM record WHERE rec_id = ${recId};"`,
+        `sqlite3 "${DB_PATH}" "SELECT writefile('/tmp/ss_notif.plist', data) FROM record WHERE rec_id = ${recId};"`,
         { encoding: 'utf-8', timeout: 5000 }
       );
-      const raw = execSync(`plutil -p "${PLIST_PATH}"`, { encoding: 'utf-8', timeout: 5000 });
+      const raw = execSync('plutil -p /tmp/ss_notif.plist', { encoding: 'utf-8', timeout: 5000 });
       const extract = (key: string) => raw.match(new RegExp(`"${key}"\\s*=>\\s*"([^"]*)"`, 'm'))?.[1];
       return { title: extract('titl'), body: extract('body') };
     } catch { return {}; }
@@ -129,13 +136,13 @@ function createNotifPoller(
     try {
       const query = `SELECT r.rec_id, a.identifier, r.delivered_date FROM record r JOIN app a ON r.app_id = a.app_id WHERE r.delivered_date > ${lastDate} ORDER BY r.delivered_date ASC LIMIT 50;`;
       const result = execSync(`sqlite3 -json "${DB_PATH}" "${query}"`, { encoding: 'utf-8', timeout: 5000 }).trim();
-      if (!result) return;
+      if (!result) { process.stdout.write('.'); return; }
 
       const rows = JSON.parse(result) as Array<{ rec_id: number; identifier: string; delivered_date: number }>;
       const newRows = rows.filter(r => !seenIds.has(r.rec_id));
-      if (!newRows.length) return;
+      if (!newRows.length) { process.stdout.write('.'); return; }
 
-      callbacks.onLog('notif', `${newRows.length} new`);
+      console.log(`\n${tag('notif')} ${newRows.length} new`);
       for (const row of newRows) {
         seenIds.add(row.rec_id);
         lastDate = Math.max(lastDate, row.delivered_date);
@@ -143,24 +150,13 @@ function createNotifPoller(
         const content = getContent(row.rec_id);
         const name = content.title ? `${svc}: ${content.title}` : svc;
         const tsMs = (row.delivered_date + MAC_EPOCH_OFFSET) * 1000;
-        const result = await postSpan(config, 'notify', svc, name, {
+        const ok = await postSpan('notify', svc, name, {
           ...(content.body ? { 'notification.body': content.body } : {}),
           'notification.app': row.identifier,
         }, { timestampMs: tsMs });
-
-        if (result.ok) {
-          shared.consecutive401s = 0;
-          callbacks.onSpanSent('notif', svc);
-        } else if (result.status === 401) {
-          shared.consecutive401s++;
-          if (shared.consecutive401s >= 3) {
-            shared.onAuthError();
-            return;
-          }
-        }
+        if (ok) console.log(`  ${svc} / ${(content.title ?? '').slice(0, 60)}`);
       }
 
-      // Prune seen set
       if (seenIds.size > 500) {
         const arr = [...seenIds];
         seenIds.clear();
@@ -168,48 +164,32 @@ function createNotifPoller(
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('authorization denied') || msg.includes('not permitted') || msg.includes('unable to open')) {
-        callbacks.onFdaRequired();
+      if (msg.includes('authorization denied') || msg.includes('not permitted')) {
+        console.error(`${tag('notif')} Full Disk Access required — System Settings → Privacy & Security → Full Disk Access`);
         return;
       }
-      callbacks.onLog('notif', `error: ${msg.slice(0, 120)}`);
+      console.warn(`${tag('notif')} error:`, msg.slice(0, 120));
     }
   }
 
-  return {
-    start() {
-      callbacks.onLog('notif', `polling every ${POLL_S}s`);
-      poll();
-      timer = setInterval(poll, POLL_S * 1000);
-    },
-    stop() {
-      if (timer) { clearInterval(timer); timer = null; }
-    },
-    resetAfterWake() {
-      // Reset cursor to now - 30s to avoid flood but catch recent notifications
-      lastDate = Date.now() / 1000 - MAC_EPOCH_OFFSET - 30;
-    },
-  };
+  console.log(`${tag('notif')} polling every ${POLL_S}s`);
+  poll();
+  setInterval(poll, POLL_S * 1000);
 }
 
 // ---------------------------------------------------------------------------
-// Datadog poller
+// Module: Datadog
 // ---------------------------------------------------------------------------
 
-function createDdPoller(
-  config: AgentConfig,
-  callbacks: AgentCallbacks,
-  shared: { consecutive401s: number; onAuthError: () => void }
-) {
-  const DD_API_KEY = config.ddApiKey!;
-  const DD_APP_KEY = config.ddAppKey!;
-  const DD_SITE = config.ddSite ?? 'datadoghq.com';
-  const DD_QUERY = '*';
-  const POLL_S = 5;
+function startDdPoller() {
+  const DD_API_KEY = process.env.DD_API_KEY!;
+  const DD_APP_KEY = (process.env.DD_APPLICATION_KEY ?? process.env.DD_APP_KEY)!;
+  const DD_SITE = process.env.DD_SITE ?? 'datadoghq.com';
+  const DD_QUERY = process.env.DD_QUERY ?? '*';
+  const POLL_S = Number(process.env.POLL_INTERVAL_S) || 5;
   const LOOKBACK_MS = 60_000;
 
   const seenIds = new Set<string>();
-  let timer: ReturnType<typeof setInterval> | null = null;
 
   async function poll() {
     try {
@@ -227,8 +207,8 @@ function createDdPoller(
         }),
       });
 
-      if (resp.status === 429) { callbacks.onLog('dd', 'rate limited'); return; }
-      if (!resp.ok) { callbacks.onLog('dd', `API error: ${resp.status}`); return; }
+      if (resp.status === 429) { console.warn(`${tag('dd')} rate limited`); return; }
+      if (!resp.ok) { console.warn(`${tag('dd')} API error: ${resp.status}`); return; }
 
       const json = await resp.json();
       const spans = json?.data ?? [];
@@ -245,92 +225,60 @@ function createDdPoller(
         const name = String(attrs.resource_name ?? attrs.operation_name ?? 'unknown');
         const status = String(attrs.status ?? 'ok');
 
-        const result = await postSpan(config, 'datadog', service, name, {}, { statusCode: status === 'error' ? 2 : 1 });
-        if (result.ok) {
-          shared.consecutive401s = 0;
-          callbacks.onSpanSent('dd', service);
+        const ok = await postSpan('datadog', service, name, {}, { statusCode: status === 'error' ? 2 : 1 });
+        if (ok) {
+          console.log(`  ${service} / ${name.slice(0, 50)} (${status === 'error' ? 'ERR' : 'OK'})`);
           count++;
-        } else if (result.status === 401) {
-          shared.consecutive401s++;
-          if (shared.consecutive401s >= 3) {
-            shared.onAuthError();
-            return;
-          }
         }
       }
 
-      if (count) callbacks.onLog('dd', `${count} new spans`);
+      if (count) console.log(`${tag('dd')} ${count} new spans`);
+      else process.stdout.write('.');
 
-      // Prune seen set
       if (seenIds.size > 1000) {
         const arr = [...seenIds];
         seenIds.clear();
         for (const id of arr.slice(-500)) seenIds.add(id);
       }
     } catch (err) {
-      callbacks.onLog('dd', `poll error: ${err instanceof Error ? err.message : err}`);
+      console.warn(`${tag('dd')} poll error:`, err);
     }
   }
 
-  return {
-    start() {
-      callbacks.onLog('dd', `polling ${DD_SITE} every ${POLL_S}s`);
-      poll();
-      timer = setInterval(poll, POLL_S * 1000);
-    },
-    stop() {
-      if (timer) { clearInterval(timer); timer = null; }
-    },
-  };
+  console.log(`${tag('dd')} polling ${DD_SITE} every ${POLL_S}s`);
+  poll();
+  setInterval(poll, POLL_S * 1000);
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Bootstrap
 // ---------------------------------------------------------------------------
 
-export function createAgent(config: AgentConfig, callbacks: AgentCallbacks) {
-  let running = false;
-  let notifPoller: ReturnType<typeof createNotifPoller> | null = null;
-  let ddPoller: ReturnType<typeof createDdPoller> | null = null;
+console.log(`\n  streamscapes agent`);
+console.log(`  ${useRemote ? '🌐 remote' : '🏠 local'} → ${SS_ENDPOINT}\n`);
 
-  const shared = {
-    consecutive401s: 0,
-    onAuthError() {
-      stop();
-      callbacks.onError('auth', 'API key invalid or revoked — check Connections in Streamscapes');
-    },
-  };
+const modules: Array<{ name: string; start: () => void; check?: () => boolean }> = [
+  { name: 'notif', start: startNotifPoller },
+  { name: 'dd', start: startDdPoller, check: () => !!(process.env.DD_API_KEY && (process.env.DD_APPLICATION_KEY ?? process.env.DD_APP_KEY)) },
+];
 
-  function start() {
-    if (running) return;
-    running = true;
-
-    if (config.enableNotif) {
-      notifPoller = createNotifPoller(config, callbacks, shared);
-      notifPoller.start();
+let started = 0;
+for (const mod of modules) {
+  if (!moduleEnabled(mod.name, mod.check)) {
+    if (mod.check && !mod.check()) {
+      console.log(`  ○ ${mod.name} — skipped (missing env vars)`);
+    } else if (requestedModules) {
+      // Not requested, silently skip
     }
-
-    if (config.enableDd && config.ddApiKey && config.ddAppKey) {
-      ddPoller = createDdPoller(config, callbacks, shared);
-      ddPoller.start();
-    }
+    continue;
   }
-
-  function stop() {
-    notifPoller?.stop();
-    ddPoller?.stop();
-    notifPoller = null;
-    ddPoller = null;
-    running = false;
-  }
-
-  function isRunning() {
-    return running;
-  }
-
-  function resetAfterWake() {
-    notifPoller?.resetAfterWake();
-  }
-
-  return { start, stop, isRunning, resetAfterWake };
+  mod.start();
+  started++;
 }
+
+if (started === 0) {
+  console.error('\nNo modules started. Check --modules flag and env vars.');
+  process.exit(1);
+}
+
+console.log(`\n  ${started} module(s) running. Ctrl+C to stop.\n`);

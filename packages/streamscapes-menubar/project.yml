@@ -1,0 +1,28 @@
+name: StreamscapesAgent
+options:
+  bundleIdPrefix: com.streamscapes
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+
+targets:
+  StreamscapesAgent:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/StreamscapesAgent
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.streamscapes.agent
+        PRODUCT_NAME: Streamscapes Agent
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_LSUIElement: true
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        SWIFT_VERSION: "5"
+        CODE_SIGN_IDENTITY: "Developer ID Application"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: MAG2WYD297
+        CODE_SIGN_ENTITLEMENTS: Streamscapes.entitlements
+        OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
+        GENERATE_INFOPLIST_FILE: YES

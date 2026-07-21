@@ -1,0 +1,26 @@
+name: StreamscapesWatch
+options:
+  bundleIdPrefix: com.streamscapes
+  deploymentTarget:
+    watchOS: "10.0"
+  xcodeVersion: "16.0"
+
+targets:
+  StreamscapesWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.streamscapes.app.watch
+        PRODUCT_NAME: Streamscapes
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5"
+        CODE_SIGN_ENTITLEMENTS: Streamscapes.Watch.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_WKApplication: true
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.streamscapes.app
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Streamscapes streams your heart rate, steps, and calories as live sound."
+        DEVELOPMENT_TEAM: MAG2WYD297

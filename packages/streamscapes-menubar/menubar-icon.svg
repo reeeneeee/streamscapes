@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- 5-line staff -->
+  <g stroke="#000" stroke-opacity="1" stroke-width="8">
+    <line x1="80" y1="80" x2="340" y2="80"/>
+    <line x1="80" y1="140" x2="340" y2="140"/>
+    <line x1="80" y1="200" x2="340" y2="200"/>
+    <line x1="80" y1="260" x2="340" y2="260"/>
+    <line x1="80" y1="320" x2="340" y2="320"/>
+  </g>
+
+  <!-- Note 1 (lower-left) -->
+  <text x="110" y="310" font-family="'Space Grotesk', sans-serif" font-size="100" font-weight="600" fill="#000">0</text>
+  <text x="140" y="235" font-family="'Space Grotesk', sans-serif" font-size="170" font-weight="300" fill="#000">1</text>
+
+  <!-- Note 2 (upper-right) -->
+  <text x="230" y="250" font-family="'Space Grotesk', sans-serif" font-size="100" font-weight="600" fill="#000">0</text>
+  <text x="260" y="155" font-family="'Space Grotesk', sans-serif" font-size="170" font-weight="300" fill="#000">1</text>
+</svg>
