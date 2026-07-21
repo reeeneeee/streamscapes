@@ -6,11 +6,18 @@ struct StartView: View {
     var body: some View {
         ZStack {
             Theme.bgPrimary.ignoresSafeArea()
-
-            // Atmosphere blobs
             AtmosphereBackground()
 
-            // Title card
+            // Full-screen tap to start playback
+            Button {
+                store.setPlaying(true)
+            } label: {
+                Color.clear
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Title card (non-interactive)
             VStack(spacing: 0) {
                 Text("streamscapes")
                     .font(.custom("SpaceGrotesk-Light", size: 48))
@@ -19,14 +26,12 @@ struct StartView: View {
 
                 Spacer().frame(height: 56)
 
-                Text("PLUG IN")
+                Text("LISTEN IN")
                     .font(.custom("DMSans-Regular", size: 13))
                     .tracking(3)
                     .foregroundStyle(Theme.textWhisper)
             }
-        }
-        .onTapGesture {
-            store.setPlaying(true)
+            .allowsHitTesting(false)
         }
     }
 }

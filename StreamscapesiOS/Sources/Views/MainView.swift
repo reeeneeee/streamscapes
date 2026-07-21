@@ -1,13 +1,15 @@
 import SwiftUI
 
 enum AppTab: String, CaseIterable {
-    case listen = "Listen"
-    case controls = "Controls"
+    case main = "Main"
+    case datastreams = "Inputs"
+    case configure = "Sonifications"
 }
 
 struct MainView: View {
     @Environment(AppStore.self) private var store
-    @State private var selectedTab: AppTab = .listen
+    @Environment(LocationManager.self) private var location
+    @State private var selectedTab: AppTab = .main
 
     var body: some View {
         ZStack {
@@ -15,16 +17,51 @@ struct MainView: View {
             AtmosphereBackground()
 
             VStack(spacing: 0) {
-                // Content
-                switch selectedTab {
-                case .listen:
-                    ListenView()
-                case .controls:
-                    ControlsView()
+                // Location fallback banner
+                if location.denied && !location.bannerDismissed, let label = location.randomAirportLabel {
+                    HStack(spacing: 8) {
+                        Text("Dropped you near **\(label)**. Enable location for local flights & weather.")
+                            .font(.custom("DMSans-Regular", size: 12))
+                            .foregroundStyle(Theme.textMuted)
+                            .lineLimit(2)
+                        Spacer(minLength: 0)
+                        Button { location.dismissBanner() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Theme.textMuted.opacity(0.5))
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 12)
+                    .padding(.top, 4)
                 }
 
-                // Tab bar + status
+                // Weather status + tab bar
+                if let weather = store.weatherDisplay {
+                    Text("\(String(format: "%.2f", location.latitude)), \(String(format: "%.2f", location.longitude)) · \(Int(weather.feelsLike))°F · \(Int(weather.clouds))% cloud cover")
+                        .font(.custom("SpaceGrotesk-Regular", size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                        .tracking(0.3)
+                        .padding(.top, 6)
+                }
+
                 tabBar
+
+                // Content
+                switch selectedTab {
+                case .main:
+                    ListenView()
+                case .datastreams:
+                    DatastreamsView()
+                case .configure:
+                    ConfigureView()
+                }
+
+                // Transport bar
+                TransportBarView()
             }
         }
     }
@@ -40,7 +77,7 @@ struct MainView: View {
                         Text(tab.rawValue)
                             .font(.custom("DMSans-Medium", size: 13))
                             .foregroundStyle(selectedTab == tab ? Theme.textPrimary : Theme.textMuted)
-                            .padding(.horizontal, 24)
+                            .padding(.horizontal, 16)
                             .padding(.vertical, 7)
                             .background(selectedTab == tab ? Color.white.opacity(0.1) : .clear)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -52,8 +89,7 @@ struct MainView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
             Spacer()
         }
-        .padding(.top, 12)
-        .padding(.bottom, 32)
-        .background(Color(hex: 0x0D0D0D).opacity(0.9))
+        .padding(.top, 4)
+        .padding(.bottom, 4)
     }
 }

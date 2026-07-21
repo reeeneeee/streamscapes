@@ -39,6 +39,8 @@ final class WebAudioBridge: NSObject {
     private let consoleHandler = JSConsoleHandler()
     private let unlockHandler = AudioUnlockHandler()
     private var onAudioUnlocked: (() -> Void)?
+    private var levelTimer: Timer?
+    var onLevelsUpdated: (([String: Double]) -> Void)?
 
     // MARK: - Setup
 
@@ -134,6 +136,11 @@ final class WebAudioBridge: NSObject {
             // Initialize the engine now that audio context is unlocked
             self.initialize(store: store)
 
+            // Start polling VU levels from JS (delay to let engine initialize)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.startLevelPolling()
+            }
+
             // Notify coordinator that audio is ready
             self.onAudioUnlocked?()
         }
@@ -142,6 +149,9 @@ final class WebAudioBridge: NSObject {
     }
 
     func stop() {
+        levelTimer?.invalidate()
+        levelTimer = nil
+        onLevelsUpdated = nil
         callJS("AudioBridge.stop()")
         if let wv = webView {
             wv.configuration.userContentController.removeScriptMessageHandler(forName: "jsConsole")
@@ -206,7 +216,26 @@ final class WebAudioBridge: NSObject {
         callJS("AudioBridge.handleDataPoint(\(quote(dpJson)))")
     }
 
-    // MARK: - Audio session
+    // MARK: - Audio session (public)
+
+    /// Resume audio — called from AudioCoordinator on foreground return.
+    func resume() {
+        resumeAudio()
+    }
+
+    /// Ensure keepalive + AudioContext are running — called when entering background.
+    func ensureBackgroundAudio() {
+        callJS("""
+        (function() {
+            var ka = document.getElementById('keepalive');
+            if (ka && ka.paused) { ka.play().catch(function(){}); }
+            if (window.AudioBridge && typeof window.AudioBridge.resume === 'function') {
+                window.AudioBridge.resume();
+            }
+            console.log('[html] ensureBackgroundAudio — keepalive paused:', ka ? ka.paused : 'n/a');
+        })()
+        """)
+    }
 
     private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
         guard let typeValue,
@@ -223,6 +252,43 @@ final class WebAudioBridge: NSObject {
     private func resumeAudio() {
         try? AVAudioSession.sharedInstance().setActive(true)
         callJS("AudioBridge.resume()")
+    }
+
+    // MARK: - VU level polling
+
+    private func startLevelPolling() {
+        levelTimer?.invalidate()
+        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.pollLevels()
+            }
+        }
+    }
+
+    private var levelLogCounter = 0
+
+    private func pollLevels() {
+        guard let wv = webView, isReady else { return }
+        wv.evaluateJavaScript("AudioBridge.getLevels()") { [weak self] result, error in
+            if let error {
+                print("[WebAudioBridge] getLevels error: \(error.localizedDescription)")
+                return
+            }
+            guard let json = result as? String,
+                  let data = json.data(using: .utf8),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Double]
+            else { return }
+            Task { @MainActor in
+                guard let self else { return }
+                self.onLevelsUpdated?(dict)
+                // Log first few polls for debugging
+                self.levelLogCounter += 1
+                if self.levelLogCounter <= 5 {
+                    let summary = dict.map { "\($0.key): \(String(format: "%.3f", $0.value))" }.joined(separator: ", ")
+                    print("[WebAudioBridge] Levels (\(self.levelLogCounter)): \(summary)")
+                }
+            }
+        }
     }
 
     // MARK: - JS bridge
@@ -304,19 +370,7 @@ final class WebAudioBridge: NSObject {
             "solo": c.solo,
         ]
 
-        var synthOpts: [String: Any] = [:]
-        if let env = c.synthOptions.envelope {
-            synthOpts["envelope"] = [
-                "attack": env.attack,
-                "decay": env.decay,
-                "sustain": env.sustain,
-                "release": env.release,
-            ]
-        }
-        if let osc = c.synthOptions.oscillatorType {
-            synthOpts["oscillator"] = ["type": osc]
-        }
-        dict["synthOptions"] = synthOpts
+        dict["synthOptions"] = c.synthOptions.toDict()
 
         dict["mappings"] = c.mappings.map { m -> [String: Any] in
             var md: [String: Any] = [
@@ -369,6 +423,11 @@ final class WebAudioBridge: NSObject {
         if let v = c.sampleReverbSend { dict["sampleReverbSend"] = v }
         if let v = c.entityField { dict["entityField"] = v }
         if let v = c.patternType { dict["patternType"] = v }
+        if let v = c.noiseType { dict["noiseType"] = v }
+        if let v = c.intent { dict["intent"] = v }
+        if let v = c.parentPluginId { dict["parentPluginId"] = v }
+        if let v = c.soundEnabled { dict["soundEnabled"] = v }
+        if let v = c.visualEnabled { dict["visualEnabled"] = v }
 
         return dict
     }

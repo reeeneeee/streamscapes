@@ -1,5 +1,48 @@
 import Foundation
 
+/// Type-safe wrapper for arbitrary JSON values (nested objects, arrays, primitives).
+enum JSONValue: Codable, Sendable {
+    case string(String)
+    case number(Double)
+    case bool(Bool)
+    case object([String: JSONValue])
+    case array([JSONValue])
+    case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let v = try? container.decode(Bool.self) { self = .bool(v) }
+        else if let v = try? container.decode(Double.self) { self = .number(v) }
+        else if let v = try? container.decode(String.self) { self = .string(v) }
+        else if let v = try? container.decode([String: JSONValue].self) { self = .object(v) }
+        else if let v = try? container.decode([JSONValue].self) { self = .array(v) }
+        else { self = .null }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let v): try container.encode(v)
+        case .number(let v): try container.encode(v)
+        case .bool(let v): try container.encode(v)
+        case .object(let v): try container.encode(v)
+        case .array(let v): try container.encode(v)
+        case .null: try container.encodeNil()
+        }
+    }
+
+    func toAny() -> Any {
+        switch self {
+        case .string(let v): return v
+        case .number(let v): return v
+        case .bool(let v): return v
+        case .object(let v): return v.mapValues { $0.toAny() }
+        case .array(let v): return v.map { $0.toAny() }
+        case .null: return NSNull()
+        }
+    }
+}
+
 struct ChannelConfig: Codable, Sendable {
     var streamId: String
     var enabled: Bool
@@ -42,10 +85,88 @@ struct ChannelConfig: Codable, Sendable {
     var sampleReverbSend: Double? = nil
     var entityField: String? = nil
     var patternType: String? = nil
+    var noiseType: String? = nil   // "white", "pink", "brown", "green"
+    var intent: String? = nil
+    var parentPluginId: String? = nil
+    var soundEnabled: Bool? = nil // nil = enabled (default true)
+    var visualEnabled: Bool? = nil // nil = enabled (default true)
 
-    struct SynthOptions: Codable, Sendable {
-        var oscillatorType: String?
-        var envelope: Envelope?
+    /// Passthrough dictionary — forwarded as-is to the JS AudioEngine.
+    /// Supports nested objects like `oscillator: { type: "fatsine4", spread: 60 }`,
+    /// FM params (`harmonicity`, `modulationIndex`, `modulation`, `modulationEnvelope`), etc.
+    struct SynthOptions: Codable, Sendable, ExpressibleByDictionaryLiteral {
+        var storage: [String: JSONValue]
+
+        init(dictionaryLiteral elements: (String, JSONValue)...) {
+            storage = Dictionary(uniqueKeysWithValues: elements)
+        }
+
+        init(_ dict: [String: JSONValue] = [:]) {
+            storage = dict
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            storage = try container.decode([String: JSONValue].self)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            try container.encode(storage)
+        }
+
+        /// Convert to plain [String: Any] for JSON serialization in the bridge
+        func toDict() -> [String: Any] {
+            storage.mapValues { $0.toAny() }
+        }
+
+        // MARK: - Convenience accessors for backward compatibility
+
+        /// Set oscillator type (e.g. "sine", "triangle", "sawtooth")
+        var oscillatorType: String? {
+            get {
+                if case .object(let osc) = storage["oscillator"],
+                   case .string(let t) = osc["type"] { return t }
+                return nil
+            }
+            set {
+                if let v = newValue {
+                    if case .object(var osc) = storage["oscillator"] {
+                        osc["type"] = .string(v)
+                        storage["oscillator"] = .object(osc)
+                    } else {
+                        storage["oscillator"] = .object(["type": .string(v)])
+                    }
+                } else {
+                    storage.removeValue(forKey: "oscillator")
+                }
+            }
+        }
+
+        /// Set ADSR envelope
+        var envelope: Envelope? {
+            get {
+                guard case .object(let env) = storage["envelope"],
+                      case .number(let a) = env["attack"],
+                      case .number(let d) = env["decay"],
+                      case .number(let s) = env["sustain"],
+                      case .number(let r) = env["release"]
+                else { return nil }
+                return Envelope(attack: a, decay: d, sustain: s, release: r)
+            }
+            set {
+                if let v = newValue {
+                    storage["envelope"] = .object([
+                        "attack": .number(v.attack),
+                        "decay": .number(v.decay),
+                        "sustain": .number(v.sustain),
+                        "release": .number(v.release),
+                    ])
+                } else {
+                    storage.removeValue(forKey: "envelope")
+                }
+            }
+        }
 
         struct Envelope: Codable, Sendable {
             var attack: Double

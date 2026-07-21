@@ -37,29 +37,39 @@ enum PresetCatalog {
         channels[id]?.solo = false
     }
 
+    /// Enable or disable the weather family (parent + both sub-channels)
+    private static func setWeather(_ channels: inout [String: ChannelConfig], enabled: Bool) {
+        setStream(&channels, id: "weather", enabled: enabled, mute: true) // parent always muted
+        setStream(&channels, id: "weather:temp", enabled: enabled)
+        setStream(&channels, id: "weather:clouds", enabled: enabled)
+    }
+
     private static func ghostlyChoir(defaultChannels: [String: ChannelConfig]) -> BuiltinPreset {
         var ch = clone(defaultChannels)
-        setStream(&ch, id: "weather", enabled: true, mute: false)
+        setWeather(&ch, enabled: true)
         setStream(&ch, id: "flights", enabled: false)
         setStream(&ch, id: "wikipedia", enabled: false)
         setStream(&ch, id: "rss", enabled: false)
         setStream(&ch, id: "stocks", enabled: false)
-        ch["weather"]?.behaviorType = .ambient
-        ch["weather"]?.ambientMode = .arpeggio
-        ch["weather"]?.mode = "pattern"
-        ch["weather"]?.synthType = "AMSynth"
-        ch["weather"]?.volume = -8
-        ch["weather"]?.synthOptions.oscillatorType = "sine"
-        ch["weather"]?.synthOptions.envelope = .init(attack: 0.6, decay: 1.2, sustain: 0.75, release: 2.5)
-        ch["weather"]?.effects = [
+        // Temperature: choir-like AM arpeggio
+        ch["weather:temp"]?.behaviorType = .ambient
+        ch["weather:temp"]?.ambientMode = .arpeggio
+        ch["weather:temp"]?.mode = "pattern"
+        ch["weather:temp"]?.synthType = "AMSynth"
+        ch["weather:temp"]?.volume = -8
+        ch["weather:temp"]?.synthOptions.oscillatorType = "sine"
+        ch["weather:temp"]?.synthOptions.envelope = .init(attack: 0.6, decay: 1.2, sustain: 0.75, release: 2.5)
+        ch["weather:temp"]?.effects = [
             .init(type: "reverb", wet: 0.65, bypass: false, params: ["decay": 6, "preDelay": 0.03]),
             .init(type: "chorus", wet: 0.35, bypass: false, params: ["frequency": 0.8, "depth": 0.5, "delayTime": 3.2]),
         ]
+        // Cloud cover: quiet drone bed
+        ch["weather:clouds"]?.volume = -14
         return .init(
             id: "ghostly-choir",
             name: "Ghostly Choir",
             description: "Slow, airy weather harmonies with deep reverb and chorus.",
-            signalPlan: "weather (ambient)",
+            signalPlan: "weather:temp (ambient), weather:clouds (ambient)",
             tags: ["ambient", "cinematic", "long-listen"],
             cpuCost: "medium",
             channels: ch,
@@ -69,20 +79,23 @@ enum PresetCatalog {
 
     private static func plinkyWood(defaultChannels: [String: ChannelConfig]) -> BuiltinPreset {
         var ch = clone(defaultChannels)
-        setStream(&ch, id: "weather", enabled: true, mute: false)
+        setWeather(&ch, enabled: true)
         setStream(&ch, id: "wikipedia", enabled: true, mute: false)
         setStream(&ch, id: "flights", enabled: false)
         setStream(&ch, id: "rss", enabled: false)
         setStream(&ch, id: "stocks", enabled: false)
-        ch["weather"]?.behaviorType = .ambient
-        ch["weather"]?.ambientMode = .arpeggio
-        ch["weather"]?.mode = "pattern"
-        ch["weather"]?.synthType = "PluckSynth"
-        ch["weather"]?.volume = -10
-        ch["weather"]?.effects = [
+        // Temperature: pluck arpeggio
+        ch["weather:temp"]?.behaviorType = .ambient
+        ch["weather:temp"]?.ambientMode = .arpeggio
+        ch["weather:temp"]?.mode = "pattern"
+        ch["weather:temp"]?.synthType = "PluckSynth"
+        ch["weather:temp"]?.volume = -10
+        ch["weather:temp"]?.effects = [
             .init(type: "delay", wet: 0.18, bypass: false, params: ["delayTime": 0.18, "feedback": 0.25]),
         ]
-        ch["weather"]?.synthOptions = .init()
+        ch["weather:temp"]?.synthOptions = .init()
+        // Mute clouds for a cleaner texture
+        setStream(&ch, id: "weather:clouds", enabled: false)
         ch["wikipedia"]?.synthType = "Synth"
         ch["wikipedia"]?.volume = -15
         ch["wikipedia"]?.effects = []
@@ -92,7 +105,7 @@ enum PresetCatalog {
             id: "plinky-wood",
             name: "Plinky (Wood)",
             description: "Col legno / woodpluck texture with tiny chime accents.",
-            signalPlan: "weather (ambient), wikipedia (event)",
+            signalPlan: "weather:temp (ambient), wikipedia (event)",
             tags: ["percussive", "light", "mixed"],
             cpuCost: "low",
             channels: ch,
@@ -102,21 +115,24 @@ enum PresetCatalog {
 
     private static func musicBoxTonal(defaultChannels: [String: ChannelConfig]) -> BuiltinPreset {
         var ch = clone(defaultChannels)
-        setStream(&ch, id: "weather", enabled: true, mute: false)
+        setWeather(&ch, enabled: true)
         setStream(&ch, id: "wikipedia", enabled: true, mute: false)
         setStream(&ch, id: "flights", enabled: false)
         setStream(&ch, id: "rss", enabled: false)
         setStream(&ch, id: "stocks", enabled: false)
-        ch["weather"]?.synthType = "Synth"
-        ch["weather"]?.mode = "pattern"
-        ch["weather"]?.volume = -9
-        ch["weather"]?.synthOptions.oscillatorType = "triangle"
-        ch["weather"]?.synthOptions.envelope = .init(attack: 0.003, decay: 0.18, sustain: 0.02, release: 0.12)
-        ch["weather"]?.effects = [
+        // Temperature: music box
+        ch["weather:temp"]?.synthType = "Synth"
+        ch["weather:temp"]?.mode = "pattern"
+        ch["weather:temp"]?.volume = -9
+        ch["weather:temp"]?.synthOptions.oscillatorType = "triangle"
+        ch["weather:temp"]?.synthOptions.envelope = .init(attack: 0.003, decay: 0.18, sustain: 0.02, release: 0.12)
+        ch["weather:temp"]?.effects = [
             .init(type: "filter", wet: 1, bypass: false, params: ["frequency": 900, "Q": 0.8]),
             .init(type: "reverb", wet: 0.16, bypass: false, params: ["decay": 2.4, "preDelay": 0.01]),
             .init(type: "delay", wet: 0.12, bypass: false, params: ["delayTime": 0.14, "feedback": 0.18]),
         ]
+        // Cloud cover: soft backdrop
+        ch["weather:clouds"]?.volume = -16
         ch["wikipedia"]?.synthType = "Synth"
         ch["wikipedia"]?.volume = -17
         ch["wikipedia"]?.effects = []
@@ -126,7 +142,7 @@ enum PresetCatalog {
             id: "music-box-tonal",
             name: "Music Box (Tonal)",
             description: "Bell-like tuned plinks with cleaner pitch center.",
-            signalPlan: "weather (ambient), wikipedia (event)",
+            signalPlan: "weather:temp (ambient), wikipedia (event)",
             tags: ["tonal", "delicate", "mixed"],
             cpuCost: "medium",
             channels: ch,
@@ -137,7 +153,7 @@ enum PresetCatalog {
     private static func distantDrone(defaultChannels: [String: ChannelConfig]) -> BuiltinPreset {
         var ch = clone(defaultChannels)
         setStream(&ch, id: "flights", enabled: true, mute: false)
-        setStream(&ch, id: "weather", enabled: true, mute: false)
+        setWeather(&ch, enabled: true)
         setStream(&ch, id: "wikipedia", enabled: false)
         setStream(&ch, id: "rss", enabled: false)
         setStream(&ch, id: "stocks", enabled: false)
@@ -152,17 +168,20 @@ enum PresetCatalog {
             .init(type: "filter", wet: 1, bypass: false, params: ["frequency": 1400, "Q": 0.7]),
             .init(type: "reverb", wet: 0.45, bypass: false, params: ["decay": 4.2, "preDelay": 0.02]),
         ]
-        ch["weather"]?.behaviorType = .ambient
-        ch["weather"]?.ambientMode = .sustain
-        ch["weather"]?.mode = "continuous"
-        ch["weather"]?.synthType = "AMSynth"
-        ch["weather"]?.volume = -13
-        ch["weather"]?.smoothingMs = 1600
-        ch["weather"]?.synthOptions.oscillatorType = "sine"
-        ch["weather"]?.synthOptions.envelope = .init(attack: 1.2, decay: 0.7, sustain: 0.85, release: 2.8)
-        ch["weather"]?.effects = [
+        // Temperature: sustained AM drone
+        ch["weather:temp"]?.behaviorType = .ambient
+        ch["weather:temp"]?.ambientMode = .sustain
+        ch["weather:temp"]?.mode = "continuous"
+        ch["weather:temp"]?.synthType = "AMSynth"
+        ch["weather:temp"]?.volume = -13
+        ch["weather:temp"]?.smoothingMs = 1600
+        ch["weather:temp"]?.synthOptions.oscillatorType = "sine"
+        ch["weather:temp"]?.synthOptions.envelope = .init(attack: 1.2, decay: 0.7, sustain: 0.85, release: 2.8)
+        ch["weather:temp"]?.effects = [
             .init(type: "reverb", wet: 0.35, bypass: false, params: ["decay": 5.2, "preDelay": 0.03]),
         ]
+        // Cloud cover: keep default rumble
+        ch["weather:clouds"]?.volume = -14
         return .init(
             id: "distant-drone",
             name: "Distant Drone",
@@ -177,19 +196,22 @@ enum PresetCatalog {
 
     private static func rainyNeon(defaultChannels: [String: ChannelConfig]) -> BuiltinPreset {
         var ch = clone(defaultChannels)
-        setStream(&ch, id: "weather", enabled: true, mute: false)
+        setWeather(&ch, enabled: true)
         setStream(&ch, id: "rss", enabled: true, mute: false)
         setStream(&ch, id: "flights", enabled: false)
         setStream(&ch, id: "wikipedia", enabled: false)
         setStream(&ch, id: "stocks", enabled: false)
-        ch["weather"]?.synthType = "Synth"
-        ch["weather"]?.volume = -8
-        ch["weather"]?.synthOptions.oscillatorType = "triangle"
-        ch["weather"]?.synthOptions.envelope = .init(attack: 0.15, decay: 0.35, sustain: 0.5, release: 0.7)
-        ch["weather"]?.effects = [
+        // Temperature: moody delayed pattern
+        ch["weather:temp"]?.synthType = "Synth"
+        ch["weather:temp"]?.volume = -8
+        ch["weather:temp"]?.synthOptions.oscillatorType = "triangle"
+        ch["weather:temp"]?.synthOptions.envelope = .init(attack: 0.15, decay: 0.35, sustain: 0.5, release: 0.7)
+        ch["weather:temp"]?.effects = [
             .init(type: "delay", wet: 0.3, bypass: false, params: ["delayTime": 0.25, "feedback": 0.4]),
             .init(type: "chorus", wet: 0.2, bypass: false, params: ["frequency": 1.2, "depth": 0.6, "delayTime": 3.5]),
         ]
+        // Clouds: louder rumble for rainy mood
+        ch["weather:clouds"]?.volume = -8
         ch["rss"]?.synthType = "PluckSynth"
         ch["rss"]?.volume = -20
         ch["rss"]?.effects = []
@@ -209,7 +231,7 @@ enum PresetCatalog {
     private static func eightBitScatter(defaultChannels: [String: ChannelConfig]) -> BuiltinPreset {
         var ch = clone(defaultChannels)
         setStream(&ch, id: "stocks", enabled: true, mute: false)
-        setStream(&ch, id: "weather", enabled: true, mute: false)
+        setWeather(&ch, enabled: true)
         setStream(&ch, id: "flights", enabled: false)
         setStream(&ch, id: "wikipedia", enabled: false)
         setStream(&ch, id: "rss", enabled: false)
@@ -222,18 +244,21 @@ enum PresetCatalog {
             .init(type: "distortion", wet: 0.2, bypass: false, params: ["distortion": 0.28]),
         ]
         ch["stocks"]?.synthOptions = .init()
-        ch["weather"]?.synthType = "AMSynth"
-        ch["weather"]?.mode = "pattern"
-        ch["weather"]?.behaviorType = .ambient
-        ch["weather"]?.ambientMode = .arpeggio
-        ch["weather"]?.smoothingMs = 900
-        ch["weather"]?.volume = -9
-        ch["weather"]?.effects = [
+        // Temperature: chippy sawtooth
+        ch["weather:temp"]?.synthType = "AMSynth"
+        ch["weather:temp"]?.mode = "pattern"
+        ch["weather:temp"]?.behaviorType = .ambient
+        ch["weather:temp"]?.ambientMode = .arpeggio
+        ch["weather:temp"]?.smoothingMs = 900
+        ch["weather:temp"]?.volume = -9
+        ch["weather:temp"]?.effects = [
             .init(type: "delay", wet: 0.22, bypass: false, params: ["delayTime": 0.125, "feedback": 0.28]),
             .init(type: "filter", wet: 1, bypass: false, params: ["frequency": 1800, "Q": 1.2]),
         ]
-        ch["weather"]?.synthOptions.oscillatorType = "sawtooth"
-        ch["weather"]?.synthOptions.envelope = .init(attack: 0.01, decay: 0.18, sustain: 0.2, release: 0.18)
+        ch["weather:temp"]?.synthOptions.oscillatorType = "sawtooth"
+        ch["weather:temp"]?.synthOptions.envelope = .init(attack: 0.01, decay: 0.18, sustain: 0.2, release: 0.18)
+        // Clouds: distorted rumble for gritty texture
+        ch["weather:clouds"]?.volume = -8
         return .init(
             id: "tense-pulse",
             name: "8-Bit Scatter",

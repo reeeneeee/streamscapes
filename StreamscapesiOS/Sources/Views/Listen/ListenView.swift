@@ -15,22 +15,6 @@ struct ListenView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Title + status
-            VStack(spacing: 4) {
-                Text("streamscapes")
-                    .font(.custom("SpaceGrotesk-Light", size: 15))
-                    .foregroundStyle(Theme.textSecondary)
-
-                if let weather = store.weatherDisplay {
-                    Text("\(String(format: "%.2f", location.latitude)), \(String(format: "%.2f", location.longitude)) · \(Int(weather.feelsLike))°F · \(Int(weather.clouds))% cloud cover")
-                        .font(.custom("SpaceGrotesk-Regular", size: 11))
-                        .foregroundStyle(Theme.textMuted)
-                        .tracking(0.3)
-                }
-            }
-            .padding(.top, 8)
-            .padding(.bottom, 6)
-
             GeometryReader { geo in
                 ZStack {
                     TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
@@ -72,18 +56,27 @@ struct ListenView: View {
             let trackRad = flight.track * .pi / 180
             let dLat = degPerSec * cos(trackRad) * elapsed
             let dLon = degPerSec * sin(trackRad) * elapsed / cos(flight.lat * .pi / 180)
-            let interpLat = flight.lat + dLat
-            let interpLon = flight.lon + dLon
+            var hitLat = flight.lat + dLat
+            var hitLon = flight.lon + dLon
+            if let prevLat = flight.prevLat, let prevLon = flight.prevLon, let prevTime = flight.prevTime {
+                let blendElapsed = now.timeIntervalSince(prevTime)
+                if blendElapsed < 1.0 {
+                    let t = blendElapsed
+                    let ease = 1 - (1 - t) * (1 - t) * (1 - t)
+                    hitLat = prevLat + (hitLat - prevLat) * ease
+                    hitLon = prevLon + (hitLon - prevLon) * ease
+                }
+            }
 
-            let latDiff = interpLat - location.latitude
-            let lonDiff = interpLon - location.longitude
+            let latDiff = hitLat - location.latitude
+            let lonDiff = hitLon - location.longitude
             let x = cx + lonDiff * geoScale
             let y = cy - latDiff * geoScale
             let iconSize = lerp(value: min(flight.distance, 10), inMin: 0, inMax: 10, outMin: 36, outMax: 16)
 
             let dx = point.x - x
             let dy = point.y - y
-            if sqrt(dx * dx + dy * dy) < iconSize {
+            if sqrt(dx * dx + dy * dy) < max(iconSize, 20) { // min 20pt tap target
                 var info = FlightInfoData(callsign: flight.callsign)
                 flightInfo = info
                 Task {
@@ -101,6 +94,22 @@ struct ListenView: View {
                         info.json = "{ \"error\": \"Failed to fetch\" }"
                     }
                     flightInfo = info
+                }
+                return
+            }
+        }
+
+        // Wiki edit tap → open Wikipedia article
+        for edit in coordinator.visualizerData.wikiEdits {
+            let ex = 50 + edit.posX * (size.width - 100)
+            let ey = 50 + edit.posY * (size.height - 100)
+            let dx = point.x - ex
+            let dy = point.y - ey
+            if sqrt(dx * dx + dy * dy) < 25 {
+                let encoded = edit.title.replacingOccurrences(of: " ", with: "_")
+                    .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? edit.title
+                if let url = URL(string: "https://en.wikipedia.org/wiki/\(encoded)") {
+                    UIApplication.shared.open(url)
                 }
                 return
             }
@@ -141,8 +150,8 @@ struct ListenView: View {
         // Flight airplane icons — interpolate positions between API polls
         let geoScale = scale * 3
         let airplaneImage = context.resolve(
-            Image(systemName: "airplane")
-                .symbolRenderingMode(.monochrome)
+            Image("airplane")
+                .renderingMode(.original)
         )
         let now = Date()
         for flight in data.flights {
@@ -153,8 +162,21 @@ struct ListenView: View {
             let trackRad = flight.track * .pi / 180
             let dLat = degPerSec * cos(trackRad) * elapsed
             let dLon = degPerSec * sin(trackRad) * elapsed / cos(flight.lat * .pi / 180)
-            let interpLat = flight.lat + dLat
-            let interpLon = flight.lon + dLon
+            var interpLat = flight.lat + dLat
+            var interpLon = flight.lon + dLon
+
+            // Smooth blend from previous interpolated position over 1s to avoid jumps
+            if let prevLat = flight.prevLat, let prevLon = flight.prevLon, let prevTime = flight.prevTime {
+                let blendElapsed = now.timeIntervalSince(prevTime)
+                let blendDuration = 1.0
+                if blendElapsed < blendDuration {
+                    let t = blendElapsed / blendDuration
+                    // Ease-out cubic
+                    let ease = 1 - (1 - t) * (1 - t) * (1 - t)
+                    interpLat = prevLat + (interpLat - prevLat) * ease
+                    interpLon = prevLon + (interpLon - prevLon) * ease
+                }
+            }
 
             let latDiff = interpLat - location.latitude
             let lonDiff = interpLon - location.longitude
@@ -163,14 +185,8 @@ struct ListenView: View {
 
             guard x > -50 && x < size.width + 50 && y > -50 && y < size.height + 50 else { continue }
 
+            // Smaller planes for mobile (web: 36–16, iOS: 22–10)
             let iconSize: CGFloat = lerp(value: min(flight.distance, 10), inMin: 0, inMax: 10, outMin: 36, outMax: 16)
-
-            // Glow behind airplane
-            let glowRect = CGRect(x: x - iconSize * 0.8, y: y - iconSize * 0.8, width: iconSize * 1.6, height: iconSize * 1.6)
-            context.fill(
-                Circle().path(in: glowRect),
-                with: .color(Theme.streamFlights.opacity(0.2))
-            )
 
             // Draw rotated airplane
             var planeContext = context
@@ -185,15 +201,35 @@ struct ListenView: View {
                 in: CGRect(x: -iconSize / 2, y: -iconSize / 2, width: iconSize, height: iconSize)
             )
 
-            // Distance label
+            // Distance label — above plane, matching web's bluish-grey
+            let flightLabelColor = Color(red: 92/255, green: 114/255, blue: 133/255).opacity(0.7)
             let label = Text("\(Int(flight.distance)) mi")
                 .font(.custom("SpaceGrotesk-Regular", size: 10))
-                .foregroundStyle(Theme.streamFlights.opacity(0.7))
+                .foregroundStyle(flightLabelColor)
             context.draw(
                 context.resolve(label),
-                at: CGPoint(x: x, y: y + iconSize / 2 + 4),
-                anchor: .top
+                at: CGPoint(x: x, y: y - iconSize / 2 - 8),
+                anchor: .bottom
             )
+        }
+
+        // Ingest rain — falling labels (matches web Visualizer.tsx)
+        for drop in data.ingestDrops {
+            let dx = drop.x * size.width
+            let dy = drop.y * size.height
+            guard dy > -20 && dy < size.height + 20 && !drop.label.isEmpty else { continue }
+
+            let labelText = Text(String(drop.label.prefix(24)))
+                .font(.custom("SpaceGrotesk-Regular", size: 9))
+                .foregroundStyle(drop.color.opacity(drop.opacity))
+            if drop.isError {
+                let boldText = Text(String(drop.label.prefix(24)))
+                    .font(.custom("SpaceGrotesk-Bold", size: 9))
+                    .foregroundStyle(drop.color.opacity(drop.opacity))
+                context.draw(context.resolve(boldText), at: CGPoint(x: dx, y: dy), anchor: .center)
+            } else {
+                context.draw(context.resolve(labelText), at: CGPoint(x: dx, y: dy), anchor: .center)
+            }
         }
 
         // Wiki ripples
@@ -204,7 +240,8 @@ struct ListenView: View {
 
             guard currentSize > 0 else { continue }
 
-            // Ripple rings
+            // Ripple rings — bluish-grey matching web rgba(77, 108, 129, α)
+            let wikiRippleColor = Color(red: 77/255, green: 108/255, blue: 129/255)
             for i in stride(from: 3, through: 0, by: -1) {
                 let rippleSize = currentSize * (1 + Double(i) * 0.3)
                 let alpha = lerp(value: Double(i), inMin: 0, inMax: 3, outMin: 0.4, outMax: 0.06)
@@ -216,26 +253,27 @@ struct ListenView: View {
                 )
                 context.stroke(
                     Circle().path(in: ringRect),
-                    with: .color(Theme.streamWiki.opacity(alpha)),
-                    lineWidth: 1
+                    with: .color(wikiRippleColor.opacity(alpha)),
+                    lineWidth: 1.5
                 )
             }
 
-            // Center dot
+            // Center dot (smaller for mobile)
             let centerRect = CGRect(x: x - 2, y: y - 2, width: 4, height: 4)
             context.fill(
                 Circle().path(in: centerRect),
-                with: .color(Theme.streamWiki)
+                with: .color(wikiRippleColor)
             )
 
             // Title for larger edits
-            if edit.size > 30 && edit.age < 15 {
+            if edit.size > 30 && edit.age < 20 {
                 let displayTitle = edit.title.count > 28
                     ? String(edit.title.prefix(25)) + "..."
                     : edit.title
+                let wikiTitleColor = Color(red: 77/255, green: 108/255, blue: 129/255)
                 let titleLabel = Text(displayTitle)
                     .font(.custom("DMSans-Regular", size: 11))
-                    .foregroundStyle(Theme.streamWiki.opacity(0.5))
+                    .foregroundStyle(wikiTitleColor.opacity(0.5))
                 context.draw(
                     context.resolve(titleLabel),
                     at: CGPoint(x: x, y: y + currentSize / 2 + 8),
@@ -244,8 +282,6 @@ struct ListenView: View {
             }
         }
 
-        // Stream status dots at bottom
-        drawStatusDots(context: &context, size: size, time: time)
     }
 
     private func drawScopeDisc(context: inout GraphicsContext, cx: CGFloat, cy: CGFloat, radius: CGFloat) {
@@ -273,52 +309,20 @@ struct ListenView: View {
 
     private func drawCenterDot(context: inout GraphicsContext, cx: CGFloat, cy: CGFloat) {
         // Glow
-        let glowSize: CGFloat = 30
+        let glowSize: CGFloat = 20
         let glowRect = CGRect(x: cx - glowSize / 2, y: cy - glowSize / 2, width: glowSize, height: glowSize)
         context.fill(
             Circle().path(in: glowRect),
             with: .color(Theme.accent.opacity(0.2))
         )
 
-        // Dot
-        let dotSize: CGFloat = 8
+        // Dot (web: 5px radius = 10px diameter)
+        let dotSize: CGFloat = 6
         let dotRect = CGRect(x: cx - dotSize / 2, y: cy - dotSize / 2, width: dotSize, height: dotSize)
         context.fill(
             Circle().path(in: dotRect),
             with: .color(Theme.accent)
         )
-    }
-
-    private func drawStatusDots(context: inout GraphicsContext, size: CGSize, time: Double) {
-        let streams = ["weather", "flights", "wikipedia"]
-        let y = size.height - 20
-        let spacing: CGFloat = 40
-        let startX = size.width / 2 - spacing * CGFloat(streams.count - 1) / 2
-
-        for (i, id) in streams.enumerated() {
-            let x = startX + CGFloat(i) * spacing
-            let state = store.activeStreams[id]
-            let color = Theme.streamColor(for: id)
-
-            let dotSize: CGFloat = 5
-            let dotRect = CGRect(x: x - dotSize / 2, y: y - dotSize / 2, width: dotSize, height: dotSize)
-
-            let alpha: Double
-            switch state {
-            case .connected:
-                alpha = 1.0
-            case .connecting:
-                // Pulse between 0.3 and 0.8
-                alpha = 0.3 + 0.5 * (0.5 + 0.5 * sin(time * 4))
-            default:
-                alpha = 0.2
-            }
-
-            context.fill(
-                Circle().path(in: dotRect),
-                with: .color(color.opacity(alpha))
-            )
-        }
     }
 
     private func lerp(value: Double, inMin: Double, inMax: Double, outMin: Double, outMax: Double) -> Double {

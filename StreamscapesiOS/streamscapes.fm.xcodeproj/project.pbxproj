@@ -1,0 +1,839 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C8895DD416265FA760B1170 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A66B3039CE3BC134319E391 /* RootView.swift */; };
+		0FE879717C54793A1CBA453A /* DatastreamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2606A52BD68823276FE6A0 /* DatastreamsView.swift */; };
+		14CDF7695BA3CA85290ECC71 /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5EB44BC4C2F28A241C2A73A /* WebAppView.swift */; };
+		1855ACA3B6DB1989EF961872 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0251BA3DABF3A403601F1C /* SpaceGrotesk-Bold.ttf */; };
+		1976A91F4826B06496B78509 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F264F991AF3AE65D317A42A3 /* SpaceGrotesk-Medium.ttf */; };
+		1BAEDEE9F11F2BA667F821A7 /* SonificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42858A08AB20A7546323B8BC /* SonificationView.swift */; };
+		1F59C8892C3ECA3E0C6385B8 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = EA69AB8BFA1520332A898B6C /* SpaceGrotesk-Light.ttf */; };
+		2046D2728E59D396616FC1FE /* DataPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CD197EE2AB8DD426E9DF7E /* DataPoint.swift */; };
+		20E0E980A6ABB46576D1C4C0 /* ConfigureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D122C1E04D969C8EBEDA3EB /* ConfigureView.swift */; };
+		2192964E3B1CFD8EA7A7DFA5 /* PresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 069F1E49DCFC34DBE34C877D /* PresetsView.swift */; };
+		255A5C550DEC0B866301D4AF /* WatchSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CF31EE80369187FC9CBEA7C /* WatchSessionManager.swift */; };
+		25EA81E1AE2EBD818C42AB4C /* MappingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733210A4C7C84D1264DF44A6 /* MappingsView.swift */; };
+		294C21860B37D3E81D4CE8D6 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64FD8A19C057A7A991AE8DEF /* MainView.swift */; };
+		2AA1A094DD55735752AD0079 /* StockStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672AC710A0C4A146B1CFF6B9 /* StockStreamPlugin.swift */; };
+		2D19CBE292A2B43F286C7290 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19490EADE6CD9EA153F4A77B /* AuthManager.swift */; };
+		309C96B3502464E20ECAFE7E /* GlobalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1955311ED6096AC42B4A338 /* GlobalSettingsView.swift */; };
+		3121A157D5123A75C20C48B4 /* SettingsShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F9937B266E9A1D65F7EEFF /* SettingsShareView.swift */; };
+		32D879EAF538A609CE760EEC /* DMSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0CC06DB513F178730826D02C /* DMSans-SemiBold.ttf */; };
+		34F3E135CECCDE25DF97B3EB /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB246C97410980AA542F3CC /* Theme.swift */; };
+		372FEC620527005A92A3EB47 /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D5E7ED7105D5B0C8CEFADA /* AppStore.swift */; };
+		40812128B200AD4565B1C0FC /* StreamManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713357BA661A18C3BF8649B8 /* StreamManager.swift */; };
+		417E32D675F2226A3CE65E5F /* audio-bridge.js in Resources */ = {isa = PBXBuildFile; fileRef = CAFCF865CA5E633C4DB4A13F /* audio-bridge.js */; };
+		456F931C57BF87EB49F4DB25 /* HealthPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1618F2A6E391EA0445FC8F96 /* HealthPoller.swift */; };
+		49E021C700A3D8F7B3A1ADD1 /* audio-bridge.html in Resources */ = {isa = PBXBuildFile; fileRef = 2A93B54CC6754F53685346C5 /* audio-bridge.html */; };
+		4EB599E069FFF6E1C45B547F /* GlobalConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2190BF6DAD4215590B8771F /* GlobalConfig.swift */; };
+		59781299E8EFBD242A0858DE /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06ABFB83C5778ED13813F2BC /* LocationManager.swift */; };
+		5D60F2BF7196365714CC1511 /* TransportBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9525DCBB99D97795F3A30AB /* TransportBarView.swift */; };
+		5E2F8F9762033442D36D5CDC /* StreamscapesWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F66838C3392A0DD43C73EBC1 /* StreamscapesWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6397E09AB60C3F6DC918B884 /* EffectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3996686F246A8A5D8B9939B7 /* EffectsView.swift */; };
+		63D81E65BFB7A0919C85F502 /* ChannelConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD1E50D3C88242FE9F464F4 /* ChannelConfig.swift */; };
+		6B940EC224DB0E454522C530 /* WatchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D2AAEBD6DCF58C76CE2147 /* WatchViewModel.swift */; };
+		6D4DA2073B2FC88BDF44DF2B /* OTLPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE84FD0C8CD6E8A0FA06357 /* OTLPClient.swift */; };
+		71C0DC68363AB4CED2CBD02D /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 945751FDD84A0498BB96A349 /* WatchConnectivity.framework */; };
+		734728E4E31606DC84B33111 /* PresetCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AF1635954F00DADC87673E /* PresetCatalog.swift */; };
+		764DAFF13A0221FB1E00D8FF /* SonificationStreamList.swift in Sources */ = {isa = PBXBuildFile; fileRef = B085F4660E12222CE140B944 /* SonificationStreamList.swift */; };
+		794A725B8CC5ACE5BE4EC887 /* WeatherStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40233BC6EE27787ADA06820 /* WeatherStreamPlugin.swift */; };
+		8D162B068E6658F145E73B84 /* ArchiveStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C931AF965B8D5C3F2249C1C4 /* ArchiveStreamPlugin.swift */; };
+		8E8CDFE9749CBD9ADE8FBD88 /* AudioCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A02A029F4626839F8C463C /* AudioCoordinator.swift */; };
+		9035E12B50A38AC1BDF90675 /* ControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BC1F263735F86E6453D38D /* ControlsView.swift */; };
+		927D2A3AE367A5ADB36979AD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43C340223B540BA6329B26C4 /* Assets.xcassets */; };
+		92BA06B774DEE79CA8AC8B07 /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2AC46B8771DA540F4749B4C /* SpaceGrotesk-SemiBold.ttf */; };
+		983D7E5387FF55933DCE72BE /* RSSStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEB69216C5704C1F34BC3435 /* RSSStreamPlugin.swift */; };
+		9B4A26443942CB9412F40E74 /* MixerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE160A7B5FA624FB74857D9 /* MixerView.swift */; };
+		A0F6E7D92EB9754FAEF1CE08 /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A60B9A4BB74170F3517F9B06 /* DMSans-Regular.ttf */; };
+		A8AE2279A39BD701B419B4E5 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353CCD75313E78E9F6B0726D /* Intents.swift */; };
+		B4E7E05F99812C7B4774EFD6 /* WebAudioBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6940B2EF282ADC8AFF33757B /* WebAudioBridge.swift */; };
+		BE293D5EC982AD7CDF9FE438 /* VisualizerData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AD55AD18A3D3573CC7C363 /* VisualizerData.swift */; };
+		CDBB8010E11B2CED32233ABA /* Secrets.example in Resources */ = {isa = PBXBuildFile; fileRef = 9249B32C7F657014221EC706 /* Secrets.example */; };
+		D3046D05FF2552D7FE06A667 /* DMSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A1A4733BF3A13345AEA1AE6E /* DMSans-Bold.ttf */; };
+		D60A1EA98538FB34B2D1C98E /* AtmosphereBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D39872624C95CEA62C98AF /* AtmosphereBackground.swift */; };
+		DD448C1A9A9A6376B8C745EB /* IngestStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4EFED293F1842406EA1F34 /* IngestStreamPlugin.swift */; };
+		E1DDAACC4400CA2829B451AD /* FlightStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F43B2D29167BF7409AA8054 /* FlightStreamPlugin.swift */; };
+		E1DF9D960E330029B35DD5AA /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5826DFE0BA9E353D51C84AE0 /* Secrets.swift */; };
+		E3A347C7826ECE68065B69B6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A64794F3C0EA5F30B4929C /* ContentView.swift */; };
+		E4A69134D70F35A908361FBB /* StreamscapesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23181DE0C915F401F924813 /* StreamscapesApp.swift */; };
+		E6A021FD391F582C1DC1B2C5 /* StreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 286B6CBFCDB3171BA809BAD2 /* StreamPlugin.swift */; };
+		ED848C8169E9A2BE4DEDD2E6 /* StreamscapesWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F04021A201ED91A10131572 /* StreamscapesWatchApp.swift */; };
+		EE1C62B21338A5D3DED4E944 /* FaderSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77149AD6BEF900EE51F2FA77 /* FaderSlider.swift */; };
+		F4428D26E66FF0F1D0219772 /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B1EF80AA83DC53719658710C /* DMSans-Medium.ttf */; };
+		F7B2202C52469753F9133858 /* ListenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46037928EB9BB4DE9446D8D7 /* ListenView.swift */; };
+		F8414C20EFA772F96416E24C /* WikiStreamPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CD4820A4E31FDE668527789 /* WikiStreamPlugin.swift */; };
+		FDD8FFC8308E8FA2B1EB8DE3 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991395165AF8B0A227A0AA95 /* StartView.swift */; };
+		FE32ED5BC03492A01DF20523 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CF53DBEE89540C0175F47509 /* SpaceGrotesk-Regular.ttf */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BB93D6BE001F82482CA03003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5F8568D34ADD85D5E39CBE9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1D86FD50CFF4A2AC0A6A77B7;
+			remoteInfo = StreamscapesWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EBBB7E461F25E48C2F42F5AD /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				5E2F8F9762033442D36D5CDC /* StreamscapesWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		069F1E49DCFC34DBE34C877D /* PresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetsView.swift; sourceTree = "<group>"; };
+		06ABFB83C5778ED13813F2BC /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		0C4EFED293F1842406EA1F34 /* IngestStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngestStreamPlugin.swift; sourceTree = "<group>"; };
+		0CB246C97410980AA542F3CC /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		0CC06DB513F178730826D02C /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-SemiBold.ttf"; sourceTree = "<group>"; };
+		14A64794F3C0EA5F30B4929C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1618F2A6E391EA0445FC8F96 /* HealthPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthPoller.swift; sourceTree = "<group>"; };
+		19490EADE6CD9EA153F4A77B /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		1A2606A52BD68823276FE6A0 /* DatastreamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatastreamsView.swift; sourceTree = "<group>"; };
+		1AD1E50D3C88242FE9F464F4 /* ChannelConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelConfig.swift; sourceTree = "<group>"; };
+		1CD4820A4E31FDE668527789 /* WikiStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiStreamPlugin.swift; sourceTree = "<group>"; };
+		286B6CBFCDB3171BA809BAD2 /* StreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPlugin.swift; sourceTree = "<group>"; };
+		2A93B54CC6754F53685346C5 /* audio-bridge.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "audio-bridge.html"; sourceTree = "<group>"; };
+		2D122C1E04D969C8EBEDA3EB /* ConfigureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigureView.swift; sourceTree = "<group>"; };
+		353CCD75313E78E9F6B0726D /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
+		3996686F246A8A5D8B9939B7 /* EffectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsView.swift; sourceTree = "<group>"; };
+		3CEE51C4357750E38F831937 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		40CD197EE2AB8DD426E9DF7E /* DataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataPoint.swift; sourceTree = "<group>"; };
+		42858A08AB20A7546323B8BC /* SonificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonificationView.swift; sourceTree = "<group>"; };
+		43C340223B540BA6329B26C4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		46037928EB9BB4DE9446D8D7 /* ListenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenView.swift; sourceTree = "<group>"; };
+		4CE160A7B5FA624FB74857D9 /* MixerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerView.swift; sourceTree = "<group>"; };
+		5826DFE0BA9E353D51C84AE0 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		5F43B2D29167BF7409AA8054 /* FlightStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightStreamPlugin.swift; sourceTree = "<group>"; };
+		64FD8A19C057A7A991AE8DEF /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		65D2AAEBD6DCF58C76CE2147 /* WatchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchViewModel.swift; sourceTree = "<group>"; };
+		672AC710A0C4A146B1CFF6B9 /* StockStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockStreamPlugin.swift; sourceTree = "<group>"; };
+		6940B2EF282ADC8AFF33757B /* WebAudioBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAudioBridge.swift; sourceTree = "<group>"; };
+		6F04021A201ED91A10131572 /* StreamscapesWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamscapesWatchApp.swift; sourceTree = "<group>"; };
+		70AD55AD18A3D3573CC7C363 /* VisualizerData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerData.swift; sourceTree = "<group>"; };
+		713357BA661A18C3BF8649B8 /* StreamManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamManager.swift; sourceTree = "<group>"; };
+		733210A4C7C84D1264DF44A6 /* MappingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingsView.swift; sourceTree = "<group>"; };
+		77149AD6BEF900EE51F2FA77 /* FaderSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaderSlider.swift; sourceTree = "<group>"; };
+		7A66B3039CE3BC134319E391 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		7CF31EE80369187FC9CBEA7C /* WatchSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionManager.swift; sourceTree = "<group>"; };
+		9249B32C7F657014221EC706 /* Secrets.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Secrets.example; sourceTree = "<group>"; };
+		945751FDD84A0498BB96A349 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
+		991395165AF8B0A227A0AA95 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
+		A1A4733BF3A13345AEA1AE6E /* DMSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Bold.ttf"; sourceTree = "<group>"; };
+		A23181DE0C915F401F924813 /* StreamscapesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamscapesApp.swift; sourceTree = "<group>"; };
+		A40233BC6EE27787ADA06820 /* WeatherStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherStreamPlugin.swift; sourceTree = "<group>"; };
+		A60B9A4BB74170F3517F9B06 /* DMSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Regular.ttf"; sourceTree = "<group>"; };
+		A6F9937B266E9A1D65F7EEFF /* SettingsShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsShareView.swift; sourceTree = "<group>"; };
+		A8D5E7ED7105D5B0C8CEFADA /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
+		A9AF1635954F00DADC87673E /* PresetCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetCatalog.swift; sourceTree = "<group>"; };
+		AB8825DFA670BA7ED4EF0549 /* Streamscapes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Streamscapes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B085F4660E12222CE140B944 /* SonificationStreamList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonificationStreamList.swift; sourceTree = "<group>"; };
+		B1EF80AA83DC53719658710C /* DMSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMSans-Medium.ttf"; sourceTree = "<group>"; };
+		B5D39872624C95CEA62C98AF /* AtmosphereBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtmosphereBackground.swift; sourceTree = "<group>"; };
+		B9251647C6B7F8B90384D088 /* Streamscapes.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Streamscapes.entitlements; sourceTree = "<group>"; };
+		C1955311ED6096AC42B4A338 /* GlobalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettingsView.swift; sourceTree = "<group>"; };
+		C2190BF6DAD4215590B8771F /* GlobalConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalConfig.swift; sourceTree = "<group>"; };
+		C5EB44BC4C2F28A241C2A73A /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
+		C931AF965B8D5C3F2249C1C4 /* ArchiveStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveStreamPlugin.swift; sourceTree = "<group>"; };
+		CAE84FD0C8CD6E8A0FA06357 /* OTLPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTLPClient.swift; sourceTree = "<group>"; };
+		CAFCF865CA5E633C4DB4A13F /* audio-bridge.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "audio-bridge.js"; sourceTree = "<group>"; };
+		CF53DBEE89540C0175F47509 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		DEB69216C5704C1F34BC3435 /* RSSStreamPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSSStreamPlugin.swift; sourceTree = "<group>"; };
+		E2AC46B8771DA540F4749B4C /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
+		E4BC1F263735F86E6453D38D /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
+		EA69AB8BFA1520332A898B6C /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		F264F991AF3AE65D317A42A3 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		F2A02A029F4626839F8C463C /* AudioCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCoordinator.swift; sourceTree = "<group>"; };
+		F66838C3392A0DD43C73EBC1 /* StreamscapesWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = StreamscapesWatch.app; path = "Streamscapes Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F9525DCBB99D97795F3A30AB /* TransportBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransportBarView.swift; sourceTree = "<group>"; };
+		FA0251BA3DABF3A403601F1C /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D97EEFB4DB2CE15E2E14F873 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71C0DC68363AB4CED2CBD02D /* WatchConnectivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3AF7B615B898A42D1291603D /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				19490EADE6CD9EA153F4A77B /* AuthManager.swift */,
+				7CF31EE80369187FC9CBEA7C /* WatchSessionManager.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		3D95BE3ACFE31AA305C9C2C1 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				B5D39872624C95CEA62C98AF /* AtmosphereBackground.swift */,
+				77149AD6BEF900EE51F2FA77 /* FaderSlider.swift */,
+				F9525DCBB99D97795F3A30AB /* TransportBarView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		5C2B27660A50A1A46C1ECC6A /* Configure */ = {
+			isa = PBXGroup;
+			children = (
+				2D122C1E04D969C8EBEDA3EB /* ConfigureView.swift */,
+				A6F9937B266E9A1D65F7EEFF /* SettingsShareView.swift */,
+				B085F4660E12222CE140B944 /* SonificationStreamList.swift */,
+			);
+			path = Configure;
+			sourceTree = "<group>";
+		};
+		5DA2D4EDD6942ACD708D53D4 /* Listen */ = {
+			isa = PBXGroup;
+			children = (
+				46037928EB9BB4DE9446D8D7 /* ListenView.swift */,
+			);
+			path = Listen;
+			sourceTree = "<group>";
+		};
+		5DA834FBEC6B77936930B9C4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				945751FDD84A0498BB96A349 /* WatchConnectivity.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		67BB7F1EEC5E98BED538CC5D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				64FD8A19C057A7A991AE8DEF /* MainView.swift */,
+				3D95BE3ACFE31AA305C9C2C1 /* Components */,
+				5C2B27660A50A1A46C1ECC6A /* Configure */,
+				96519C4C8F5FAFF5EA11A7E3 /* Controls */,
+				BFBA96E7064786428BAA9CED /* Datastreams */,
+				5DA2D4EDD6942ACD708D53D4 /* Listen */,
+				87BFE348D533B0898535601C /* Settings */,
+				FEE8E069858F72900C90B545 /* Start */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		687FFBBD5A8DB9B9678358F5 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				14A64794F3C0EA5F30B4929C /* ContentView.swift */,
+				1618F2A6E391EA0445FC8F96 /* HealthPoller.swift */,
+				CAE84FD0C8CD6E8A0FA06357 /* OTLPClient.swift */,
+				6F04021A201ED91A10131572 /* StreamscapesWatchApp.swift */,
+				65D2AAEBD6DCF58C76CE2147 /* WatchViewModel.swift */,
+			);
+			name = Sources;
+			path = "../packages/streamscapes-watch/Sources";
+			sourceTree = "<group>";
+		};
+		6E90F4C3ED8BAF0C3207BBF6 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				7A66B3039CE3BC134319E391 /* RootView.swift */,
+				A23181DE0C915F401F924813 /* StreamscapesApp.swift */,
+				C5EB44BC4C2F28A241C2A73A /* WebAppView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		75E7D75F035DC5592023EC7B /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				A1A4733BF3A13345AEA1AE6E /* DMSans-Bold.ttf */,
+				B1EF80AA83DC53719658710C /* DMSans-Medium.ttf */,
+				A60B9A4BB74170F3517F9B06 /* DMSans-Regular.ttf */,
+				0CC06DB513F178730826D02C /* DMSans-SemiBold.ttf */,
+				FA0251BA3DABF3A403601F1C /* SpaceGrotesk-Bold.ttf */,
+				EA69AB8BFA1520332A898B6C /* SpaceGrotesk-Light.ttf */,
+				F264F991AF3AE65D317A42A3 /* SpaceGrotesk-Medium.ttf */,
+				CF53DBEE89540C0175F47509 /* SpaceGrotesk-Regular.ttf */,
+				E2AC46B8771DA540F4749B4C /* SpaceGrotesk-SemiBold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		85543259A7DA099F782210D9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AB8825DFA670BA7ED4EF0549 /* Streamscapes.app */,
+				F66838C3392A0DD43C73EBC1 /* StreamscapesWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		87BFE348D533B0898535601C /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				3996686F246A8A5D8B9939B7 /* EffectsView.swift */,
+				C1955311ED6096AC42B4A338 /* GlobalSettingsView.swift */,
+				733210A4C7C84D1264DF44A6 /* MappingsView.swift */,
+				069F1E49DCFC34DBE34C877D /* PresetsView.swift */,
+				42858A08AB20A7546323B8BC /* SonificationView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		881F2E67B800024C0353D8B3 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				1AD1E50D3C88242FE9F464F4 /* ChannelConfig.swift */,
+				40CD197EE2AB8DD426E9DF7E /* DataPoint.swift */,
+				C2190BF6DAD4215590B8771F /* GlobalConfig.swift */,
+				353CCD75313E78E9F6B0726D /* Intents.swift */,
+				70AD55AD18A3D3573CC7C363 /* VisualizerData.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		96519C4C8F5FAFF5EA11A7E3 /* Controls */ = {
+			isa = PBXGroup;
+			children = (
+				E4BC1F263735F86E6453D38D /* ControlsView.swift */,
+				4CE160A7B5FA624FB74857D9 /* MixerView.swift */,
+			);
+			path = Controls;
+			sourceTree = "<group>";
+		};
+		A52F21E53B6A63018E2BBD4F /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				A8D5E7ED7105D5B0C8CEFADA /* AppStore.swift */,
+				A9AF1635954F00DADC87673E /* PresetCatalog.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
+		A95FBDDE9AD907F1AED3DD90 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				F2A02A029F4626839F8C463C /* AudioCoordinator.swift */,
+				6940B2EF282ADC8AFF33757B /* WebAudioBridge.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		B361239D08A85532FB58CDEE /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				3CEE51C4357750E38F831937 /* Info.plist */,
+				B9251647C6B7F8B90384D088 /* Streamscapes.entitlements */,
+				6E90F4C3ED8BAF0C3207BBF6 /* App */,
+				A95FBDDE9AD907F1AED3DD90 /* Audio */,
+				3AF7B615B898A42D1291603D /* Auth */,
+				C0C1AD69D7D7DD23FC31DF21 /* Config */,
+				FF6E14FEC2C2F1BD511C921E /* Location */,
+				881F2E67B800024C0353D8B3 /* Models */,
+				CF3A6E06963170C9BD6D4669 /* Resources */,
+				A52F21E53B6A63018E2BBD4F /* Store */,
+				B6B362C584D2DBDF6D6A68B6 /* Streams */,
+				CD7ED21B5D16A840973E541D /* Theme */,
+				67BB7F1EEC5E98BED538CC5D /* Views */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		B6B362C584D2DBDF6D6A68B6 /* Streams */ = {
+			isa = PBXGroup;
+			children = (
+				C931AF965B8D5C3F2249C1C4 /* ArchiveStreamPlugin.swift */,
+				5F43B2D29167BF7409AA8054 /* FlightStreamPlugin.swift */,
+				0C4EFED293F1842406EA1F34 /* IngestStreamPlugin.swift */,
+				DEB69216C5704C1F34BC3435 /* RSSStreamPlugin.swift */,
+				672AC710A0C4A146B1CFF6B9 /* StockStreamPlugin.swift */,
+				713357BA661A18C3BF8649B8 /* StreamManager.swift */,
+				286B6CBFCDB3171BA809BAD2 /* StreamPlugin.swift */,
+				A40233BC6EE27787ADA06820 /* WeatherStreamPlugin.swift */,
+				1CD4820A4E31FDE668527789 /* WikiStreamPlugin.swift */,
+			);
+			path = Streams;
+			sourceTree = "<group>";
+		};
+		BFBA96E7064786428BAA9CED /* Datastreams */ = {
+			isa = PBXGroup;
+			children = (
+				1A2606A52BD68823276FE6A0 /* DatastreamsView.swift */,
+			);
+			path = Datastreams;
+			sourceTree = "<group>";
+		};
+		C0C1AD69D7D7DD23FC31DF21 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				9249B32C7F657014221EC706 /* Secrets.example */,
+				5826DFE0BA9E353D51C84AE0 /* Secrets.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		C0D886BC581B55C6740D3C98 = {
+			isa = PBXGroup;
+			children = (
+				B361239D08A85532FB58CDEE /* Sources */,
+				687FFBBD5A8DB9B9678358F5 /* Sources */,
+				5DA834FBEC6B77936930B9C4 /* Frameworks */,
+				85543259A7DA099F782210D9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CD7ED21B5D16A840973E541D /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				0CB246C97410980AA542F3CC /* Theme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		CF3A6E06963170C9BD6D4669 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				43C340223B540BA6329B26C4 /* Assets.xcassets */,
+				2A93B54CC6754F53685346C5 /* audio-bridge.html */,
+				CAFCF865CA5E633C4DB4A13F /* audio-bridge.js */,
+				75E7D75F035DC5592023EC7B /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		FEE8E069858F72900C90B545 /* Start */ = {
+			isa = PBXGroup;
+			children = (
+				991395165AF8B0A227A0AA95 /* StartView.swift */,
+			);
+			path = Start;
+			sourceTree = "<group>";
+		};
+		FF6E14FEC2C2F1BD511C921E /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				06ABFB83C5778ED13813F2BC /* LocationManager.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1D86FD50CFF4A2AC0A6A77B7 /* StreamscapesWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 62AAED5C75A91A9DC0B2F85F /* Build configuration list for PBXNativeTarget "StreamscapesWatch" */;
+			buildPhases = (
+				C2C665E45891F36622B6EB7D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StreamscapesWatch;
+			packageProductDependencies = (
+			);
+			productName = StreamscapesWatch;
+			productReference = F66838C3392A0DD43C73EBC1 /* StreamscapesWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D981ECF8D68D424BD34B2677 /* Streamscapes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CD0C6E3D8C7FCC2986D43F01 /* Build configuration list for PBXNativeTarget "Streamscapes" */;
+			buildPhases = (
+				63C9C1ED9ACB426E9D1E47BC /* Sources */,
+				706282CD9EEB7C2F50B3F299 /* Resources */,
+				D97EEFB4DB2CE15E2E14F873 /* Frameworks */,
+				EBBB7E461F25E48C2F42F5AD /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0B355F1DF2590121390C1D39 /* PBXTargetDependency */,
+			);
+			name = Streamscapes;
+			packageProductDependencies = (
+			);
+			productName = Streamscapes;
+			productReference = AB8825DFA670BA7ED4EF0549 /* Streamscapes.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5F8568D34ADD85D5E39CBE9D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					1D86FD50CFF4A2AC0A6A77B7 = {
+						DevelopmentTeam = MAG2WYD297;
+					};
+				};
+			};
+			buildConfigurationList = DFD89AA43E4ED5A2E007E020 /* Build configuration list for PBXProject "streamscapes.fm" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C0D886BC581B55C6740D3C98;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 85543259A7DA099F782210D9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D981ECF8D68D424BD34B2677 /* Streamscapes */,
+				1D86FD50CFF4A2AC0A6A77B7 /* StreamscapesWatch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		706282CD9EEB7C2F50B3F299 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				927D2A3AE367A5ADB36979AD /* Assets.xcassets in Resources */,
+				D3046D05FF2552D7FE06A667 /* DMSans-Bold.ttf in Resources */,
+				F4428D26E66FF0F1D0219772 /* DMSans-Medium.ttf in Resources */,
+				A0F6E7D92EB9754FAEF1CE08 /* DMSans-Regular.ttf in Resources */,
+				32D879EAF538A609CE760EEC /* DMSans-SemiBold.ttf in Resources */,
+				CDBB8010E11B2CED32233ABA /* Secrets.example in Resources */,
+				1855ACA3B6DB1989EF961872 /* SpaceGrotesk-Bold.ttf in Resources */,
+				1F59C8892C3ECA3E0C6385B8 /* SpaceGrotesk-Light.ttf in Resources */,
+				1976A91F4826B06496B78509 /* SpaceGrotesk-Medium.ttf in Resources */,
+				FE32ED5BC03492A01DF20523 /* SpaceGrotesk-Regular.ttf in Resources */,
+				92BA06B774DEE79CA8AC8B07 /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				49E021C700A3D8F7B3A1ADD1 /* audio-bridge.html in Resources */,
+				417E32D675F2226A3CE65E5F /* audio-bridge.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		63C9C1ED9ACB426E9D1E47BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				372FEC620527005A92A3EB47 /* AppStore.swift in Sources */,
+				8D162B068E6658F145E73B84 /* ArchiveStreamPlugin.swift in Sources */,
+				D60A1EA98538FB34B2D1C98E /* AtmosphereBackground.swift in Sources */,
+				8E8CDFE9749CBD9ADE8FBD88 /* AudioCoordinator.swift in Sources */,
+				2D19CBE292A2B43F286C7290 /* AuthManager.swift in Sources */,
+				63D81E65BFB7A0919C85F502 /* ChannelConfig.swift in Sources */,
+				20E0E980A6ABB46576D1C4C0 /* ConfigureView.swift in Sources */,
+				9035E12B50A38AC1BDF90675 /* ControlsView.swift in Sources */,
+				2046D2728E59D396616FC1FE /* DataPoint.swift in Sources */,
+				0FE879717C54793A1CBA453A /* DatastreamsView.swift in Sources */,
+				6397E09AB60C3F6DC918B884 /* EffectsView.swift in Sources */,
+				EE1C62B21338A5D3DED4E944 /* FaderSlider.swift in Sources */,
+				E1DDAACC4400CA2829B451AD /* FlightStreamPlugin.swift in Sources */,
+				4EB599E069FFF6E1C45B547F /* GlobalConfig.swift in Sources */,
+				309C96B3502464E20ECAFE7E /* GlobalSettingsView.swift in Sources */,
+				DD448C1A9A9A6376B8C745EB /* IngestStreamPlugin.swift in Sources */,
+				A8AE2279A39BD701B419B4E5 /* Intents.swift in Sources */,
+				F7B2202C52469753F9133858 /* ListenView.swift in Sources */,
+				59781299E8EFBD242A0858DE /* LocationManager.swift in Sources */,
+				294C21860B37D3E81D4CE8D6 /* MainView.swift in Sources */,
+				25EA81E1AE2EBD818C42AB4C /* MappingsView.swift in Sources */,
+				9B4A26443942CB9412F40E74 /* MixerView.swift in Sources */,
+				734728E4E31606DC84B33111 /* PresetCatalog.swift in Sources */,
+				2192964E3B1CFD8EA7A7DFA5 /* PresetsView.swift in Sources */,
+				983D7E5387FF55933DCE72BE /* RSSStreamPlugin.swift in Sources */,
+				0C8895DD416265FA760B1170 /* RootView.swift in Sources */,
+				E1DF9D960E330029B35DD5AA /* Secrets.swift in Sources */,
+				3121A157D5123A75C20C48B4 /* SettingsShareView.swift in Sources */,
+				764DAFF13A0221FB1E00D8FF /* SonificationStreamList.swift in Sources */,
+				1BAEDEE9F11F2BA667F821A7 /* SonificationView.swift in Sources */,
+				FDD8FFC8308E8FA2B1EB8DE3 /* StartView.swift in Sources */,
+				2AA1A094DD55735752AD0079 /* StockStreamPlugin.swift in Sources */,
+				40812128B200AD4565B1C0FC /* StreamManager.swift in Sources */,
+				E6A021FD391F582C1DC1B2C5 /* StreamPlugin.swift in Sources */,
+				E4A69134D70F35A908361FBB /* StreamscapesApp.swift in Sources */,
+				34F3E135CECCDE25DF97B3EB /* Theme.swift in Sources */,
+				5D60F2BF7196365714CC1511 /* TransportBarView.swift in Sources */,
+				BE293D5EC982AD7CDF9FE438 /* VisualizerData.swift in Sources */,
+				255A5C550DEC0B866301D4AF /* WatchSessionManager.swift in Sources */,
+				794A725B8CC5ACE5BE4EC887 /* WeatherStreamPlugin.swift in Sources */,
+				14CDF7695BA3CA85290ECC71 /* WebAppView.swift in Sources */,
+				B4E7E05F99812C7B4774EFD6 /* WebAudioBridge.swift in Sources */,
+				F8414C20EFA772F96416E24C /* WikiStreamPlugin.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2C665E45891F36622B6EB7D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3A347C7826ECE68065B69B6 /* ContentView.swift in Sources */,
+				456F931C57BF87EB49F4DB25 /* HealthPoller.swift in Sources */,
+				6D4DA2073B2FC88BDF44DF2B /* OTLPClient.swift in Sources */,
+				ED848C8169E9A2BE4DEDD2E6 /* StreamscapesWatchApp.swift in Sources */,
+				6B940EC224DB0E454522C530 /* WatchViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0B355F1DF2590121390C1D39 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1D86FD50CFF4A2AC0A6A77B7 /* StreamscapesWatch */;
+			targetProxy = BB93D6BE001F82482CA03003 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1AAD7A9DC6350763686AA07C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		45B982925E9CCCF4C47DCEC1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		5AD06AE62B47BC44D6475136 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sources/Streamscapes.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		640970A656C91F10DC265908 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "../packages/streamscapes-watch/Streamscapes.Watch.entitlements";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Streamscapes streams your heart rate and steps as live sound.";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.streamscapes.app;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.app.watch;
+				PRODUCT_NAME = "Streamscapes Watch";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		E046E029224D95910F522D29 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "../packages/streamscapes-watch/Streamscapes.Watch.entitlements";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Streamscapes streams your heart rate and steps as live sound.";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.streamscapes.app;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.app.watch;
+				PRODUCT_NAME = "Streamscapes Watch";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		F94D5FD10AB96F6E7E447EF9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sources/Streamscapes.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = MAG2WYD297;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.streamscapes.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		62AAED5C75A91A9DC0B2F85F /* Build configuration list for PBXNativeTarget "StreamscapesWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				640970A656C91F10DC265908 /* Debug */,
+				E046E029224D95910F522D29 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CD0C6E3D8C7FCC2986D43F01 /* Build configuration list for PBXNativeTarget "Streamscapes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F94D5FD10AB96F6E7E447EF9 /* Debug */,
+				5AD06AE62B47BC44D6475136 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DFD89AA43E4ED5A2E007E020 /* Build configuration list for PBXProject "streamscapes.fm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				45B982925E9CCCF4C47DCEC1 /* Debug */,
+				1AAD7A9DC6350763686AA07C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5F8568D34ADD85D5E39CBE9D /* Project object */;
+}

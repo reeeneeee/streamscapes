@@ -4,6 +4,7 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(AudioCoordinator.self) private var coordinator
     @Environment(LocationManager.self) private var location
+    @Environment(AuthManager.self) private var authManager
 
     var body: some View {
         Group {
@@ -16,7 +17,7 @@ struct RootView: View {
         .onAppear {
             location.requestLocation()
             coordinator.preload()
-            coordinator.start(store: store, location: location)
+            coordinator.start(store: store, location: location, authManager: authManager)
         }
         .onChange(of: store.isPlaying) { _, playing in
             if !playing {

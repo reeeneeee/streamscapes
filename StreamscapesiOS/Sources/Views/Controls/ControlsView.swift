@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Shared types used by ConfigureView and settings pages
+
 enum SettingsDestination: Hashable {
     case global
     case presets
@@ -8,62 +10,11 @@ enum SettingsDestination: Hashable {
     case effects
 }
 
-struct ControlsView: View {
-    @Environment(AppStore.self) private var store
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    Text("streamscapes")
-                        .font(.custom("SpaceGrotesk-Light", size: 15))
-                        .foregroundStyle(Theme.textSecondary)
-                        .padding(.top, 8)
-                        .padding(.bottom, 16)
-
-                    MixerView()
-
-                    // Global Musical Frame — always visible
-                    InlineGlobalFrame()
-                        .padding(.top, 16)
-                        .padding(.horizontal, 16)
-
-                    VStack(spacing: 1) {
-                        NavigationLink(value: SettingsDestination.presets) {
-                            SettingsRow(number: "01", title: "Presets")
-                        }
-                        NavigationLink(value: SettingsDestination.sonification) {
-                            SettingsRow(number: "02", title: "Sonification")
-                        }
-                        NavigationLink(value: SettingsDestination.mappings) {
-                            SettingsRow(number: "03", title: "Mappings")
-                        }
-                        NavigationLink(value: SettingsDestination.effects) {
-                            SettingsRow(number: "04", title: "Effects")
-                        }
-                    }
-                    .padding(.top, 12)
-                    .padding(.horizontal, 16)
-                }
-            }
-            .scrollIndicators(.hidden)
-            .navigationDestination(for: SettingsDestination.self) { dest in
-                switch dest {
-                case .global: GlobalSettingsView()
-                case .presets: PresetsView()
-                case .sonification: SonificationView()
-                case .mappings: MappingsView()
-                case .effects: EffectsView()
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Inline Global Musical Frame
 
-private struct InlineGlobalFrame: View {
+struct InlineGlobalFrame: View {
     @Environment(AppStore.self) private var store
+    var showHeader: Bool = true
 
     private let notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
     private let octaves = [2, 3, 4, 5, 6]
@@ -81,10 +32,12 @@ private struct InlineGlobalFrame: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("GLOBAL MUSICAL FRAME")
-                .font(.custom("DMSans-Regular", size: 10))
-                .tracking(1.1)
-                .foregroundStyle(Theme.textWhisper)
+            if showHeader {
+                Text("GLOBAL MUSICAL FRAME")
+                    .font(.custom("DMSans-Regular", size: 10))
+                    .tracking(1.1)
+                    .foregroundStyle(Theme.textWhisper)
+            }
 
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -151,6 +104,8 @@ private struct InlineGlobalFrame: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
+
+// MARK: - Settings Row
 
 struct SettingsRow: View {
     let number: String

@@ -4,23 +4,20 @@ struct FlightStreamPlugin: StreamPlugin {
     let id = "flights"
     let lat: Double
     let lon: Double
-    let apiKey: String
 
     func connect() -> AsyncStream<DataPoint> {
-        let bounds = "\(lat + 0.15),\(lat - 0.15),\(lon - 0.15),\(lon + 0.15)"
-
         return AsyncStream { continuation in
             let task = Task {
                 while !Task.isCancelled {
                     do {
-                        let flights = try await fetchFlights(bounds: bounds)
+                        let flights = try await fetchFlights()
                         for dp in flights {
                             continuation.yield(dp)
                         }
                     } catch {
                         print("[Flights] Fetch failed: \(error)")
                     }
-                    try? await Task.sleep(for: .seconds(60))
+                    try? await Task.sleep(for: .seconds(15))
                 }
                 continuation.finish()
             }
@@ -28,24 +25,30 @@ struct FlightStreamPlugin: StreamPlugin {
         }
     }
 
-    private func fetchFlights(bounds: String) async throws -> [DataPoint] {
-        let url = URL(string: "https://fr24api.flightradar24.com/api/live/flight-positions/light?bounds=\(bounds)")!
+    /// Fetches from Airplanes.live (free, no API key, community ADS-B network)
+    private func fetchFlights() async throws -> [DataPoint] {
+        let url = URL(string: "https://api.airplanes.live/v2/point/\(String(format: "%.4f", lat))/\(String(format: "%.4f", lon))/25")!
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("v1", forHTTPHeaderField: "Accept-Version")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
         let (data, _) = try await URLSession.shared.data(for: request)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-        let flights = json["data"] as? [[String: Any]] ?? []
+        let aircraft = json["ac"] as? [[String: Any]] ?? []
 
-        return flights.compactMap { flight -> DataPoint? in
-            guard let flightLat = flight["lat"] as? Double,
-                  let flightLon = flight["lon"] as? Double else { return nil }
+        return aircraft.compactMap { ac -> DataPoint? in
+            guard let acLat = ac["lat"] as? Double,
+                  let acLon = ac["lon"] as? Double else { return nil }
 
-            let distance = coordDistanceMiles(lat1: lat, lon1: lon, lat2: flightLat, lon2: flightLon)
-            let altitude = flight["alt"] as? Double ?? 0
-            let speed = (flight["gspeed"] as? Double ?? 0) * 1.15
+            // Skip grounded aircraft
+            if let altBaro = ac["alt_baro"] as? String, altBaro == "ground" { return nil }
+
+            let distance = coordDistanceMiles(lat1: lat, lon1: lon, lat2: acLat, lon2: acLon)
+            let gsKnots = ac["gs"] as? Double ?? 0
+            let speedMph = gsKnots * 1.15078
+            let altFeet = ac["alt_baro"] as? Double ?? 0
+            let altMeters = altFeet * 0.3048
+            let track = ac["track"] as? Double ?? 0
+            let callsign = (ac["flight"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
 
             let maxDist = 10.0
             let minFreq = 110.0
@@ -57,15 +60,15 @@ struct FlightStreamPlugin: StreamPlugin {
                 timestamp: Date(),
                 fields: [
                     "distance": distance,
-                    "altitude": altitude,
-                    "speed": speed,
+                    "altitude": altMeters,
+                    "speed": speedMph,
                     "frequency": frequency,
-                    "lat": flightLat,
-                    "lon": flightLon,
-                    "track": flight["track"] as? Double ?? 0,
+                    "lat": acLat,
+                    "lon": acLon,
+                    "track": track,
                 ],
                 metadata: [
-                    "callsign": flight["callsign"] as? String ?? "",
+                    "callsign": callsign.isEmpty ? (ac["hex"] as? String ?? "") : callsign,
                 ]
             )
         }

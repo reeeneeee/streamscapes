@@ -57,6 +57,11 @@ function bufferToWav(buffer) {
 
     // This runs inside a real user gesture — AudioContext can now start
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Tell WebKit this audio should continue in background (iOS 17.5+ Bug 261554 fix)
+    if (navigator.audioSession) {
+      navigator.audioSession.type = 'playback';
+      console.log('[html] Set navigator.audioSession.type = playback');
+    }
     ctx.resume().then(function() {
       console.log('[html] AudioContext resumed, state:', ctx.state);
     });
@@ -93,6 +98,9 @@ function bufferToWav(buffer) {
     tapped = true;
     console.log('[html] Click received — unlocking audio');
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (navigator.audioSession) {
+      navigator.audioSession.type = 'playback';
+    }
     ctx.resume().then(function() {
       console.log('[html] AudioContext resumed, state:', ctx.state);
     });
@@ -119,6 +127,20 @@ function bufferToWav(buffer) {
   } else {
     console.error('[html] AudioBridge NOT found on window');
   }
+
+  // Resume audio when returning from background
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      console.log('[html] Visibility changed to visible — resuming audio');
+      var ka = document.getElementById('keepalive');
+      if (ka && ka.paused) {
+        ka.play().catch(function(e) { console.error('[html] Keepalive resume failed:', e); });
+      }
+      if (window.AudioBridge && typeof window.AudioBridge.resume === 'function') {
+        window.AudioBridge.resume();
+      }
+    }
+  });
 })();
 </script>
 </body>
