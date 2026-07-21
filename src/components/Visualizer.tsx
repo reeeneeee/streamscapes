@@ -24,6 +24,7 @@ interface ArchiveBlob {
   identifier: string;
   title: string;
   mediatype: string;
+  downloads: number;
   size: number;
   age: number;
   id: string;
@@ -192,6 +193,7 @@ const Visualizer = ({
         identifier,
         title,
         mediatype,
+        downloads: Number(f.downloads ?? 0),
         size: blobSize,
         age: 0,
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
@@ -623,13 +625,27 @@ const Visualizer = ({
       if (Math.sqrt(dx * dx + dy * dy) < Math.max(blob.size / 2, 15)) {
         const iaUrl = `https://archive.org/details/${encodeURIComponent(blob.identifier)}`;
         const metaUrl = `https://archive.org/metadata/${encodeURIComponent(blob.identifier)}`;
+        const viewsUrl = `https://be-api.us.archive.org/views/v1/short/${encodeURIComponent(blob.identifier)}`;
         // Show what we know immediately, fetch more details in background
-        const quick = JSON.stringify({ mediatype: blob.mediatype, identifier: blob.identifier }, null, 2);
+        const quick = JSON.stringify({
+          mediatype: blob.mediatype,
+          identifier: blob.identifier,
+          downloads: blob.downloads,
+        }, null, 2);
         setInfoPanel({ title: `☞ ${blob.title}`, json: `Internet Archive · ${blob.mediatype}\n\n${quick}\n\nFetching details...`, url: iaUrl });
-        fetch(metaUrl, { signal: AbortSignal.timeout(8000) })
-          .then((r) => r.json())
-          .then((data) => {
-            const meta = data.metadata ?? {};
+        Promise.allSettled([
+          fetch(metaUrl, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()),
+          fetch(viewsUrl, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()),
+        ])
+          .then(([metaRes, viewsRes]) => {
+            if (metaRes.status === 'rejected') {
+              setInfoPanel({ title: `☞ ${blob.title}`, json: `Internet Archive · ${blob.mediatype}\n\nCould not fetch details.`, url: iaUrl });
+              return;
+            }
+            const meta = metaRes.value.metadata ?? {};
+            const views = viewsRes.status === 'fulfilled'
+              ? viewsRes.value?.[blob.identifier]
+              : undefined;
             const desc = typeof meta.description === 'string'
               ? meta.description.slice(0, 300)
               : Array.isArray(meta.description) ? meta.description[0]?.slice(0, 300) : undefined;
@@ -639,6 +655,10 @@ const Visualizer = ({
               meta.creator ? `Creator: ${meta.creator}` : null,
               meta.date ? `Date: ${meta.date}` : null,
               meta.collection ? `Collection: ${Array.isArray(meta.collection) ? meta.collection.join(', ') : meta.collection}` : null,
+              blob.downloads > 1 ? `Downloads: ${blob.downloads.toLocaleString()}` : null,
+              views?.have_data
+                ? `Views: ${views.all_time.toLocaleString()} all-time · ${views.last_30day.toLocaleString()} last 30 days`
+                : null,
               desc ? `\n${desc}` : null,
             ].filter(Boolean).join('\n');
             setInfoPanel({
@@ -646,8 +666,7 @@ const Visualizer = ({
               json: details,
               url: iaUrl,
             });
-          })
-          .catch(() => setInfoPanel({ title: `☞ ${blob.title}`, json: `Internet Archive · ${blob.mediatype}\n\nCould not fetch details.`, url: iaUrl }));
+          });
         return;
       }
     }
