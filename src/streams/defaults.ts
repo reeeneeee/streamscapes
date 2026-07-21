@@ -756,13 +756,22 @@ export const DEFAULT_ARCHIVE_CHANNEL: ChannelConfig = {
       outputRange: [0, 14],
       invert: false,
     },
-    // Title length adds subtle velocity variation
+    // Popularity: famous items ring out, obscure ones whisper
     {
-      sourceField: 'titleLength',
+      sourceField: 'downloads',
       targetParam: 'velocity',
       curve: 'logarithmic',
-      inputRange: [1, 100],
-      outputRange: [0.2, 0.7],
+      inputRange: [1, 1_000_000],
+      outputRange: [0.25, 0.9],
+      invert: false,
+    },
+    // Age: older items sustain longer (duration must clear the 0.6s envelope decay)
+    {
+      sourceField: 'ageYears',
+      targetParam: 'duration',
+      curve: 'logarithmic',
+      inputRange: [1, 30],
+      outputRange: [0.7, 1.6],
       invert: false,
     },
   ],

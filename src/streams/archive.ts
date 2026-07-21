@@ -54,6 +54,8 @@ export const archivePlugin: StreamPlugin = {
             mediatype: string;
             title?: string;
             collection?: string;
+            publicdate?: string;
+            downloads?: number;
           }> = data.items ?? [];
 
           // Distribute items evenly across the full poll interval with per-slot jitter
@@ -66,6 +68,12 @@ export const archivePlugin: StreamPlugin = {
             const mediatype = item.mediatype ?? 'unknown';
             const mediatypeIndex = MEDIATYPE_INDEX[mediatype] ?? 6;
 
+            // Item age in years — unknown publicdate counts as brand new
+            const publicMs = item.publicdate ? Date.parse(item.publicdate) : NaN;
+            const ageYears = Number.isFinite(publicMs)
+              ? Math.max(0, (Date.now() - publicMs) / 31_557_600_000)
+              : 0;
+
             yield {
               streamId: 'archive',
               timestamp: Date.now(),
@@ -76,6 +84,8 @@ export const archivePlugin: StreamPlugin = {
                 title: item.title ?? item.identifier,
                 titleLength: (item.title ?? item.identifier).length,
                 collection: item.collection ?? '',
+                downloads: Math.max(1, item.downloads ?? 1),
+                ageYears,
               },
             };
 
