@@ -655,7 +655,7 @@ const Visualizer = ({
               meta.creator ? `Creator: ${meta.creator}` : null,
               meta.date ? `Date: ${meta.date}` : null,
               meta.collection ? `Collection: ${Array.isArray(meta.collection) ? meta.collection.join(', ') : meta.collection}` : null,
-              blob.downloads > 1 ? `Downloads: ${blob.downloads.toLocaleString()}` : null,
+              `Downloads: ${blob.downloads.toLocaleString()}`,
               views?.have_data
                 ? `Views: ${views.all_time.toLocaleString()} all-time · ${views.last_30day.toLocaleString()} last 30 days`
                 : null,

@@ -84,7 +84,7 @@ export const archivePlugin: StreamPlugin = {
                 title: item.title ?? item.identifier,
                 titleLength: (item.title ?? item.identifier).length,
                 collection: item.collection ?? '',
-                downloads: Math.max(1, item.downloads ?? 1),
+                downloads: item.downloads ?? 0,
                 ageYears,
               },
             };
