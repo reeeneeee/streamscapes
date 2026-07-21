@@ -1,11 +1,11 @@
-import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import * as Tone from 'tone';
 import { useStore } from '@/store';
 import { AudioEngine } from '@/lib/audio-engine';
 import { StreamManager } from '@/lib/stream-manager';
 import { setupVisibilityHandler } from '@/lib/visibility-handler';
 import { createPlugins } from '@/streams';
-import { ALL_DEFAULT_CHANNELS, createOtlpChannelConfig } from '@/streams/defaults';
+import { ALL_DEFAULT_CHANNELS, createOtlpChannelConfig, createBrowserChannelConfig, createSystemChannelConfig, createWatchChannelConfig } from '@/streams/defaults';
 import type { StreamPlugin } from '@/types/stream';
 
 /**
@@ -17,6 +17,8 @@ export function useStreamscapes(lat: number, lon: number) {
   const managerRef = useRef<StreamManager | null>(null);
   const cleanupVisRef = useRef<(() => void) | null>(null);
   const initializedRef = useRef(false);
+  // Bump this to force a re-render after engine creation so components get the ref
+  const [, setTick] = useState(0);
 
   const store = useStore;
   const isPlaying = useStore((s) => s.isPlaying);
@@ -27,8 +29,9 @@ export function useStreamscapes(lat: number, lon: number) {
   const plugins = useMemo(() => createPlugins(lat, lon), [lat, lon]);
   pluginsRef.current = plugins;
 
-  // Initialize engine + manager once
+  // Initialize engine + manager when isPlaying becomes true
   useEffect(() => {
+    if (!isPlaying) return;
     if (initializedRef.current) return;
     initializedRef.current = true;
 
@@ -47,39 +50,57 @@ export function useStreamscapes(lat: number, lon: number) {
 
     const engine = new AudioEngine(store);
 
-    // Maximum number of auto-created sub-channels (OTLP + Datadog combined)
-    const MAX_SUB_CHANNELS = 12;
+    // Maximum number of auto-created sub-channels per source prefix
+    const MAX_SUB_CHANNELS_PER_SOURCE = 24;
 
     // Register callback for auto-creating channels from multiplexed plugins
     engine.onUnknownStreamId = (streamId: string) => {
-      const colonIdx = streamId.indexOf(':');
-      if (colonIdx < 1) return; // no prefix — ignore
+      try {
+        const colonIdx = streamId.indexOf(':');
+        if (colonIdx < 1) return;
 
-      const existingCh = store.getState().channels[streamId];
-      if (existingCh) {
-        // Re-enable persisted sub-channels on new data so they default to audible each session
-        if (!existingCh.enabled) {
-          store.getState().updateChannel(streamId, { enabled: true });
+        const existingCh = store.getState().channels[streamId];
+        if (existingCh) {
+          if (!existingCh.enabled) {
+            store.getState().updateChannel(streamId, { enabled: true });
+          }
+          return;
         }
-        return;
+
+        const prefix = streamId.slice(0, colonIdx);
+        const subCount = Object.keys(store.getState().channels)
+          .filter((id) => id.startsWith(`${prefix}:`)).length;
+        if (subCount >= MAX_SUB_CHANNELS_PER_SOURCE) {
+          console.warn(`[onUnknownStreamId] ${streamId} skipped — ${prefix} has ${subCount}/${MAX_SUB_CHANNELS_PER_SOURCE} sub-channels`);
+          return;
+        }
+
+        const serviceName = streamId.slice(colonIdx + 1);
+        const cfg = streamId.startsWith('chrome:')
+          ? createBrowserChannelConfig(serviceName)
+          : streamId.startsWith('system:')
+            ? createSystemChannelConfig(serviceName)
+            : streamId.startsWith('watch:')
+              ? createWatchChannelConfig(serviceName)
+              : createOtlpChannelConfig(serviceName);
+        console.log(`[onUnknownStreamId] Creating channel: ${streamId}`);
+        store.getState().addChannel({ ...cfg, streamId });
+      } catch (err) {
+        console.error(`[onUnknownStreamId] Error for ${streamId}:`, err);
       }
-
-      const subCount = Object.values(store.getState().channels)
-        .filter((ch) => ch.parentPluginId).length;
-      if (subCount >= MAX_SUB_CHANNELS) return;
-
-      const serviceName = streamId.slice(colonIdx + 1);
-      const cfg = createOtlpChannelConfig(serviceName);
-      store.getState().addChannel({ ...cfg, streamId });
     };
 
-    const plugins = pluginsRef.current;
+    const currentPlugins = pluginsRef.current;
     const { setStreamState } = store.getState();
-    const manager = new StreamManager({ setStreamState }, engine, plugins);
+    const manager = new StreamManager({ setStreamState }, engine, currentPlugins);
 
     engineRef.current = engine;
     managerRef.current = manager;
     cleanupVisRef.current = setupVisibilityHandler();
+
+    engine.start();
+    // Force re-render so components see the new engine ref
+    setTick((t) => t + 1);
 
     // Resume audio + reconnect streams when page becomes visible
     const handleResume = async () => {
@@ -89,9 +110,9 @@ export function useStreamscapes(lat: number, lon: number) {
         const ctx = Tone.getContext().rawContext as AudioContext;
         await ctx.resume();
         engine.start();
-        const channels = useStore.getState().channels;
+        const ch = useStore.getState().channels;
         const activeStreams = useStore.getState().activeStreams;
-        for (const [streamId, config] of Object.entries(channels)) {
+        for (const [streamId, config] of Object.entries(ch)) {
           if (config.parentPluginId) continue;
           if (config.enabled && !activeStreams[streamId]) {
             manager.connectStream(streamId);
@@ -107,8 +128,11 @@ export function useStreamscapes(lat: number, lon: number) {
       engine.dispose();
       cleanupVisRef.current?.();
       initializedRef.current = false;
+      engineRef.current = null;
+      managerRef.current = null;
     };
-  }, [lat, lon]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lon, isPlaying]);
 
   // Connect/disconnect streams when channel enabled state changes
   useEffect(() => {
@@ -116,10 +140,10 @@ export function useStreamscapes(lat: number, lon: number) {
     if (!manager || !isPlaying) return;
 
     for (const [streamId, config] of Object.entries(channels)) {
-      // Sub-channels (e.g. otlp:synapse) are fed by their parent plugin's connection
       if (config.parentPluginId) continue;
       const streamState = useStore.getState().activeStreams[streamId];
       if (config.enabled && !streamState) {
+        console.log(`[streams] connecting ${streamId}`);
         manager.connectStream(streamId);
       } else if (!config.enabled && streamState) {
         manager.disconnectStream(streamId);
@@ -129,20 +153,25 @@ export function useStreamscapes(lat: number, lon: number) {
 
   const startAudio = useCallback(() => {
     if (useStore.getState().isPlaying) return;
-    // Synchronous — must be in user gesture for AudioContext
-    Tone.start();
-    const rawCtx = Tone.getContext().rawContext as AudioContext;
-    if (rawCtx.state !== 'running') rawCtx.resume();
+    try {
+      // Synchronous — must be in user gesture for AudioContext
+      Tone.start();
+      const rawCtx = Tone.getContext().rawContext as AudioContext;
+      if (rawCtx.state !== 'running') rawCtx.resume();
+    } catch (err) {
+      console.error('[startAudio] AudioContext init failed:', err);
+      return; // Don't transition to playing if audio can't start
+    }
     setPlaying(true);
-    engineRef.current?.start();
+    // Engine will be created by the effect on next render
 
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: 'Streamscapes',
+        title: 'streamscapes',
         artist: 'Real-time data sonification',
       });
     }
-  }, []);
+  }, [setPlaying]);
 
   const stopAudio = useCallback(() => {
     setPlaying(false);
@@ -153,7 +182,8 @@ export function useStreamscapes(lat: number, lon: number) {
     managerRef.current = null;
     cleanupVisRef.current = null;
     initializedRef.current = false;
-  }, []);
+    setTick((t) => t + 1); // Force re-render so components see null engine
+  }, [setPlaying]);
 
   return {
     engine: engineRef.current,

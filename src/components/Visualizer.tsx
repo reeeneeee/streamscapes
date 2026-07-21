@@ -5,7 +5,7 @@ import type * as Tone from 'tone';
 import type { AudioEngine } from '@/lib/audio-engine';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
-import { STREAM_COLORS } from '@/lib/stream-constants';
+import { STREAM_COLORS, getStreamColor } from '@/lib/stream-constants';
 import { useStore } from '@/store';
 
 interface WikiEdit {
@@ -19,8 +19,34 @@ interface WikiEdit {
   ny: number;
 }
 
+/** Internet Archive change blob */
+interface ArchiveBlob {
+  identifier: string;
+  title: string;
+  mediatype: string;
+  size: number;
+  age: number;
+  id: string;
+  nx: number;
+  ny: number;
+}
+
+/** Falling rain drop for personal ingest events */
+interface IngestDrop {
+  x: number;      // normalised 0-1 horizontal
+  y: number;      // normalised 0 (top) → 1+ (off-screen)
+  speed: number;  // normalised units per 30ms tick
+  color: string;
+  size: number;   // radius px
+  opacity: number;
+  label: string;
+  isError: boolean;
+}
+
+/** Throttle: max N drops per second to avoid flooding from burst ingests */
+const DROP_MIN_INTERVAL_MS = 300; // ~3 drops/sec max
+
 interface VisualizerProps {
-  weatherAnalyzer: Tone.Analyser | null;
   flights: ProcessedFlight[];
   flightAnalyzer: Tone.Analyser | null;
   myLat: number;
@@ -34,8 +60,26 @@ const GEO_SCALE = 3;
 const VIZ_COLORS = {
   weather: STREAM_COLORS.weather,
   flights: STREAM_COLORS.flights,
-  wiki: '#4d6c81',
+  wiki: STREAM_COLORS.wikipedia,
+  archive: STREAM_COLORS.archive,
 };
+
+// Archive blob palette — color per mediatype zone
+const ARCHIVE_PALETTE = ['#fcb315', '#96874d', '#709390', '#704357'] as const;
+// Mediatype → zone center (normalised 0-1) + color index
+// Spread across the canvas like nebulae — each type clusters in its own region
+const MEDIATYPE_ZONES: Record<string, { cx: number; cy: number; colorIdx: number }> = {
+  texts:      { cx: 0.18, cy: 0.22, colorIdx: 0 }, // gold — upper left
+  audio:      { cx: 0.82, cy: 0.20, colorIdx: 1 }, // olive — upper right
+  movies:     { cx: 0.15, cy: 0.75, colorIdx: 2 }, // teal — lower left
+  software:   { cx: 0.80, cy: 0.78, colorIdx: 3 }, // plum — lower right
+  web:        { cx: 0.50, cy: 0.15, colorIdx: 1 }, // olive — top center
+  image:      { cx: 0.50, cy: 0.85, colorIdx: 0 }, // gold — bottom center
+  data:       { cx: 0.28, cy: 0.50, colorIdx: 2 }, // teal — mid left
+  collection: { cx: 0.72, cy: 0.50, colorIdx: 3 }, // plum — mid right
+};
+// Unknown mediatypes get distributed randomly using their identifier hash
+const MEDIATYPE_DEFAULT_ZONE = { cx: 0.50, cy: 0.50, colorIdx: 1 };
 
 function hash32(input: string, seed = 0x811c9dc5): number {
   // FNV-1a 32-bit hash for stable deterministic placement.
@@ -52,7 +96,6 @@ function lerp(value: number, inMin: number, inMax: number, outMin: number, outMa
 }
 
 const Visualizer = ({
-  weatherAnalyzer,
   flights,
   flightAnalyzer,
   myLat,
@@ -76,6 +119,9 @@ const Visualizer = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editsRef = useRef<WikiEdit[]>([]);
+  const archiveBlobsRef = useRef<ArchiveBlob[]>([]);
+  const dropsRef = useRef<IngestDrop[]>([]);
+  const lastDropMsRef = useRef<number>(0);
   const flightsRef = useRef<ProcessedFlight[]>(flights);
   const airplaneImgRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number>(0);
@@ -120,13 +166,107 @@ const Visualizer = ({
     return () => { engine.offData('viz-wiki'); };
   }, [engine]);
 
-  // Age edits
+  // Listen for Internet Archive changes
+  useEffect(() => {
+    if (!engine) return;
+
+    engine.onData('viz-archive', (dp: DataPoint) => {
+      const f = dp.fields;
+      const title = String(f.title ?? f.identifier ?? '');
+      const mediatype = String(f.mediatype ?? 'unknown');
+      const blobSize = 40;
+      // Position within the mediatype's zone — jitter from zone center
+      const zone = MEDIATYPE_ZONES[mediatype] ?? MEDIATYPE_DEFAULT_ZONE;
+      const isUnknown = !MEDIATYPE_ZONES[mediatype];
+      const hx = hash32(title, 0x9e3779b9);
+      const hy = hash32(title, 0x517cc1b7);
+      // Unknown items spread wide across canvas; known items cluster in their zone
+      const spread = isUnknown ? 0.7 : 0.25;
+      const jitterX = ((hx >>> 0) / 0xffffffff - 0.5) * spread;
+      const jitterY = ((hy >>> 0) / 0xffffffff - 0.5) * spread;
+      const nx = Math.max(0.05, Math.min(0.95, zone.cx + jitterX));
+      const ny = Math.max(0.05, Math.min(0.95, zone.cy + jitterY));
+
+      const identifier = String(f.identifier ?? title);
+      archiveBlobsRef.current = [{
+        identifier,
+        title,
+        mediatype,
+        size: blobSize,
+        age: 0,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+        nx,
+        ny,
+      }, ...archiveBlobsRef.current].slice(0, 50);
+    }, 'archive');
+
+    return () => { engine.offData('viz-archive'); };
+  }, [engine]);
+
+  // Keep a ref to channels so the ingest listener can read visualEnabled
+  // without re-registering on every channel change.
+  const channelsRef = useRef(channels);
+  channelsRef.current = channels;
+
+  // Listen for personal ingest events → throttled falling rain drops
+  useEffect(() => {
+    if (!engine) return;
+
+    engine.onData('viz-ingest', (dp: DataPoint) => {
+      const streamId = dp.streamId;
+      if (!streamId.startsWith('otlp:') && !streamId.startsWith('dd:') && !streamId.startsWith('github:') && !streamId.startsWith('notify:')) return;
+
+      // Respect source-level visual toggle
+      const ch = channelsRef.current[streamId];
+      if (ch?.visualEnabled === false) return;
+
+      // Throttle: skip if we created a drop too recently
+      const now = performance.now();
+      if (now - lastDropMsRef.current < DROP_MIN_INTERVAL_MS) return;
+      lastDropMsRef.current = now;
+
+      // Don't create if we already have plenty falling
+      if (dropsRef.current.length >= 60) return;
+
+      const color = getStreamColor(streamId);
+      const isError = dp.fields.isError === true || dp.fields.isError === 1 || dp.fields.statusCode === 2;
+
+      dropsRef.current.push({
+        x: 0.05 + Math.random() * 0.9,
+        y: -0.02 - Math.random() * 0.03, // start just above viewport
+        speed: 0.004 + Math.random() * 0.003, // ~6s to cross screen
+        color: isError ? '#ef4444' : color,
+        size: isError ? 5 : 3 + Math.random() * 1.5,
+        opacity: 0.8,
+        label: String(dp.fields.spanName ?? dp.fields.serviceName ?? streamId.split(':')[1] ?? ''),
+        isError,
+      });
+    }, '*');
+
+    return () => { engine.offData('viz-ingest'); };
+  }, [engine]);
+
+  // Age wiki edits + advance ingest drops on a fixed interval
   useEffect(() => {
     const interval = setInterval(() => {
       editsRef.current = editsRef.current
         .map((e) => ({ ...e, age: e.age + 0.1 }))
         .filter((e) => e.age < 30);
-    }, 100);
+
+      archiveBlobsRef.current = archiveBlobsRef.current
+        .map((b) => ({ ...b, age: b.age + 0.01 }))
+        .filter((b) => b.age < 10);
+
+      if (dropsRef.current.length > 0) {
+        dropsRef.current = dropsRef.current
+          .map((d) => ({
+            ...d,
+            y: d.y + d.speed,
+            opacity: d.opacity - 0.0012, // fade slowly — outlasts the full fall
+          }))
+          .filter((d) => d.y < 1.2 && d.opacity > 0.02);
+      }
+    }, 30);
     return () => clearInterval(interval);
   }, []);
 
@@ -233,7 +373,9 @@ const Visualizer = ({
     ctx.shadowBlur = 0;
 
     // Flights — interpolate positions between API polls
-    const currentFlights = flightsRef.current;
+    const chSnap = channelsRef.current;
+    const flightsVisual = chSnap['flights']?.visualEnabled !== false;
+    const currentFlights = flightsVisual ? flightsRef.current : [];
     const airplane = airplaneImgRef.current;
     const nowMs = Date.now();
     for (const flight of currentFlights) {
@@ -244,8 +386,21 @@ const Visualizer = ({
       const trackRad = (flight.track * Math.PI) / 180;
       const dLat = degPerSec * Math.cos(trackRad) * elapsed;
       const dLon = degPerSec * Math.sin(trackRad) * elapsed / Math.cos((flight.lat * Math.PI) / 180);
-      const interpLat = flight.lat + dLat;
-      const interpLon = flight.lon + dLon;
+      let interpLat = flight.lat + dLat;
+      let interpLon = flight.lon + dLon;
+
+      // Smooth blend from previous interpolated position over 1s to avoid jumps
+      if (flight.prevLat != null && flight.prevLon != null && flight.prevTime != null) {
+        const blendElapsed = (nowMs - flight.prevTime) / 1000;
+        const BLEND_DURATION = 1.0;
+        if (blendElapsed < BLEND_DURATION) {
+          const t = blendElapsed / BLEND_DURATION;
+          // Ease-out cubic
+          const ease = 1 - (1 - t) * (1 - t) * (1 - t);
+          interpLat = flight.prevLat + (interpLat - flight.prevLat) * ease;
+          interpLon = flight.prevLon + (interpLon - flight.prevLon) * ease;
+        }
+      }
 
       const latDiff = interpLat - myLat;
       const lonDiff = interpLon - myLon;
@@ -277,7 +432,9 @@ const Visualizer = ({
     }
 
     // Wiki edits — compute pixel position from normalised coords each frame
-    for (const edit of editsRef.current) {
+    const wikiVisual = chSnap['wikipedia']?.visualEnabled !== false;
+    if (!wikiVisual) { /* skip wiki rendering */ }
+    for (const edit of (wikiVisual ? editsRef.current : [])) {
       const margin = 50;
       const x = margin + edit.nx * (w - margin * 2);
       const y = margin + edit.ny * (h - margin * 2);
@@ -310,35 +467,73 @@ const Visualizer = ({
       }
     }
 
-    // Waveforms at bottom
-    const waveformY0 = h - 44;
-    const waveformY1 = h - 8;
-    const drawWaveform = (analyzer: Tone.Analyser, color: string) => {
-      const data = analyzer.getValue() as Float32Array;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath();
-      for (let i = 0; i < data.length; i++) {
-        const px = lerp(i, 0, data.length, 0, w);
-        const py = lerp(data[i], -1, 1, waveformY0, waveformY1);
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    };
+    // Internet Archive blobs — radial gradient circles that fade out
+    const archiveVisual = chSnap['archive']?.visualEnabled !== false;
+    for (const blob of (archiveVisual ? archiveBlobsRef.current : [])) {
+      const margin = 50;
+      const x = margin + blob.nx * (w - margin * 2);
+      const y = margin + blob.ny * (h - margin * 2);
+      const maxSize = blob.size;
+      const currentSize = maxSize * (1 - blob.age / 10);
+      if (currentSize <= 0) continue;
+      const fadeAlpha = Math.max(0, 1 - blob.age / 8);
 
-    if (wikiAnalyzer) drawWaveform(wikiAnalyzer, VIZ_COLORS.wiki);
-    if (flightAnalyzer) drawWaveform(flightAnalyzer, VIZ_COLORS.flights);
-    if (weatherAnalyzer) drawWaveform(weatherAnalyzer, VIZ_COLORS.weather);
+      const zone = MEDIATYPE_ZONES[blob.mediatype] ?? MEDIATYPE_DEFAULT_ZONE;
+      const color = ARCHIVE_PALETTE[zone.colorIdx];
+      const r = currentSize / 2;
+
+      // Radial gradient: solid center → transparent edge
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, color);
+      grad.addColorStop(0.4, color);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = 0.35 * fadeAlpha;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // IA "eye" dot
+      ctx.fillStyle = `rgba(139, 157, 175, ${0.6 * fadeAlpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Title label for larger blobs
+      if (blob.size > 20 && blob.age < 5) {
+        const displayTitle = blob.title.length > 30
+          ? blob.title.substring(0, 27) + '...'
+          : blob.title;
+        ctx.fillStyle = `rgba(139, 157, 175, ${0.5 * fadeAlpha})`;
+        ctx.font = '11px var(--font-geist-sans, sans-serif)';
+        ctx.textAlign = 'center';
+        ctx.fillText(displayTitle, x, y + r + 14);
+        ctx.fillStyle = `rgba(139, 157, 175, ${0.3 * fadeAlpha})`;
+        ctx.font = '9px var(--font-geist-sans, sans-serif)';
+        ctx.fillText(blob.mediatype, x, y + r + 26);
+      }
+    }
+
+    // Ingest rain — drifting labels
+    for (const drop of dropsRef.current) {
+      const dx = drop.x * w;
+      const dy = drop.y * h;
+      if (dy < -20 || dy > h + 20 || !drop.label) continue;
+
+      ctx.globalAlpha = drop.opacity;
+      ctx.fillStyle = drop.color;
+      ctx.font = `${drop.isError ? 'bold ' : ''}9px var(--font-geist-mono, monospace)`;
+      ctx.textAlign = 'center';
+      ctx.fillText(drop.label.slice(0, 24), dx, dy);
+      ctx.globalAlpha = 1;
+    }
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [myLat, myLon, weatherAnalyzer, flightAnalyzer, wikiAnalyzer]);
+  }, [myLat, myLon, flightAnalyzer, wikiAnalyzer, engine]);
 
-  // Animation loop
+  // Animation loop — do NOT reset lastFrameMsRef so drop timing stays continuous
   useEffect(() => {
-    lastFrameMsRef.current = 0;
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);
@@ -367,8 +562,19 @@ const Visualizer = ({
       const trackRad = (flight.track * Math.PI) / 180;
       const dLat = degPerSec * Math.cos(trackRad) * elapsed;
       const dLon = degPerSec * Math.sin(trackRad) * elapsed / Math.cos((flight.lat * Math.PI) / 180);
-      const latDiff = (flight.lat + dLat) - myLat;
-      const lonDiff = (flight.lon + dLon) - myLon;
+      let hitLat = flight.lat + dLat;
+      let hitLon = flight.lon + dLon;
+      if (flight.prevLat != null && flight.prevLon != null && flight.prevTime != null) {
+        const blendElapsed = (nowMs - flight.prevTime) / 1000;
+        if (blendElapsed < 1.0) {
+          const t = blendElapsed;
+          const ease = 1 - (1 - t) * (1 - t) * (1 - t);
+          hitLat = flight.prevLat + (hitLat - flight.prevLat) * ease;
+          hitLon = flight.prevLon + (hitLon - flight.prevLon) * ease;
+        }
+      }
+      const latDiff = hitLat - myLat;
+      const lonDiff = hitLon - myLon;
       const x = cx + lonDiff * lonScale;
       const y = cy - latDiff * latScale;
       const size = lerp(Math.min(flight.distance, 10), 0, 10, 36, 16);
@@ -391,8 +597,57 @@ const Visualizer = ({
       const ey = editMargin + edit.ny * (h - editMargin * 2);
       const dx = mx - ex;
       const dy = my - ey;
-      if (Math.sqrt(dx * dx + dy * dy) < 20 && edit.url) {
-        window.open(edit.url, '_blank');
+      if (Math.sqrt(dx * dx + dy * dy) < 20) {
+        const encoded = encodeURIComponent(edit.title.replace(/ /g, '_'));
+        const diffUrl = `https://en.wikipedia.org/w/index.php?title=${encoded}&action=history`;
+        const apiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`;
+        setInfoPanel({ title: edit.title, json: 'Loading...', url: diffUrl });
+        fetch(apiUrl)
+          .then((r) => r.json())
+          .then((data) => setInfoPanel({
+            title: edit.title,
+            json: JSON.stringify({ extract: data.extract, description: data.description, lastEdited: data.timestamp }, null, 2),
+            url: diffUrl,
+          }))
+          .catch(() => setInfoPanel({ title: edit.title, json: '{ "error": "Failed to fetch" }', url: diffUrl }));
+        return;
+      }
+    }
+
+    for (const blob of archiveBlobsRef.current) {
+      const blobMargin = 50;
+      const bx = blobMargin + blob.nx * (w - blobMargin * 2);
+      const by = blobMargin + blob.ny * (h - blobMargin * 2);
+      const dx = mx - bx;
+      const dy = my - by;
+      if (Math.sqrt(dx * dx + dy * dy) < Math.max(blob.size / 2, 15)) {
+        const iaUrl = `https://archive.org/details/${encodeURIComponent(blob.identifier)}`;
+        const metaUrl = `https://archive.org/metadata/${encodeURIComponent(blob.identifier)}`;
+        // Show what we know immediately, fetch more details in background
+        const quick = JSON.stringify({ mediatype: blob.mediatype, identifier: blob.identifier }, null, 2);
+        setInfoPanel({ title: `☞ ${blob.title}`, json: `Internet Archive · ${blob.mediatype}\n\n${quick}\n\nFetching details...`, url: iaUrl });
+        fetch(metaUrl, { signal: AbortSignal.timeout(8000) })
+          .then((r) => r.json())
+          .then((data) => {
+            const meta = data.metadata ?? {};
+            const desc = typeof meta.description === 'string'
+              ? meta.description.slice(0, 300)
+              : Array.isArray(meta.description) ? meta.description[0]?.slice(0, 300) : undefined;
+            const details = [
+              `Internet Archive · ${meta.mediatype ?? blob.mediatype}`,
+              '',
+              meta.creator ? `Creator: ${meta.creator}` : null,
+              meta.date ? `Date: ${meta.date}` : null,
+              meta.collection ? `Collection: ${Array.isArray(meta.collection) ? meta.collection.join(', ') : meta.collection}` : null,
+              desc ? `\n${desc}` : null,
+            ].filter(Boolean).join('\n');
+            setInfoPanel({
+              title: `☞ ${meta.title ?? blob.title}`,
+              json: details,
+              url: iaUrl,
+            });
+          })
+          .catch(() => setInfoPanel({ title: `☞ ${blob.title}`, json: `Internet Archive · ${blob.mediatype}\n\nCould not fetch details.`, url: iaUrl }));
         return;
       }
     }

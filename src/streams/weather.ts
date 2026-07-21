@@ -21,16 +21,16 @@ export function createWeatherPlugin(lat: number, lon: number): StreamPlugin {
             const windSpeed = data.current?.wind_speed ?? data.wind?.speed ?? 0;
             const temp = data.current?.temp ?? data.main?.temp ?? 60;
 
+            const now = Date.now();
             yield {
-              streamId: 'weather',
-              timestamp: Date.now(),
-              fields: {
-                temperature: temp,
-                feelsLike,
-                clouds,
-                humidity,
-                windSpeed,
-              },
+              streamId: 'weather:temp',
+              timestamp: now,
+              fields: { temperature: temp, feelsLike },
+            };
+            yield {
+              streamId: 'weather:clouds',
+              timestamp: now,
+              fields: { clouds, humidity, windSpeed },
             };
           }
         } catch (error) {

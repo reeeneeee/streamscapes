@@ -1,17 +1,13 @@
 import type { StreamPlugin, DataPoint } from '@/types/stream';
+import { useStore } from '@/store';
 
 /**
  * RSS/Atom feed stream plugin.
  * Polls a public RSS-to-JSON proxy for new items and yields them as DataPoints.
- * Uses a set of curated feed URLs for interesting real-time content.
+ * Reads feed URLs from the store on each poll cycle so config changes take effect live.
  */
 
-const DEFAULT_FEEDS = [
-  'https://news.ycombinator.com/rss',
-  'https://www.reddit.com/r/worldnews/.rss',
-];
-
-export function createRssPlugin(feedUrls: string[] = DEFAULT_FEEDS): StreamPlugin {
+export function createRssPlugin(): StreamPlugin {
   return {
     id: 'rss',
     name: 'RSS Feeds',
@@ -22,6 +18,7 @@ export function createRssPlugin(feedUrls: string[] = DEFAULT_FEEDS): StreamPlugi
       const seenIds = new Set<string>();
 
       while (!signal.aborted) {
+        const feedUrls = useStore.getState().rssFeeds;
         for (const feedUrl of feedUrls) {
           if (signal.aborted) return;
           try {

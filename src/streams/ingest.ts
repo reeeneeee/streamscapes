@@ -7,6 +7,9 @@ const SOURCE_PREFIX: Record<IngestSource, string> = {
   datadog: 'dd',
   github: 'github',
   notify: 'notify',
+  browser: 'chrome',
+  system: 'system',
+  watch: 'watch',
 };
 
 export const ingestPlugin: StreamPlugin = {
@@ -16,21 +19,33 @@ export const ingestPlugin: StreamPlugin = {
   category: 'observability',
 
   async *connect(signal: AbortSignal): AsyncIterable<DataPoint> {
-    const eventSource = new EventSource('/api/ingest/stream');
-
     const queue: DataPoint[] = [];
     let resolve: (() => void) | null = null;
 
-    eventSource.addEventListener('error', () => {
-      // SSE auto-reconnects; silence expected errors
-    });
+    function push(dp: DataPoint) {
+      queue.push(dp);
+      if (resolve) { resolve(); resolve = null; }
+    }
 
-    const handler = (event: MessageEvent) => {
+    function createSSE(): EventSource {
+      const apiKey = typeof window !== 'undefined'
+        ? localStorage.getItem('ss-anon-api-key')
+        : null;
+      const sseUrl = apiKey
+        ? `/api/ingest/stream?apiKey=${encodeURIComponent(apiKey)}`
+        : '/api/ingest/stream';
+      return new EventSource(sseUrl);
+    }
+
+    function parseMessage(event: MessageEvent) {
       try {
         const msg: SpanMessage = JSON.parse(event.data);
-        const prefix = SOURCE_PREFIX[msg.source ?? 'otlp'];
-        const streamId = `${prefix}:${msg.serviceName}`;
-        const dataPoint: DataPoint = {
+        const source = msg.source ?? 'otlp';
+        const prefix = SOURCE_PREFIX[source];
+        const streamId = source === 'system' || source === 'watch'
+          ? `${prefix}:${msg.spanName || msg.serviceName}`
+          : `${prefix}:${msg.serviceName}`;
+        push({
           streamId,
           timestamp: msg.timestamp,
           fields: {
@@ -43,27 +58,29 @@ export const ingestPlugin: StreamPlugin = {
             ...(msg.httpStatusCode !== undefined && { httpStatusCode: msg.httpStatusCode }),
             ...(msg.errorMessage !== undefined && { errorMessage: msg.errorMessage }),
             ...(msg.replay && { replay: 1 }),
+            ...(msg.attributes ?? {}),
           },
-        };
-        queue.push(dataPoint);
-        if (resolve) {
-          resolve();
-          resolve = null;
-        }
-      } catch {
-        // Skip malformed messages
-      }
-    };
+        });
+      } catch { /* skip malformed */ }
+    }
 
-    eventSource.addEventListener('message', handler);
+    let es = createSSE();
+    es.addEventListener('message', parseMessage);
+
+    // Reconnect SSE when anon API key changes (e.g. after generating a key)
+    const onKeyChange = () => {
+      es.removeEventListener('message', parseMessage);
+      es.close();
+      es = createSSE();
+      es.addEventListener('message', parseMessage);
+    };
+    window.addEventListener('ss-anon-key-changed', onKeyChange);
 
     signal.addEventListener('abort', () => {
-      eventSource.removeEventListener('message', handler);
-      eventSource.close();
-      if (resolve) {
-        resolve();
-        resolve = null;
-      }
+      window.removeEventListener('ss-anon-key-changed', onKeyChange);
+      es.removeEventListener('message', parseMessage);
+      es.close();
+      if (resolve) { resolve(); resolve = null; }
     });
 
     try {
@@ -75,7 +92,8 @@ export const ingestPlugin: StreamPlugin = {
         }
       }
     } finally {
-      eventSource.close();
+      window.removeEventListener('ss-anon-key-changed', onKeyChange);
+      es.close();
     }
   },
 };

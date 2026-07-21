@@ -1,4 +1,6 @@
-export type IngestSource = 'otlp' | 'datadog' | 'github' | 'notify';
+import { redis } from './redis';
+
+export type IngestSource = 'otlp' | 'datadog' | 'github' | 'notify' | 'browser' | 'system' | 'watch';
 
 export interface SpanMessage {
   readonly serviceName: string;
@@ -11,22 +13,42 @@ export interface SpanMessage {
   readonly httpStatusCode?: number;
   readonly source?: IngestSource;
   readonly replay?: boolean;
+  readonly attributes?: Record<string, string | number | boolean>;
 }
+
+/** Redis stream key for a user's ingest messages */
+export function streamKey(userId: string): string {
+  return `ingest:${userId}`;
+}
+
+/** Max entries per user stream — older entries are auto-trimmed */
+const STREAM_MAX_LEN = 500;
 
 type Listener = (msg: SpanMessage) => void;
 
 class IngestBus {
   private channels = new Map<string, Set<Listener>>();
 
-  /** Publish a message to a specific user's channel */
+  /** Publish a message to a specific user's channel.
+   *  Delivers to in-memory listeners AND writes to Redis stream. */
   publishToUser(userId: string, msg: SpanMessage) {
+    // In-memory delivery (same-isolate — works on localhost, best-effort on Vercel)
     const listeners = this.channels.get(userId);
     if (listeners) {
       for (const fn of listeners) fn(msg);
     }
+
+    // Redis stream delivery (cross-isolate — required for Vercel)
+    if (redis) {
+      redis.xadd(streamKey(userId), '*', { data: JSON.stringify(msg) }, {
+        trim: { type: 'MAXLEN', threshold: STREAM_MAX_LEN, comparison: '~' as const },
+      }).catch(() => {
+        // Silently drop — Redis is best-effort for real-time sonification
+      });
+    }
   }
 
-  /** Subscribe to a specific user's channel. Returns unsubscribe function. */
+  /** Subscribe to a specific user's channel (in-memory only). Returns unsubscribe function. */
   subscribeToUser(userId: string, fn: Listener): () => void {
     let set = this.channels.get(userId);
     if (!set) {

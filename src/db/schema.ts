@@ -3,6 +3,7 @@ import {
   text,
   timestamp,
   integer,
+  json,
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import type { AdapterAccountType } from 'next-auth/adapters';
@@ -14,6 +15,7 @@ export const users = pgTable('user', {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text('name'),
+  username: text('username').unique(),
   email: text('email').unique(),
   emailVerified: timestamp('emailVerified', { mode: 'date' }),
   image: text('image'),
@@ -72,6 +74,20 @@ export const verificationTokens = pgTable(
 export type SourceCredentials =
   | { provider: 'datadog'; apiKey: string; appKey: string; site: string; query: string }
   | { provider: 'github'; webhookSecret: string };
+
+export const sharedPresets = pgTable('shared_preset', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  globalConfig: json('global_config').notNull(),
+  channelsConfig: json('channels_config').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 export const sourceConfigs = pgTable('source_config', {
   id: text('id')

@@ -10,8 +10,8 @@
   --bg-input: rgba(255, 255, 255, 0.06);
 
   --text-primary: #F5F0EB;
-  --text-secondary: rgba(245, 240, 235, 0.5);
-  --text-muted: rgba(245, 240, 235, 0.35);
+  --text-secondary: rgba(245, 240, 235, 0.6);
+  --text-muted: rgba(245, 240, 235, 0.45);
 
   --accent: #7C444F;
   --accent-dim: rgba(124, 68, 79, 0.4);
@@ -19,11 +19,12 @@
   --border: rgba(255, 255, 255, 0.05);
   --border-strong: rgba(255, 255, 255, 0.1);
 
-  --stream-weather: #7C444F;
-  --stream-flights: #5C7285;
-  --stream-wikipedia: #5D8736;
-  --stream-rss: #B8860B;
-  --stream-stocks: #E6A817;
+  --stream-weather: #C4889A;
+  --stream-flights: #9AB4C6;
+  --stream-wikipedia: #A3C484;
+  --stream-rss: #D4B87A;
+  --stream-stocks: #E8C96E;
+  --stream-archive: #8B9DAF;
 
   --transport-height: 60px;
   --tab-bar-height: 52px;
@@ -35,6 +36,8 @@
 html, body {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -43,7 +46,9 @@ body {
   font-family: var(--font-body, var(--ff-body));
   margin: 0;
   overflow: hidden;
+  overflow-x: hidden;
   height: 100dvh;
+  max-width: 100vw;
 }
 
 /* Atmospheric background */
@@ -100,7 +105,7 @@ body {
 .tab-bar {
   display: flex;
   gap: 4px;
-  padding: 0 32px;
+  padding: 0 12px;
   height: var(--tab-bar-height);
   align-items: center;
   background: transparent;
@@ -111,15 +116,15 @@ body {
 
 .tab-bar .tab-group {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   padding: 3px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
 }
 
 .tab-bar button {
-  padding: 6px 20px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
   background: transparent;
@@ -129,6 +134,7 @@ body {
   transition: color 0.15s, background 0.15s;
   letter-spacing: 0.02em;
   font-family: var(--font-body, var(--ff-body));
+  white-space: nowrap;
 }
 
 .tab-bar button:hover {
@@ -147,6 +153,41 @@ body {
   font-size: 18px;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+/* On mobile: hide logo, weather, auth — center the tab group */
+.tab-bar {
+  justify-content: center;
+}
+.tab-bar > .logo,
+.tab-bar > .flex-1,
+.tab-bar > .flex.items-center {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .tab-bar {
+    padding: 0 32px;
+    justify-content: space-between;
+  }
+  .tab-bar > .logo,
+  .tab-bar > .flex-1 {
+    display: block;
+  }
+  .tab-bar > .flex.items-center {
+    display: flex;
+  }
+  .tab-bar .tab-group {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 4px;
+  }
+  .tab-bar button {
+    padding: 6px 20px;
+    font-size: 13px;
+  }
 }
 
 /* Transport bar */
@@ -160,11 +201,18 @@ body {
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding: 0 32px;
-  gap: 24px;
+  padding: 0 12px;
+  gap: 12px;
   z-index: 50;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+}
+
+@media (min-width: 640px) {
+  .transport-bar {
+    padding: 0 32px;
+    gap: 24px;
+  }
 }
 
 /* Controls panel scrollable area */
@@ -185,9 +233,42 @@ body {
   border-radius: 3px;
 }
 
-/* Range input styling */
+/* Range input styling — thin audio fader */
 input[type="range"] {
-  accent-color: var(--accent);
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(245, 240, 235, 0.55);
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: rgba(245, 240, 235, 0.75);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(245, 240, 235, 0.55);
+  border: none;
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Select styling */
@@ -307,6 +388,12 @@ select {
   z-index: 10;
   animation: viz-glow-pulse 2.8s ease-in-out infinite;
 }
+/* Placeholder styling for inline config inputs */
+.placeholder-input::placeholder {
+  color: rgba(245, 240, 235, 0.3);
+  font-style: italic;
+}
+
 .viz-loaded canvas {
   animation: none;
   filter: none;

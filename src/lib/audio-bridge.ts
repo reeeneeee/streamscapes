@@ -77,6 +77,10 @@ class BridgeStore {
 let store: BridgeStore | null = null;
 let engine: AudioEngine | null = null;
 let engineStarted = false;
+// Background keepalive: the HTML page plays a silent WAV loop on <audio id="keepalive">.
+// That native media element keeps the WKWebView WebContent process alive when backgrounded.
+// We must NOT overwrite its src/srcObject — doing so breaks the keepalive because
+// a MediaStream goes silent when JS timers are throttled, causing iOS to suspend everything.
 
 /**
  * Try to get the AudioContext into "running" state and start the engine.
@@ -124,7 +128,7 @@ function ensureAudioRunning(): void {
                 engineStarted = true;
                 engine.start();
                 console.log('[AudioBridge] engine.start() called with fresh context');
-              }
+                        }
             }
           }).catch((e) => {
             console.error('[AudioBridge] Fresh context resume failed:', e);
@@ -344,6 +348,30 @@ const AudioBridge = {
       return JSON.stringify({ ctxState: ctx.state });
     } catch (e) {
       return `error: ${e}`;
+    }
+  },
+
+  /**
+   * Return RMS levels (0-1) for all active channels.
+   * Called at ~10fps from Swift for VU meter display.
+   */
+  getLevels(): string {
+    if (!engine) return '{}';
+    try {
+      const result: Record<string, number> = {};
+      const channels = store?.getState().channels ?? {};
+      for (const id of Object.keys(channels)) {
+        const analyzer = engine.getChannelAnalyzer(id);
+        if (!analyzer) continue;
+        const data = analyzer.getValue() as Float32Array;
+        let rms = 0;
+        for (let i = 0; i < data.length; i++) rms += data[i] * data[i];
+        rms = Math.sqrt(rms / data.length);
+        result[id] = Math.min(1, rms * 4);
+      }
+      return JSON.stringify(result);
+    } catch (e) {
+      return '{}';
     }
   },
 

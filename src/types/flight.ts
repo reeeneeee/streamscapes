@@ -8,4 +8,8 @@ export interface ProcessedFlight {
   callsign?: string;
   track: number; // heading in degrees from north, clockwise
   lastSeen: number; // Date.now() timestamp
+  // Previous position for smooth blending on API updates
+  prevLat?: number;
+  prevLon?: number;
+  prevTime?: number; // timestamp of previous update
 }

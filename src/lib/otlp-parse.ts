@@ -81,6 +81,15 @@ export function parseOtlpTraces(body: unknown): SpanMessage[] {
         const statusCode = span.status?.code ?? 0;
         const httpStatus = findAttribute(span.attributes, 'http.response.status_code');
 
+        // Collect all span attributes into a generic bag
+        const attributes: Record<string, string | number | boolean> = {};
+        if (span.attributes) {
+          for (const kv of span.attributes) {
+            const val = findAttribute([kv], kv.key);
+            if (val !== undefined) attributes[kv.key] = val;
+          }
+        }
+
         messages.push({
           serviceName,
           spanName: span.name ?? '',
@@ -90,6 +99,7 @@ export function parseOtlpTraces(body: unknown): SpanMessage[] {
           timestamp: Date.now(),
           errorMessage: statusCode === 2 ? (span.status?.message ?? undefined) : undefined,
           httpStatusCode: typeof httpStatus === 'number' ? httpStatus : undefined,
+          attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
         });
       }
     }

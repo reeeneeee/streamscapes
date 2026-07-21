@@ -1,11 +1,11 @@
 import type { StreamPlugin, DataPoint } from '@/types/stream';
+import { useStore } from '@/store';
 
 /**
  * Stock ticker stream plugin.
  * Uses Finnhub API via server-side proxy to poll stock quotes.
+ * Reads symbols from the store on each poll cycle so config changes take effect live.
  */
-
-const SYMBOLS = ['AAPL', 'GOOGL', 'TSLA'];
 
 export const stocksPlugin: StreamPlugin = {
   id: 'stocks',
@@ -17,7 +17,8 @@ export const stocksPlugin: StreamPlugin = {
     const prevPrices: Record<string, number> = {};
 
     while (!signal.aborted) {
-      for (const symbol of SYMBOLS) {
+      const symbols = useStore.getState().stockSymbols;
+      for (const symbol of symbols) {
         if (signal.aborted) return;
 
         try {

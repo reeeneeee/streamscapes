@@ -86,7 +86,7 @@ describe('WeatherStreamPlugin', () => {
 });
 
 describe('RssStreamPlugin', () => {
-  const plugin = createRssPlugin(['https://example.com/feed.xml']);
+  const plugin = createRssPlugin();
 
   it('has correct metadata', () => {
     expect(plugin.id).toBe('rss');

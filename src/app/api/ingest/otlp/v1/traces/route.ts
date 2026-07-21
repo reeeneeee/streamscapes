@@ -3,8 +3,19 @@ import { ingestBus } from '@/lib/ingest-bus';
 import { parseOtlpTraces } from '@/lib/otlp-parse';
 import { extractBearerToken, lookupApiKey } from '@/lib/api-keys';
 import { auth } from '@/lib/auth';
+import { agentUpdateHeaders } from '@/lib/agent-version';
 
 export const runtime = 'nodejs';
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Agent-Version',
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
 
 export async function POST(request: Request) {
   // Authenticate via API key (external) or session cookie (browser replay)
@@ -17,7 +28,7 @@ export async function POST(request: Request) {
     userId = session?.user?.id ?? null;
   }
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized — provide Bearer API key or sign in' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized — provide Bearer API key or sign in' }, { status: 401, headers: CORS_HEADERS });
   }
 
   const contentType = request.headers.get('content-type') ?? '';
@@ -38,7 +49,7 @@ export async function POST(request: Request) {
   const messages = parseOtlpTraces(body);
 
   const url = new URL(request.url);
-  const sourceOverride = url.searchParams.get('source') as 'otlp' | 'datadog' | null;
+  const sourceOverride = url.searchParams.get('source') as 'otlp' | 'datadog' | 'browser' | 'system' | 'watch' | null;
   const isReplay = url.searchParams.get('replay') === '1';
 
   for (const msg of messages) {
@@ -49,5 +60,6 @@ export async function POST(request: Request) {
     ingestBus.publishToUser(userId, published);
   }
 
-  return NextResponse.json({});
+  const extra = agentUpdateHeaders(request);
+  return NextResponse.json({}, { headers: { ...CORS_HEADERS, ...extra } });
 }

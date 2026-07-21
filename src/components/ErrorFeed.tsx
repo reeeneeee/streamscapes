@@ -18,6 +18,14 @@ interface ErrorEntry {
 const MAX_ERRORS = 50;
 let nextId = 0;
 
+function sourceLabel(streamId: string): string {
+  if (streamId.startsWith('otlp:')) return 'OTLP';
+  if (streamId.startsWith('dd:')) return 'Datadog';
+  if (streamId.startsWith('github:')) return 'GitHub';
+  if (streamId.startsWith('notify:')) return 'Webhook';
+  return 'Trace';
+}
+
 export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
   const [errors, setErrors] = useState<ErrorEntry[]>([]);
   const [expanded, setExpanded] = useState(false);
@@ -90,7 +98,7 @@ export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
         }}
       >
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
-        {errors.length} error{errors.length !== 1 ? 's' : ''}
+        {errors.length} span error{errors.length !== 1 ? 's' : ''}
       </button>
     );
   }
@@ -132,7 +140,7 @@ export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
             color: 'rgba(239, 68, 68, 0.8)',
           }}
         >
-          Errors ({errors.length})
+          Span Errors ({errors.length})
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -206,12 +214,29 @@ export default function ErrorFeed({ engine }: { engine: AudioEngine | null }) {
               </span>
               <span
                 style={{
+                  fontFamily: 'var(--font-display, var(--ff-display))',
+                  fontSize: 9,
+                  fontWeight: 500,
+                  color: 'rgba(245, 240, 235, 0.3)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: 3,
+                  padding: '2px 5px',
+                  flexShrink: 0,
+                  marginTop: 1,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {sourceLabel(err.streamId)}
+              </span>
+              <span
+                style={{
                   fontFamily: 'var(--font-body, var(--ff-body))',
                   fontSize: 11,
                   fontWeight: 500,
                   color,
                   flexShrink: 0,
-                  width: 100,
+                  maxWidth: 80,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

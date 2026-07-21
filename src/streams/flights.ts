@@ -19,8 +19,8 @@ function coordDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: numb
 export function createFlightPlugin(lat: number, lon: number): StreamPlugin {
   return {
     id: 'flights',
-    name: 'Nearby Flights',
-    description: 'Live aircraft positions via OpenSky Network',
+    name: 'Air Traffic',
+    description: 'Live aircraft positions nearby',
     category: 'environment',
 
     async *connect(signal: AbortSignal): AsyncIterable<DataPoint> {

@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 import type { ChannelConfig, GlobalConfig } from '@/types/sonification';
-import { ALL_DEFAULT_CHANNELS } from '@/streams/defaults';
+import { ALL_DEFAULT_CHANNELS, DEFAULT_OTLP_CHANNEL } from '@/streams/defaults';
 
 export interface StreamState {
   status: 'connecting' | 'connected' | 'error';
   error?: string;
+}
+
+export interface SavedPreset {
+  name: string;
+  savedAt: string; // ISO date string
+  global: GlobalConfig;
+  channels: Record<string, ChannelConfig>;
 }
 
 export interface StreamscapesStore {
@@ -14,11 +21,18 @@ export interface StreamscapesStore {
   global: GlobalConfig;
   channels: Record<string, ChannelConfig>;
 
+  // Stream config
+  stockSymbols: string[];
+  rssFeeds: string[];
+
   // Stream state
   activeStreams: Record<string, StreamState>;
 
   // UI
   selectedChannelId: string | null;
+
+  // Saved presets
+  savedPresets: SavedPreset[];
 
   // Actions
   setPlaying(playing: boolean): void;
@@ -29,6 +43,11 @@ export interface StreamscapesStore {
   removeChannel(streamId: string): void;
   setSelectedChannel(id: string | null): void;
   resetAudioConfig(): void;
+  setStockSymbols(symbols: string[]): void;
+  setRssFeeds(feeds: string[]): void;
+  savePreset(name: string): void;
+  loadPreset(name: string): void;
+  deletePreset(name: string): void;
 }
 
 const DEFAULT_GLOBAL: GlobalConfig = {
@@ -120,6 +139,8 @@ function isChannelConfig(value: unknown): value is ChannelConfig {
   if (value.sampleDensity !== undefined && !isFiniteNumber(value.sampleDensity)) return false;
   if (value.sampleFilterCutoff !== undefined && !isFiniteNumber(value.sampleFilterCutoff)) return false;
   if (value.sampleReverbSend !== undefined && !isFiniteNumber(value.sampleReverbSend)) return false;
+  if (value.noiseType !== undefined && !['white', 'pink', 'brown', 'green'].includes(String(value.noiseType))) return false;
+  if (value.intent !== undefined && typeof value.intent !== 'string') return false;
   return (
     typeof value.streamId === 'string' &&
     typeof value.enabled === 'boolean' &&
@@ -151,8 +172,11 @@ export const useStore = create<StreamscapesStore>()(
         isPlaying: false,
         global: DEFAULT_GLOBAL,
         channels: {},
+        stockSymbols: [],
+        rssFeeds: [],
         activeStreams: {},
         selectedChannelId: null,
+        savedPresets: [],
 
         setPlaying: (playing) => set({ isPlaying: playing }),
 
@@ -212,25 +236,76 @@ export const useStore = create<StreamscapesStore>()(
           }),
 
         setSelectedChannel: (id) => set({ selectedChannelId: id }),
+        setStockSymbols: (symbols) => set({ stockSymbols: symbols }),
+        setRssFeeds: (feeds) => set({ rssFeeds: feeds }),
         resetAudioConfig: () =>
-          set({
-            global: DEFAULT_GLOBAL,
-            channels: cloneDefaultChannels(),
-            selectedChannelId: 'weather',
+          set((state) => {
+            const fresh = cloneDefaultChannels();
+            // Preserve all volume/mix state — reset only resets sound character
+            const merged: Record<string, ChannelConfig> = {};
+            for (const [id, ch] of Object.entries(fresh)) {
+              const cur = state.channels[id];
+              merged[id] = cur
+                ? { ...ch, volume: cur.volume, pan: cur.pan, mute: cur.mute, solo: cur.solo }
+                : ch;
+            }
+            return {
+              global: { ...DEFAULT_GLOBAL, masterVolume: state.global.masterVolume },
+              channels: merged,
+              selectedChannelId: 'weather:temp',
+            };
           }),
+
+        savePreset: (name) =>
+          set((state) => ({
+            savedPresets: [
+              ...state.savedPresets.filter((p) => p.name !== name),
+              {
+                name,
+                savedAt: new Date().toISOString(),
+                global: JSON.parse(JSON.stringify(state.global)),
+                channels: JSON.parse(JSON.stringify(state.channels)),
+              },
+            ],
+          })),
+
+        loadPreset: (name) =>
+          set((state) => {
+            const preset = state.savedPresets.find((p) => p.name === name);
+            if (!preset) return {};
+            return {
+              global: JSON.parse(JSON.stringify(preset.global)),
+              channels: JSON.parse(JSON.stringify(preset.channels)),
+              selectedChannelId: Object.keys(preset.channels)[0] ?? null,
+            };
+          }),
+
+        deletePreset: (name) =>
+          set((state) => ({
+            savedPresets: state.savedPresets.filter((p) => p.name !== name),
+          })),
       }),
       {
         name: 'streamscapes-store',
-        version: 21,
+        version: 49,
         partialize: (state) => ({
           // Never persist isPlaying — audio must start from a user gesture
           global: state.global,
           channels: state.channels,
           selectedChannelId: state.selectedChannelId,
+          stockSymbols: state.stockSymbols,
+          rssFeeds: state.rssFeeds,
+          savedPresets: state.savedPresets,
         }),
-        migrate: () => {
-          // Wipe on version bump to apply current defaults safely.
-          return { global: DEFAULT_GLOBAL, channels: cloneDefaultChannels() };
+        migrate: (persistedState) => {
+          // Wipe channels/global on version bump to apply current defaults safely.
+          // Preserve saved presets across migrations.
+          const old = persistedState as Record<string, unknown> | undefined;
+          return {
+            global: DEFAULT_GLOBAL,
+            channels: cloneDefaultChannels(),
+            savedPresets: Array.isArray(old?.savedPresets) ? old.savedPresets : [],
+          };
         },
         merge: (persistedState, currentState) => {
           if (!isRecord(persistedState)) return currentState;
@@ -245,14 +320,24 @@ export const useStore = create<StreamscapesStore>()(
               channels: cloneDefaultChannels(),
             };
           }
+          // Ensure otlp parent exists and is enabled (SSE requires auth, harmless if not signed in)
+          if (!channels['otlp']) {
+            channels['otlp'] = { ...DEFAULT_OTLP_CHANNEL };
+          } else if (!channels['otlp'].enabled) {
+            channels['otlp'] = { ...channels['otlp'], enabled: true };
+          }
           return {
             ...currentState,
             global,
             channels,
             selectedChannelId: typeof persistedState.selectedChannelId === 'string' ? persistedState.selectedChannelId : currentState.selectedChannelId,
+            stockSymbols: Array.isArray(persistedState.stockSymbols) ? persistedState.stockSymbols as string[] : currentState.stockSymbols,
+            rssFeeds: Array.isArray(persistedState.rssFeeds) ? persistedState.rssFeeds as string[] : currentState.rssFeeds,
+            savedPresets: Array.isArray(persistedState.savedPresets) ? persistedState.savedPresets as SavedPreset[] : currentState.savedPresets,
           };
         },
       }
     )
   )
 );
+

@@ -10,135 +10,97 @@ import Mixer from './Mixer';
 import GlobalControls from './GlobalControls';
 import SonificationPanel from './SonificationPanel';
 import EffectsChain from './EffectsChain';
-import MappingEditor from './MappingEditor';
-import Presets from './Presets';
 import TransportBar from './TransportBar';
 import ErrorFeed from './ErrorFeed';
+import PresetsPanel from './PresetsPanel';
 import ConnectionsPanel from './ConnectionsPanel';
 import InstallPrompt from './InstallPrompt';
 import AuthButton from './AuthButton';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
 
-type Tab = 'listen' | 'controls';
+type Tab = 'main' | 'datastreams' | 'config';
 
-const STEP_ICONS: Record<number, ReactNode> = {
-  1: ( // Flowing streams — Pick A Starting Intent
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 4Q5 3 8 4Q11 5 14 4" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M2 8Q5 7 8 8Q11 9 14 8" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M2 12Q5 11 8 12Q11 13 14 12" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-  2: ( // Tuning/resonance — Shape Behavior
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="5" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" />
-      <circle cx="8" cy="8" r="1.5" fill="rgba(245,240,235,0.5)" />
-      <line x1="8" y1="1" x2="8" y2="3" stroke="rgba(245,240,235,0.35)" strokeWidth="1" strokeLinecap="round" />
-      <line x1="8" y1="13" x2="8" y2="15" stroke="rgba(245,240,235,0.35)" strokeWidth="1" strokeLinecap="round" />
-      <line x1="1" y1="8" x2="3" y2="8" stroke="rgba(245,240,235,0.35)" strokeWidth="1" strokeLinecap="round" />
-      <line x1="13" y1="8" x2="15" y2="8" stroke="rgba(245,240,235,0.35)" strokeWidth="1" strokeLinecap="round" />
-    </svg>
-  ),
-  3: ( // Diamond compass — Map Data
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 2L13 8L8 14L3 8Z" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="8" cy="8" r="1.5" fill="rgba(245,240,235,0.5)" />
-    </svg>
-  ),
-  4: ( // Sine wave — Polish Tone
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M1 8Q3 4 5 8Q7 12 9 8Q11 4 13 8Q14 10 15 8" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-  5: ( // Mapping arrows — Connect Live Data
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 4H10M10 4L7 1.5M10 4L7 6.5" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14 12H6M6 12L9 9.5M6 12L9 14.5" stroke="rgba(245,240,235,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-};
-
-function SettingsStep({
-  step,
-  title,
-  description,
-  children,
-  collapsible = false,
-  expanded = true,
-  onToggle,
-  actions,
-}: {
-  step: number;
-  title: string;
-  description: string;
-  children: ReactNode;
-  collapsible?: boolean;
-  expanded?: boolean;
-  onToggle?: () => void;
-  actions?: ReactNode;
-}) {
-  const header = (
-    <div
-      className={`px-1 ${collapsible ? 'cursor-pointer select-none' : ''}`}
-      onClick={collapsible ? onToggle : undefined}
-    >
-      <div className="step-label">Step {step}</div>
-      <div className="flex items-center gap-2">
-        {STEP_ICONS[step]}
-        <div className="step-title">{title}</div>
-        {collapsible && (
-          <svg
-            width="14" height="14" viewBox="0 0 14 14"
-            style={{
-              transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
-              opacity: 0.4,
-              flexShrink: 0,
-            }}
-          >
-            <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-        {actions}
-      </div>
-      {(expanded || !collapsible) && (
-        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{description}</div>
-      )}
-    </div>
-  );
-
+function AdvancedConfig({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
   return (
-    <section className="space-y-2">
-      {header}
-      {(!collapsible || expanded) && children}
-    </section>
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 w-full text-left"
+        style={{ padding: '6px 4px' }}
+      >
+        <svg
+          width="12" height="12" viewBox="0 0 12 12"
+          style={{
+            transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s',
+            opacity: 0.4,
+            flexShrink: 0,
+          }}
+        >
+          <path d="M4 2L8 6L4 10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span
+          style={{
+            fontFamily: 'var(--font-display, var(--ff-display))',
+            fontSize: 11,
+            fontWeight: 500,
+            color: 'rgba(245, 240, 235, 0.35)',
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase' as const,
+          }}
+        >
+          Advanced Configuration
+        </span>
+      </button>
+      {open && <div className="space-y-4 mt-2">{children}</div>}
+    </div>
   );
 }
 
 export default function Main() {
-  const { location } = useUserLocation();
+  const { location, denied, dismissBanner } = useUserLocation();
   const { engine, startAudio, stopAudio, isPlaying } = useStreamscapes(location.lat, location.lon);
 
   const channels = useStore((s) => s.channels);
   const global = useStore((s) => s.global);
 
-  const [tab, setTab] = useState<Tab>('listen');
-  const [guidedStep, setGuidedStep] = useState<number>(1);
-  const [lockGlobalFrame, setLockGlobalFrame] = useState<boolean>(true);
+  const [tab, setTab] = useState<Tab>('main');
   const [processedFlights, setProcessedFlights] = useState<ProcessedFlight[]>([]);
   const [weatherDisplay, setWeatherDisplay] = useState<{ feelsLike: number; clouds: number } | null>(null);
 
-  const [weatherAnalyzer, setWeatherAnalyzer] = useState<Tone.Analyser | null>(null);
   const [flightAnalyzer, setFlightAnalyzer] = useState<Tone.Analyser | null>(null);
   const [wikiAnalyzer, setWikiAnalyzer] = useState<Tone.Analyser | null>(null);
 
-  // Keyboard shortcuts: 1 = Listen, 2 = Controls
+  // Load shared preset from URL (?preset=slug)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('preset');
+    if (!slug) return;
+    // Remove from URL to avoid re-loading on refresh
+    window.history.replaceState({}, '', window.location.pathname);
+    fetch(`/api/presets/${slug}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        if (data.globalConfig) useStore.getState().updateGlobal(data.globalConfig);
+        if (data.channelsConfig) {
+          for (const [id, config] of Object.entries(data.channelsConfig)) {
+            useStore.getState().updateChannel(id, config as Record<string, unknown>);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Keyboard shortcuts: 1 = Main, 2 = Inputs, 3 = Sonifications
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-      if (e.key === '1') setTab('listen');
-      if (e.key === '2') setTab('controls');
+      if (e.key === '1') setTab('main');
+      if (e.key === '2') setTab('datastreams');
+      if (e.key === '3') setTab('config');
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -154,6 +116,24 @@ export default function Main() {
       const now = Date.now();
       setProcessedFlights((prev) => {
         const id = String(f.flightId);
+        // Prune flights not seen in 15s, then upsert
+        const fresh = prev.filter((p) => now - p.lastSeen < 15_000);
+        const existing = fresh.find((p) => p.fr24_id === id);
+
+        // Capture previous interpolated position for smooth blending
+        let prevLat: number | undefined;
+        let prevLon: number | undefined;
+        let prevTime: number | undefined;
+        if (existing) {
+          // Dead-reckon the old position to where it would be right now
+          const elapsed = Math.min((now - existing.lastSeen) / 1000, 30);
+          const degPerSec = existing.gspeed / 216000;
+          const trackRad = (existing.track * Math.PI) / 180;
+          prevLat = existing.lat + degPerSec * Math.cos(trackRad) * elapsed;
+          prevLon = existing.lon + degPerSec * Math.sin(trackRad) * elapsed / Math.cos((existing.lat * Math.PI) / 180);
+          prevTime = now;
+        }
+
         const flight: ProcessedFlight = {
           fr24_id: id,
           lat: f.lat as number,
@@ -164,9 +144,10 @@ export default function Main() {
           callsign: f.callsign as string | undefined,
           track: (f.track as number) ?? 0,
           lastSeen: now,
+          prevLat,
+          prevLon,
+          prevTime,
         };
-        // Prune flights not seen in 15s, then upsert
-        const fresh = prev.filter((p) => now - p.lastSeen < 15_000);
         const idx = fresh.findIndex((p) => p.fr24_id === id);
         if (idx >= 0) {
           const next = [...fresh];
@@ -177,17 +158,26 @@ export default function Main() {
       });
     }, 'flights');
 
-    engine.onData('main-weather', (dp: DataPoint) => {
-      if (dp.streamId !== 'weather') return;
-      setWeatherDisplay({
+    engine.onData('main-weather-temp', (dp: DataPoint) => {
+      if (dp.streamId !== 'weather:temp') return;
+      setWeatherDisplay((prev) => ({
         feelsLike: dp.fields.feelsLike as number,
+        clouds: prev?.clouds ?? 0,
+      }));
+    }, 'weather:temp');
+
+    engine.onData('main-weather-clouds', (dp: DataPoint) => {
+      if (dp.streamId !== 'weather:clouds') return;
+      setWeatherDisplay((prev) => ({
+        feelsLike: prev?.feelsLike ?? 60,
         clouds: dp.fields.clouds as number,
-      });
-    }, 'weather');
+      }));
+    }, 'weather:clouds');
 
     return () => {
       engine.offData('main-flights');
-      engine.offData('main-weather');
+      engine.offData('main-weather-temp');
+      engine.offData('main-weather-clouds');
     };
   }, [engine]);
 
@@ -195,23 +185,22 @@ export default function Main() {
   useEffect(() => {
     if (!engine || !isPlaying) return;
     const t = setTimeout(() => {
-      setWeatherAnalyzer(engine.getChannelAnalyzer('weather'));
       setFlightAnalyzer(engine.getChannelAnalyzer('flights'));
       setWikiAnalyzer(engine.getChannelAnalyzer('wikipedia'));
     }, 500);
     return () => clearTimeout(t);
   }, [engine, isPlaying]);
 
-  const handleStop = useCallback(() => {
-    stopAudio();
-    setProcessedFlights([]);
-    setWeatherDisplay(null);
-    setWeatherAnalyzer(null);
-    setFlightAnalyzer(null);
-    setWikiAnalyzer(null);
-  }, [stopAudio]);
-
   const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Not playing — show start screen
   if (!isPlaying) {
@@ -250,7 +239,7 @@ export default function Main() {
             marginTop: 80,
           }}
         >
-          plug in
+          listen in
         </p>
         {isIOS && (
           <p
@@ -283,17 +272,20 @@ export default function Main() {
         <span className="logo">streamscapes</span>
         <div className="flex-1" />
         <div className="tab-group">
-          <button data-active={tab === 'listen'} onClick={() => setTab('listen')}>
-            Listen
+          <button data-active={tab === 'main'} onClick={() => setTab('main')}>
+            Main
           </button>
-          <button data-active={tab === 'controls'} onClick={() => setTab('controls')}>
-            Controls
+          <button data-active={tab === 'datastreams'} onClick={() => setTab('datastreams')}>
+            Inputs
+          </button>
+          <button data-active={tab === 'config'} onClick={() => setTab('config')}>
+            Sonifications
           </button>
         </div>
         <div className="flex-1" />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" style={{ flexShrink: 0 }}>
           {weatherDisplay && (
-            <div className="text-[12px]" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+            <div className="text-[12px] hidden lg:block" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
               {location.lat.toFixed(2)}, {location.lon.toFixed(2)}
               {' \u00B7 '}
               {Math.trunc(weatherDisplay.feelsLike)}{'°F'}
@@ -305,10 +297,9 @@ export default function Main() {
         </div>
       </div>
 
-      {/* Tab content — both rendered, hidden via display to preserve state */}
-      <div className="relative z-[5]" style={{ height: vizHeight, display: tab === 'listen' ? 'block' : 'none' }}>
+      {/* Main tab — visualizer only */}
+      <div className="relative z-[5] overflow-hidden" style={{ height: vizHeight, display: tab === 'main' ? 'block' : 'none' }}>
         <Visualizer
-          weatherAnalyzer={weatherAnalyzer}
           flights={processedFlights}
           flightAnalyzer={flightAnalyzer}
           myLat={location.lat}
@@ -317,99 +308,134 @@ export default function Main() {
           engine={engine}
         />
       </div>
-      <div
-        className="controls-scroll p-4 space-y-6 relative z-[5]"
-        style={{ height: vizHeight, display: tab === 'controls' ? 'block' : 'none' }}
-      >
-          <Mixer engine={engine} />
 
-          {/* Global Musical Frame — always visible, outside steps */}
+      {/* Inputs tab — mixer + connections */}
+      <div
+        className="controls-scroll px-2 py-3 sm:p-4 space-y-6 relative z-[5]"
+        style={{ height: vizHeight, display: tab === 'datastreams' ? 'block' : 'none', overflowX: 'hidden' }}
+      >
+        <Mixer engine={engine} />
+        <div className="sm:hidden px-3 py-4 text-center">
+          <div style={{
+            fontFamily: 'var(--font-body, var(--ff-body))',
+            fontSize: 11,
+            color: 'rgba(245, 240, 235, 0.2)',
+            lineHeight: 1.6,
+          }}>
+            Chrome extension and macOS menu bar agent available on desktop. iOS app coming soon on TestFlight.
+          </div>
+        </div>
+        <div className="hidden sm:block">
+          <ConnectionsPanel />
+        </div>
+      </div>
+
+      {/* Configure tab — sound shaping */}
+      <div
+        className="controls-scroll px-2 py-3 sm:p-4 space-y-6 relative z-[5]"
+        style={{ height: vizHeight, display: tab === 'config' ? 'block' : 'none' }}
+      >
+          {/* Presets — save, share, community */}
           <div className="px-1">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="step-title" style={{ fontSize: 13 }}>Global Musical Frame</div>
-              <label className="text-[9px] text-gray-300 flex items-center gap-1 ml-auto">
-                <input
-                  type="checkbox"
-                  checked={lockGlobalFrame}
-                  onChange={(e) => setLockGlobalFrame(e.target.checked)}
-                />
-                Lock
-              </label>
-            </div>
+            <PresetsPanel />
+          </div>
+
+          {/* Global musical frame — always visible */}
+          <div className="px-1">
+            <div className="step-title mb-1" style={{ fontSize: 13 }}>Global</div>
             <div className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>
               Root note, scale, and tempo shared across all streams.
             </div>
             <GlobalControls />
           </div>
 
-          <div className="space-y-3">
-            <SettingsStep
-              step={1}
-              title="Pick A Starting Intent"
-              description={lockGlobalFrame
-                ? 'Use presets to land quickly on a coherent listening mode. Global frame is locked.'
-                : 'Use presets to land quickly on a coherent listening mode.'}
-              collapsible
-              expanded={guidedStep === 1}
-              onToggle={() => setGuidedStep(guidedStep === 1 ? 0 : 1)}
-            >
-              <Presets lockGlobalFrame={lockGlobalFrame} />
-            </SettingsStep>
+          {/* Intent presets — always visible */}
+          <SonificationPanel showAdvanced={false} />
 
-            <SettingsStep
-              step={2}
-              title="Shape Active Stream Behavior"
-              description="Choose ambient/event/hybrid behavior and stream-level articulation."
-              collapsible
-              expanded={guidedStep === 2}
-              onToggle={() => setGuidedStep(guidedStep === 2 ? 0 : 2)}
-            >
-              <SonificationPanel />
-            </SettingsStep>
-
-            <SettingsStep
-              step={3}
-              title="Map Data To Sound"
-              description="Decide what each data field controls and how sensitive it is."
-              collapsible
-              expanded={guidedStep === 3}
-              onToggle={() => setGuidedStep(guidedStep === 3 ? 0 : 3)}
-            >
-              <MappingEditor engine={engine} />
-            </SettingsStep>
-
-            <SettingsStep
-              step={4}
-              title="Polish Tone And Space"
-              description="Use effects after mapping to refine color without changing semantics."
-              collapsible
-              expanded={guidedStep === 4}
-              onToggle={() => setGuidedStep(guidedStep === 4 ? 0 : 4)}
-            >
+          {/* Detailed sonification — collapsible (desktop only) */}
+          {!isMobile && (
+            <AdvancedConfig>
+              <SonificationPanel showAdvanced />
               <EffectsChain />
-            </SettingsStep>
+            </AdvancedConfig>
+          )}
 
-            <SettingsStep
-              step={5}
-              title="Connect Live Data"
-              description="Ingest OTLP traces or connect to Datadog for live system sonification."
-              collapsible
-              expanded={guidedStep === 5}
-              onToggle={() => setGuidedStep(guidedStep === 5 ? 0 : 5)}
+          {/* Factory reset */}
+          <div className="pt-4 pb-8">
+            <button
+              onClick={() => {
+                if (!window.confirm('Reset all audio settings to defaults?')) return;
+                useStore.getState().resetAudioConfig();
+              }}
+              className="w-full text-[11px] px-2 py-1.5 rounded"
+              style={{
+                background: 'rgba(60, 30, 30, 0.6)',
+                color: 'rgba(248, 140, 140, 0.7)',
+                border: '1px solid rgba(248, 140, 140, 0.15)',
+              }}
             >
-              <ConnectionsPanel />
-            </SettingsStep>
+              Factory Reset Audio Config
+            </button>
           </div>
       </div>
 
       {/* Error feed overlay for OTLP errors */}
       <ErrorFeed engine={engine} />
 
+      {/* Location fallback banner */}
+      {denied && location.isRandom && location.label && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 'calc(var(--tab-bar-height, 44px) + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 14px',
+            borderRadius: 10,
+            background: 'rgba(30, 30, 30, 0.92)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(12px)',
+            maxWidth: 'calc(100vw - 32px)',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'var(--font-body, var(--ff-body))',
+              fontSize: 12,
+              color: 'rgba(245, 240, 235, 0.6)',
+              lineHeight: 1.4,
+            }}
+          >
+            Dropped you near <strong style={{ color: 'rgba(245, 240, 235, 0.85)' }}>{location.label}</strong>.
+            {' '}Enable location sharing for local flights and weather.
+          </span>
+          <button
+            onClick={dismissBanner}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'rgba(245, 240, 235, 0.3)',
+              fontSize: 16,
+              cursor: 'pointer',
+              padding: '0 2px',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Install prompt — web only, dismissable */}
       <InstallPrompt />
 
       {/* Transport bar */}
-      <TransportBar engine={engine} onStop={handleStop} />
+      <TransportBar engine={engine} />
     </div>
   );
 }

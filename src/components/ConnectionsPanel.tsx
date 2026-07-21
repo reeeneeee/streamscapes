@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, type CSSProperties } from 'react';
+import { useState, useCallback, useEffect, useMemo, type CSSProperties } from 'react';
 import { useSession } from 'next-auth/react';
 
 export default function ConnectionsPanel() {
@@ -13,11 +13,19 @@ export default function ConnectionsPanel() {
   const [apiKeyFull, setApiKeyFull] = useState<string | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
 
+  // Anonymous API key state
+  const [anonApiKey, setAnonApiKey] = useState<string | null>(null);
+  const [anonKeyError, setAnonKeyError] = useState<string | null>(null);
+
   // GitHub webhook configs state
   const [ghConfigs, setGhConfigs] = useState<Array<{ id: string; name: string }>>([]);
 
   // Load API key status + GitHub webhook configs on mount
   useEffect(() => {
+    // Restore anonymous key from localStorage
+    const storedKey = localStorage.getItem('ss-anon-api-key');
+    if (storedKey) setAnonApiKey(storedKey);
+
     if (!isAuthed) return;
     fetch('/api/user/api-key')
       .then((r) => r.json())
@@ -51,10 +59,40 @@ export default function ConnectionsPanel() {
     setApiKeyFull(null);
   }, []);
 
+  const generateAnonKey = useCallback(async () => {
+    setApiKeyLoading(true);
+    setAnonKeyError(null);
+    try {
+      const headers: Record<string, string> = {};
+      const existingKey = localStorage.getItem('ss-anon-api-key');
+      if (existingKey) headers['X-Old-Api-Key'] = existingKey;
+      const res = await fetch('/api/auth/anonymous-key', { method: 'POST', headers });
+      if (!res.ok) {
+        let msg = 'Failed to generate key';
+        try { const data = await res.json(); msg = data.error ?? msg; } catch {}
+        setAnonKeyError(msg);
+        return;
+      }
+      const data = await res.json();
+      localStorage.setItem('ss-anon-api-key', data.key);
+      window.dispatchEvent(new Event('ss-anon-key-changed'));
+      setAnonApiKey(data.key);
+      setApiKeyFull(data.key);
+      setApiKeyPrefix(data.prefix);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  }, []);
+
   const copyToClipboard = useCallback((text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopied(label);
     setTimeout(() => setCopied(null), 2000);
+  }, []);
+
+  const isMobile = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
   }, []);
 
   const otlpEndpoint = typeof window !== 'undefined'
@@ -181,7 +219,7 @@ export default function ConnectionsPanel() {
                 color: 'rgba(245, 240, 235, 0.3)',
                 marginBottom: 8,
               }}>
-                Generate an API key for OTLP, webhooks, and the Datadog poller
+                Generate an API key for the Chrome extension, OTLP, and webhooks
               </div>
               <button onClick={generateApiKeyHandler} disabled={apiKeyLoading} style={smallBtnStyle}>
                 {apiKeyLoading ? 'Generating...' : 'Generate API Key'}
@@ -191,47 +229,215 @@ export default function ConnectionsPanel() {
         </div>
       )}
 
-      {isAuthed && <div style={{ height: 1, background: 'rgba(255, 255, 255, 0.05)' }} />}
+      {/* Anonymous API Key Section — for non-authenticated users */}
+      {!isAuthed && (
+        <div>
+          <div style={{ ...labelStyle, marginBottom: 10 }}>API Key</div>
 
-      {/* Chrome Extension */}
-      <div>
-        <div style={{ ...labelStyle, marginBottom: 6 }}>Chrome Extension</div>
-        <div style={descStyle}>
-          Streams browser signals — battery, CPU, memory, tab activity, and downloads — into your mixer. Each signal becomes its own channel.
+          {apiKeyFull ? (
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-body, var(--ff-body))',
+                fontSize: 11,
+                color: 'rgba(239, 184, 56, 0.7)',
+                marginBottom: 6,
+              }}>
+                Copy this key now — it won't be shown again
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <code style={{
+                  fontFamily: 'var(--font-display, var(--ff-display))',
+                  fontSize: 11,
+                  color: 'rgba(245, 240, 235, 0.55)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: 6,
+                  padding: '6px 10px',
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  userSelect: 'all',
+                }}>
+                  {apiKeyFull}
+                </code>
+                <button onClick={() => copyToClipboard(apiKeyFull, 'apikey')} style={smallBtnStyle}>
+                  {copied === 'apikey' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          ) : anonApiKey ? (
+            <div>
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: 'rgba(245, 240, 235, 0.4)',
+                marginBottom: 8,
+              }}>
+                {anonApiKey.slice(0, 8)}...
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <button onClick={generateAnonKey} disabled={apiKeyLoading} style={smallBtnStyle}>
+                  {apiKeyLoading ? 'Generating...' : 'Regenerate'}
+                </button>
+                <button onClick={() => {
+                  localStorage.removeItem('ss-anon-api-key');
+                  setAnonApiKey(null);
+                  setApiKeyFull(null);
+                  setApiKeyPrefix(null);
+                }} style={{ ...smallBtnStyle, color: 'rgba(239, 68, 68, 0.7)' }}>
+                  Revoke
+                </button>
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-body, var(--ff-body))',
+                fontSize: 11,
+                color: 'rgba(245, 240, 235, 0.25)',
+              }}>
+                Anonymous key active. Sign in to manage keys and presets.
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-body, var(--ff-body))',
+                fontSize: 11,
+                color: 'rgba(245, 240, 235, 0.3)',
+                marginBottom: 8,
+                lineHeight: 1.6,
+              }}>
+                Get an API key to connect the Chrome extension or send OTLP data — no sign-in required.
+              </div>
+              {anonKeyError && (
+                <div style={{
+                  fontFamily: 'var(--font-body, var(--ff-body))',
+                  fontSize: 11,
+                  color: 'rgba(239, 68, 68, 0.7)',
+                  marginBottom: 6,
+                }}>
+                  {anonKeyError}
+                </div>
+              )}
+              <button onClick={generateAnonKey} disabled={apiKeyLoading} style={smallBtnStyle}>
+                {apiKeyLoading ? 'Generating...' : 'Get API Key'}
+              </button>
+            </div>
+          )}
         </div>
-        <details style={{ marginTop: 10 }}>
-          <summary style={detailsSummaryStyle}>Setup</summary>
-          <div style={{ ...descStyle, marginTop: 6, lineHeight: 1.7 }}>
-            1. Load the extension from <code style={{ fontSize: 10 }}>chrome://extensions</code> (Developer mode → Load unpacked → select the <code style={{ fontSize: 10 }}>chrome-extension/</code> folder in the <a href="https://github.com/reeeneeee/streamscapes" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent, #C4889A)', textDecoration: 'none' }}>repo</a>)<br />
-            2. Click the extension icon → enter your API key and this URL<br />
-            3. Signals start flowing automatically
-          </div>
-        </details>
-      </div>
+      )}
 
       <div style={{ height: 1, background: 'rgba(255, 255, 255, 0.05)' }} />
 
-      {/* Streamscapes Agent */}
-      <div>
-        <div style={{ ...labelStyle, marginBottom: 6 }}>Streamscapes Agent</div>
-        <div style={descStyle}>
-          Streams macOS notifications and Datadog traces into your mixer.
-          Runs as a menu bar app — no terminal needed.
+      {/* Forward Notifications */}
+      <div id="forward-notifications">
+        <div style={{ ...labelStyle, marginBottom: 10 }}>Forward Notifications</div>
+
+        {isMobile ? (
+          <div style={{ ...descStyle, lineHeight: 1.7 }}>
+            Extensions and agents are available on desktop — a Chrome extension for browser activity and a macOS menu bar app for system notifications.
+          </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ ...descStyle, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+                  <g stroke="rgba(245,240,235,0.4)" strokeWidth="12">
+                    <line x1="80" y1="80" x2="340" y2="80"/>
+                    <line x1="80" y1="140" x2="340" y2="140"/>
+                    <line x1="80" y1="200" x2="340" y2="200"/>
+                    <line x1="80" y1="260" x2="340" y2="260"/>
+                    <line x1="80" y1="320" x2="340" y2="320"/>
+                  </g>
+                  <text x="110" y="310" fontFamily="sans-serif" fontSize="100" fontWeight="600" fill="rgba(245,240,235,0.5)">0</text>
+                  <text x="140" y="235" fontFamily="sans-serif" fontSize="170" fontWeight="300" fill="rgba(245,240,235,0.5)">1</text>
+                  <text x="230" y="250" fontFamily="sans-serif" fontSize="100" fontWeight="600" fill="rgba(245,240,235,0.5)">0</text>
+                  <text x="260" y="155" fontFamily="sans-serif" fontSize="170" fontWeight="300" fill="rgba(245,240,235,0.5)">1</text>
+                </svg>
+                <span>
+                  <strong style={{ color: 'rgba(245, 240, 235, 0.45)' }}>Browser activity</strong>{' '}
+                  — tab switches, downloads. Each domain becomes its own channel.
+                </span>
+              </div>
+              <a
+                href="https://chromewebstore.google.com/detail/streamscapes/baclddjikmealeefhbkincfpaifnajmm"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  ...smallBtnStyle,
+                  color: 'rgba(245, 240, 235, 0.6)',
+                  textDecoration: 'none',
+                }}
+              >
+                Add to Chrome
+              </a>
+              <div style={{ ...descStyle, marginTop: 8, lineHeight: 1.7 }}>
+                Install from the Chrome Web Store, then click the extension icon and paste your API key.
+              </div>
+            </div>
+
+            <div>
+              <div style={{ ...descStyle, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+                  <g stroke="rgba(245,240,235,0.4)" strokeWidth="12">
+                    <line x1="80" y1="80" x2="340" y2="80"/>
+                    <line x1="80" y1="140" x2="340" y2="140"/>
+                    <line x1="80" y1="200" x2="340" y2="200"/>
+                    <line x1="80" y1="260" x2="340" y2="260"/>
+                    <line x1="80" y1="320" x2="340" y2="320"/>
+                  </g>
+                  <text x="110" y="310" fontFamily="sans-serif" fontSize="100" fontWeight="600" fill="rgba(245,240,235,0.5)">0</text>
+                  <text x="140" y="235" fontFamily="sans-serif" fontSize="170" fontWeight="300" fill="rgba(245,240,235,0.5)">1</text>
+                  <text x="230" y="250" fontFamily="sans-serif" fontSize="100" fontWeight="600" fill="rgba(245,240,235,0.5)">0</text>
+                  <text x="260" y="155" fontFamily="sans-serif" fontSize="170" fontWeight="300" fill="rgba(245,240,235,0.5)">1</text>
+                </svg>
+                <span>
+                  <strong style={{ color: 'rgba(245, 240, 235, 0.45)' }}>macOS menu bar agent</strong>{' '}
+                  — streams system health (CPU, memory, disk, Docker), notifications, and Datadog traces into your soundscape.
+                </span>
+              </div>
+              <a
+                href="https://github.com/reeeneeee/streamscapes/releases/download/v0.1.0/Streamscapes.Agent.zip"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  ...smallBtnStyle,
+                  color: 'rgba(245, 240, 235, 0.6)',
+                  textDecoration: 'none',
+                }}
+              >
+                Download Menu Bar App
+              </a>
+              <div style={{ ...descStyle, marginTop: 8, lineHeight: 1.7 }}>
+                Unzip, move to Applications, then double-click to launch. The app lives in your menu bar — look for the icon up top.
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* iOS app */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ ...descStyle, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="16" height="16" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+              <rect x="100" y="40" width="200" height="320" rx="30" stroke="rgba(245,240,235,0.4)" strokeWidth="12" fill="none"/>
+              <line x1="160" y1="320" x2="240" y2="320" stroke="rgba(245,240,235,0.4)" strokeWidth="10" strokeLinecap="round"/>
+            </svg>
+            <span>
+              <strong style={{ color: 'rgba(245, 240, 235, 0.45)' }}>iOS app</strong>{' '}
+              — the full streamscapes experience on iPhone and iPad.
+            </span>
+          </div>
+          <span
+            style={{
+              display: 'inline-block',
+              ...smallBtnStyle,
+              color: 'rgba(245, 240, 235, 0.35)',
+              cursor: 'default',
+            }}
+          >
+            Coming soon on TestFlight
+          </span>
         </div>
-        <a
-          href="https://github.com/reeeneeee/streamscapes/releases"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'inline-block',
-            marginTop: 8,
-            ...smallBtnStyle,
-            color: 'rgba(245, 240, 235, 0.6)',
-            textDecoration: 'none',
-          }}
-        >
-          Download menu bar app
-        </a>
       </div>
 
       {/* GitHub Webhook URLs — show per-config URLs for authenticated users */}
@@ -278,10 +484,8 @@ export default function ConnectionsPanel() {
       <details>
         <summary style={detailsSummaryStyle}>Custom OTLP integration</summary>
         <div style={{ ...descStyle, marginTop: 6, marginBottom: 8 }}>
-          The pollers above already handle OTLP for you — no extra setup needed.
-          You only need this section if you want to send traces from your own app
-          or OpenTelemetry Collector directly, or if you&apos;re running
-          streamscapes on a non-default host.
+          Send traces from your own app or OpenTelemetry Collector.
+          Grab an API key from the top of this tab — works with both anonymous and signed-in keys.
         </div>
 
         <div style={{ ...labelStyle, fontSize: 10, marginBottom: 4, color: 'rgba(245, 240, 235, 0.22)' }}>

@@ -14,7 +14,7 @@ import Scale from '@tonaljs/scale';
 
 // --- Types ---
 
-type ToneEffect = Tone.Reverb | Tone.FeedbackDelay | Tone.Chorus | Tone.Distortion | Tone.Filter | Tone.Compressor;
+type ToneEffect = Tone.Reverb | Tone.FeedbackDelay | Tone.Chorus | Tone.Tremolo | Tone.Distortion | Tone.Filter | Tone.Compressor;
 
 interface BaseNodes {
   channel: Tone.Channel;
@@ -41,6 +41,9 @@ interface ContinuousEntity {
 interface ContinuousNodes extends BaseNodes {
   mode: 'continuous';
   entities: Map<string, ContinuousEntity>;
+  synthBus: Tone.Gain; // synths connect here → insert effects → channel
+  noise: Tone.Noise | null;
+  noiseFilter: Tone.Filter | null;
 }
 
 interface PatternNodes extends BaseNodes {
@@ -87,22 +90,16 @@ export interface AudioEngineStore {
  * Inspired by classic arpeggiator modes, walking bass patterns, and sequencer shapes.
  */
 export const ARP_SHAPES: Record<string, { label: string; degrees: number[] }> = {
-  // Classic arpeggiator patterns
-  up:        { label: 'Up',           degrees: [0, 1, 2, 3, 4] },
-  down:      { label: 'Down',         degrees: [4, 3, 2, 1, 0] },
-  upDown:    { label: 'Up-Down',      degrees: [0, 1, 2, 3, 4, 3, 2, 1] },
-  skip:      { label: 'Skip (1-3-5)', degrees: [0, 2, 4, 2, 4, 2] },         // ABCBCB
-  fadada:    { label: 'FADADA',       degrees: [4, 0, 3, 0, 3, 0] },         // F(low) A D A D A
-
-  // Walking bass / melodic patterns
-  walk:      { label: 'Walk',         degrees: [0, 1, 2, 4, 2, 1] },          // climb-and-fall
-  pedal:     { label: 'Pedal',        degrees: [0, 2, 0, 4, 0, 2] },          // root anchored
-  pendulum:  { label: 'Pendulum',     degrees: [0, 4, 1, 3, 2] },             // outside-in converge
-
-  // Rhythmic / synth patterns
-  stutter:   { label: 'Stutter',      degrees: [0, 0, 2, 0, 4, 4] },          // repetition-driven
-  cascade:   { label: 'Cascade',      degrees: [0, 1, 2, 1, 2, 3, 2, 3, 4] }, // overlapping climb
-  leap:      { label: 'Leap',         degrees: [0, 4, 1, 3, 2, 4] },          // wide intervals
+  up:        { label: 'Up',        degrees: [0, 1, 2, 3, 4] },
+  down:      { label: 'Down',      degrees: [4, 3, 2, 1, 0] },
+  upDown:    { label: 'Up-Down',   degrees: [0, 1, 2, 3, 4, 3, 2, 1] },
+  walk:      { label: 'Walk',      degrees: [0, 1, 2, 4, 2, 1] },
+  skip:      { label: 'Skip',      degrees: [0, 2, 4, 2, 4, 2] },
+  fadada:    { label: 'FADADA',    degrees: [4, 0, 3, 0, 3, 0] },
+  pedal:     { label: 'Pedal',     degrees: [0, 2, 0, 4, 0, 2] },
+  pendulum:  { label: 'Pendulum',  degrees: [0, 4, 1, 3, 2] },
+  leap:      { label: 'Leap',      degrees: [0, 4, 1, 3, 2, 4] },
+  stutter:   { label: 'Stutter',   degrees: [0, 0, 2, 0, 4, 4] },
 };
 
 /** Expand scale notes into an arpeggio sequence using the given shape. */
@@ -145,7 +142,7 @@ export class AudioEngine {
   private beaconLastMetricByStream = new Map<string, number>();
   private beaconLastPeriodicAt = new Map<string, number>();
   private beaconLastEmitAt = new Map<string, number>();
-  private patternSmoothingState = new Map<string, { updatedAt: number; patternSelect?: number; noiseVolume?: number }>();
+  private patternSmoothingState = new Map<string, { updatedAt: number; patternSelect?: number; noiseVolume?: number; filterFrequency?: number }>();
   private patternHysteresis = new Map<string, number>(); // current locked pattern index per stream
   // Called when handleDataPoint receives a streamId with no matching channel.
   // The orchestration layer can use this to auto-create channels for multiplexed plugins.
@@ -224,12 +221,14 @@ export class AudioEngine {
       } else if (
         existing.mode !== config.mode ||
         existing.synthType !== config.synthType ||
+        existing.synthOptionsKey !== AudioEngine.synthOptionsKey(config) ||
         this.effectsChanged(existing, config) ||
         existing.behaviorKey !== AudioEngine.behaviorKey(config) ||
-        (existing.mode === 'pattern' && existing.pattern.pattern !== (config.patternType ?? 'upDown'))
+        (existing.mode === 'pattern' && existing.pattern.pattern !== (config.patternType ?? 'walk'))
       ) {
         // Rebuild on mode/synth/effects/pattern-type changes.
-        this.disposeChannel(id, existing);
+        // Preserve cached data so continuous channels can bootstrap drones immediately.
+        this.disposeChannel(id, existing, /* preserveCache */ true);
         this.createChannel(id, config);
       } else {
         this.updateChannel(existing, config);
@@ -258,6 +257,9 @@ export class AudioEngine {
       case 'compressor':
         effect = new Tone.Compressor(cfg.params.threshold ?? -24, cfg.params.ratio ?? 4);
         break;
+      case 'tremolo':
+        effect = new Tone.Tremolo({ frequency: cfg.params.frequency ?? 4, depth: cfg.params.depth ?? 0.5 }).start();
+        break;
     }
     if ('wet' in effect) {
       (effect as Tone.Reverb).wet.value = cfg.bypass ? 0 : cfg.wet;
@@ -282,7 +284,8 @@ export class AudioEngine {
     const allChannels = this.store.getState().channels;
     const anySoloed = Object.values(allChannels).some((c) => c.solo);
     const shouldMute = config.mute || (anySoloed && !config.solo);
-    const targetVolume = shouldMute ? -100 : config.volume;
+    const clampedVolume = config.volume <= -40 ? -Infinity : config.volume;
+    const targetVolume = shouldMute ? -Infinity : clampedVolume;
     const initialVolume = Tone.context.state === 'running' ? -60 : targetVolume;
     const channel = new Tone.Channel({
       volume: initialVolume,
@@ -321,6 +324,7 @@ export class AudioEngine {
   private static behaviorKey(config: ChannelConfig): string {
     return JSON.stringify({
       behaviorType: config.behaviorType ?? 'event',
+      noiseType: config.noiseType,
     });
   }
 
@@ -426,10 +430,14 @@ export class AudioEngine {
       return;
     }
     if (nodes.mode === 'pattern') {
-      if (nodes.hybridEventSynth) {
-        nodes.hybridEventSynth.triggerAttackRelease(note, duration, when, velocity);
-      } else {
-        nodes.synth.triggerAttackRelease(note, duration, when, velocity);
+      try {
+        if (nodes.hybridEventSynth) {
+          nodes.hybridEventSynth.triggerAttackRelease(note, duration, when, velocity);
+        } else {
+          nodes.synth.triggerAttackRelease(note, duration, when, velocity);
+        }
+      } catch {
+        // Overlap with pattern arp — skip gracefully
       }
       return;
     }
@@ -646,7 +654,31 @@ export class AudioEngine {
     channel: Tone.Channel,
     analyzer: Tone.Analyser
   ) {
-    // Entities (individual drones) are created dynamically as data arrives
+    // Build insert effects chain: synthBus → effects → channel
+    const synthBus = new Tone.Gain(1);
+    const insertEffects = this.buildInsertChain(config, synthBus, channel);
+
+    // Create noise layer at setup time if noiseType is configured.
+    // This is independent of synth entities — noise is a first-class layer.
+    let noise: Tone.Noise | null = null;
+    let noiseFilter: Tone.Filter | null = null;
+    if (config.noiseType) {
+      const noiseType = config.noiseType;
+      const toneNoiseType = noiseType === 'green' ? 'white' : noiseType;
+      noise = new Tone.Noise(toneNoiseType as 'white' | 'pink' | 'brown');
+      noise.volume.value = -6;
+      // Only green noise needs a filter (it's white noise + bandpass by definition).
+      // White, pink, brown are already spectrally shaped by Tone.js.
+      if (noiseType === 'green') {
+        noiseFilter = new Tone.Filter({ frequency: 500, type: 'bandpass', rolloff: -48, Q: 1.2 });
+        noiseFilter.connect(channel);
+        noise.connect(noiseFilter);
+      } else {
+        noise.connect(channel);
+      }
+      noise.start();
+    }
+
     const nodes: ContinuousNodes = {
       mode: 'continuous',
       synthType: config.synthType,
@@ -654,9 +686,12 @@ export class AudioEngine {
       synthOptionsKey: AudioEngine.synthOptionsKey(config),
       behaviorKey: AudioEngine.behaviorKey(config),
       entities: new Map(),
+      synthBus,
       channel,
       analyzer,
-      insertEffects: [],
+      insertEffects,
+      noise,
+      noiseFilter,
     };
     this.channelNodes.set(id, nodes);
 
@@ -697,7 +732,7 @@ export class AudioEngine {
 
     const { global } = this.store.getState();
     const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes;
-    const initialNotes = scaleNotes.length > 0 ? scaleNotes.slice(0, 3) : ['C4', 'E4', 'G4'];
+    const initialNotes = scaleNotes.length > 0 ? scaleNotes.slice(0, 5) : ['C4', 'D4', 'E4', 'G4', 'A4'];
 
     const pattern = new Tone.Pattern(
       (time, note) => {
@@ -707,9 +742,13 @@ export class AudioEngine {
         const dec = typeof env?.decay === 'number' ? env.decay : 0.2;
         const minDur = atk + dec + 0.05;
         const dur = Math.max(Tone.Time('8n').toSeconds(), minDur);
-        synth.triggerAttackRelease(note, dur, time);
+        try {
+          synth.triggerAttackRelease(note, dur, time);
+        } catch {
+          // Mono synth throws if note overlaps previous — skip gracefully
+        }
       },
-      expandArpShape(initialNotes, config.patternType ?? 'fadada'),
+      expandArpShape(initialNotes, config.patternType ?? 'walk'),
       'up' // Shape is pre-expanded, just traverse in order
     );
 
@@ -793,12 +832,13 @@ export class AudioEngine {
     // Solo logic: if any channel is soloed, mute non-soloed channels
     const allChannels = this.store.getState().channels;
     const anySoloed = Object.values(allChannels).some((c) => c.solo);
-    const shouldMute = config.mute || (anySoloed && !config.solo);
+    const shouldMute = config.mute || config.soundEnabled === false || (anySoloed && !config.solo);
 
     // Don't rely on Tone.Channel.mute — it has internal state issues when
     // volume is set externally between mute toggles. Directly set volume
     // to -Infinity for muted channels.
-    nodes.channel.volume.value = shouldMute ? -100 : config.volume;
+    const clampedVol = config.volume <= -40 ? -Infinity : config.volume;
+    nodes.channel.volume.value = shouldMute ? -Infinity : clampedVol;
     nodes.channel.pan.value = config.pan;
 
     if (nodes.synthOptionsKey !== AudioEngine.synthOptionsKey(config)) {
@@ -918,12 +958,12 @@ export class AudioEngine {
     }
   }
 
-  private disposeChannel(id: string, nodes: ChannelNodes) {
+  private disposeChannel(id: string, nodes: ChannelNodes, preserveCache = false) {
     this.channelNodes.delete(id);
     clearMappingStateForPrefix(this.mappingState, `${id}:`);
     this.clearPreMapState(id);
     this.patternSmoothingState.delete(id);
-    this.lastDataPointByStream.delete(id);
+    if (!preserveCache) this.lastDataPointByStream.delete(id);
     this.lastTriggeredAt.delete(id);
     this.lastTriggeredAt.delete(`${id}:hybrid`);
     this.beaconMetricRangeByStream.delete(id);
@@ -955,6 +995,9 @@ export class AudioEngine {
             entity.lfo.dispose();
           }
           nodes.entities.clear();
+          nodes.synthBus.dispose();
+          if (nodes.noise) { nodes.noise.stop(); nodes.noise.dispose(); }
+          if (nodes.noiseFilter) { nodes.noiseFilter.dispose(); }
           break;
         case 'pattern':
           nodes.pattern.stop();
@@ -992,7 +1035,7 @@ export class AudioEngine {
   }
 
   private applyGlobalConfig(global: GlobalConfig) {
-    Tone.getDestination().volume.value = global.masterVolume;
+    Tone.getDestination().volume.value = global.masterVolume <= -40 ? -Infinity : global.masterVolume;
     if (global.tempo > 0) {
       Tone.getTransport().bpm.value = global.tempo;
     }
@@ -1027,7 +1070,7 @@ export class AudioEngine {
       const cfg = state.channels[streamId];
       const sampleMode = cfg?.ambientMode === 'sample';
       const hybridSustain = cfg?.behaviorType === 'hybrid' && cfg?.ambientMode === 'sustain';
-      nodes.pattern.values = expandArpShape(notes, cfg?.patternType ?? 'fadada');
+      nodes.pattern.values = expandArpShape(notes, cfg?.patternType ?? 'walk');
       if (sampleMode) {
         if (nodes.pattern.state === 'started') {
           nodes.pattern.stop();
@@ -1058,23 +1101,29 @@ export class AudioEngine {
 
   // --- Data point handling ---
 
-  handleDataPoint(dataPoint: DataPoint) {
-    // Notify UI listeners
-    for (const [, entry] of this.dataListeners) {
-      if (entry.streamId === dataPoint.streamId || entry.streamId === '*') {
-        entry.listener(dataPoint);
+  handleDataPoint(dataPoint: DataPoint, _retry = false) {
+    // Notify UI listeners (only on first call, not retries)
+    if (!_retry) {
+      for (const [, entry] of this.dataListeners) {
+        if (entry.streamId === dataPoint.streamId || entry.streamId === '*') {
+          entry.listener(dataPoint);
+        }
       }
     }
 
     const { channels, global } = this.store.getState();
     let config = channels[dataPoint.streamId];
     if (!config) {
-      this.onUnknownStreamId?.(dataPoint.streamId);
-      // Retry after a tick — channel may have been created by the callback
-      setTimeout(() => this.handleDataPoint(dataPoint), 100);
+      if (!_retry) {
+        this.onUnknownStreamId?.(dataPoint.streamId);
+        // Retry once after a tick — channel may have been created by the callback
+        setTimeout(() => this.handleDataPoint(dataPoint, true), 100);
+      }
       return;
     }
     if (!config.enabled) return;
+    // Skip audio when soundEnabled is explicitly false (visuals-only mode)
+    if (config.soundEnabled === false) return;
     const processed = this.applyPreMapFilters(dataPoint, config);
     this.lastDataPointByStream.set(dataPoint.streamId, processed);
 
@@ -1159,61 +1208,90 @@ export class AudioEngine {
 
     const params = this.mappedParams(dataPoint, config, global, 'continuous');
     this.applyMappedPan(nodes.channel, params.pan);
+    // Update insert filter cutoff if mapped
+    if (typeof params.filterCutoff === 'number') {
+      const filterEffect = nodes.insertEffects.find((e): e is Tone.Filter => e instanceof Tone.Filter);
+      if (filterEffect) filterEffect.frequency.rampTo(Math.max(50, Math.min(12_000, params.filterCutoff)), 0.3);
+    }
 
-    const entityField = config.entityField ?? 'entityId';
-    const entityId = String(dataPoint.fields[entityField] ?? dataPoint.streamId);
-    const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes;
-    const rootScaleFreq =
-      scaleNotes.length > 0 ? Tone.Frequency(scaleNotes[0]).toFrequency() : 440;
-    const frequency = typeof params.frequency === 'number'
-      ? params.frequency
-      : typeof dataPoint.fields.frequency === 'number'
-      ? dataPoint.fields.frequency
-      : (config.behaviorType === 'ambient' && config.ambientMode === 'sustain'
-        ? rootScaleFreq
-        : 440);
-    const safeFreq = Math.max(20, Math.min(frequency, 2000));
+    // Noise channels are noise-only — no synth entities.
+    // If noiseType is set, this is a noise channel. Period.
+    const isNoiseChannel = !!config.noiseType;
 
-    const existing = nodes.entities.get(entityId);
-    if (existing) {
-      // Update frequency; ambient streams can glide using smoothingMs.
-      const now = Tone.now();
-      const smoothingSec = Math.max(0, (config.smoothingMs ?? 0) / 1000);
-      if (smoothingSec > 0) {
-        const timeConstant = Math.max(0.01, smoothingSec * 0.5);
-        existing.synth.frequency.cancelScheduledValues(now);
-        existing.synth.frequency.setTargetAtTime(safeFreq, now, timeConstant);
+    if (!isNoiseChannel) {
+      const entityField = config.entityField ?? 'entityId';
+      const entityId = String(dataPoint.fields[entityField] ?? dataPoint.streamId);
+      const scaleNotes = Scale.get(`${global.rootNote} ${global.scale}`).notes;
+      const rootScaleFreq =
+        scaleNotes.length > 0 ? Tone.Frequency(scaleNotes[0]).toFrequency() : 440;
+      const frequency = typeof params.frequency === 'number'
+        ? params.frequency
+        : typeof dataPoint.fields.frequency === 'number'
+        ? dataPoint.fields.frequency
+        : (config.behaviorType === 'ambient' && config.ambientMode === 'sustain'
+          ? rootScaleFreq
+          : 440);
+      const safeFreq = Math.max(20, Math.min(frequency, 2000));
+
+      const existing = nodes.entities.get(entityId);
+      if (existing) {
+        // Update frequency; ambient streams can glide using smoothingMs.
+        const now = Tone.now();
+        const smoothingSec = Math.max(0, (config.smoothingMs ?? 0) / 1000);
+        if (smoothingSec > 0) {
+          const timeConstant = Math.max(0.01, smoothingSec * 0.5);
+          existing.synth.frequency.cancelScheduledValues(now);
+          existing.synth.frequency.setTargetAtTime(safeFreq, now, timeConstant);
+        } else {
+          existing.synth.frequency.setValueAtTime(safeFreq, now);
+        }
+        if (typeof params.detune === 'number') {
+          existing.synth.detune.setValueAtTime(params.detune, now);
+        }
+        // Update FM modulationIndex if synth supports it
+        if (typeof params.modulationIndex === 'number' && 'modulationIndex' in existing.synth) {
+          (existing.synth as unknown as { modulationIndex: { value: number } }).modulationIndex.value = params.modulationIndex;
+        }
+        existing.lfo.min = safeFreq * 0.995;
+        existing.lfo.max = safeFreq * 1.005;
+        existing.lastSeen = Date.now();
       } else {
-        existing.synth.frequency.setValueAtTime(safeFreq, now);
-      }
-      if (typeof params.detune === 'number') {
-        existing.synth.detune.setValueAtTime(params.detune, now);
-      }
-      existing.lfo.min = safeFreq * 0.995;
-      existing.lfo.max = safeFreq * 1.005;
-      existing.lastSeen = Date.now();
-    } else {
-      // Create new drone
-      const synth = new Tone.Synth({
-        oscillator: (config.synthOptions.oscillator as Record<string, unknown>) ?? { type: 'sine' },
-        envelope: (config.synthOptions.envelope as Record<string, number>) ?? {
-          attack: 0.1, decay: 0.2, sustain: 0.5, release: 0.8,
-        },
-      });
-      synth.connect(nodes.channel);
+        // Create new drone — use configured synthType (FMSynth, AMSynth, etc.)
+        const Cls = this.synthClass(config.synthType);
+        const synthOpts: Record<string, unknown> = {
+          oscillator: (config.synthOptions.oscillator as Record<string, unknown>) ?? { type: 'sine' },
+          envelope: (config.synthOptions.envelope as Record<string, number>) ?? {
+            attack: 0.1, decay: 0.2, sustain: 0.5, release: 0.8,
+          },
+        };
+        // Pass FM/AM-specific options
+        if (config.synthOptions.harmonicity !== undefined) synthOpts.harmonicity = config.synthOptions.harmonicity;
+        if (config.synthOptions.modulationIndex !== undefined) synthOpts.modulationIndex = config.synthOptions.modulationIndex;
+        if (config.synthOptions.modulation !== undefined) synthOpts.modulation = config.synthOptions.modulation;
+        if (config.synthOptions.modulationEnvelope !== undefined) synthOpts.modulationEnvelope = config.synthOptions.modulationEnvelope;
+        const synth = new Cls(synthOpts);
+        synth.connect(nodes.synthBus);
 
-      const lfo = new Tone.LFO({
-        frequency: 0.1,
-        min: safeFreq * 0.995,
-        max: safeFreq * 1.005,
-      }).connect(synth.frequency);
-      lfo.start();
+        const lfo = new Tone.LFO({
+          frequency: 0.1,
+          min: safeFreq * 0.995,
+          max: safeFreq * 1.005,
+        }).connect(synth.frequency);
+        lfo.start();
 
-      if (typeof params.detune === 'number') {
-        synth.detune.value = params.detune;
+        if (typeof params.detune === 'number') {
+          synth.detune.value = params.detune;
+        }
+        synth.triggerAttack(safeFreq);
+        nodes.entities.set(entityId, { synth, lfo, lastSeen: Date.now() });
       }
-      synth.triggerAttack(safeFreq);
-      nodes.entities.set(entityId, { synth, lfo, lastSeen: Date.now() });
+    }
+
+    // Noise layer — volume optionally controlled by noiseVolume mapping.
+    // Noise is created at channel setup time (createContinuousChannel) when noiseType is set.
+    // Here we only adjust volume if there's a dynamic mapping for it.
+    if (nodes.noise && typeof params.noiseVolume === 'number') {
+      nodes.noise.volume.value = params.noiseVolume;
     }
   }
 
@@ -1236,6 +1314,7 @@ export class AudioEngine {
     const nowMs = Date.now();
     let patternSelectValue = params.patternSelect;
     let noiseVolumeValue = params.noiseVolume;
+    let filterFreqValue = params.filterFrequency;
 
     if (smoothingMs > 0 && config.behaviorType === 'ambient') {
       const prev = this.patternSmoothingState.get(dataPoint.streamId) ?? { updatedAt: nowMs };
@@ -1251,10 +1330,16 @@ export class AudioEngine {
           ? params.noiseVolume
           : prev.noiseVolume + (params.noiseVolume - prev.noiseVolume) * alpha;
       }
+      if (typeof params.filterFrequency === 'number') {
+        filterFreqValue = prev.filterFrequency === undefined
+          ? params.filterFrequency
+          : prev.filterFrequency + (params.filterFrequency - prev.filterFrequency) * alpha;
+      }
       this.patternSmoothingState.set(dataPoint.streamId, {
         updatedAt: nowMs,
         patternSelect: patternSelectValue,
         noiseVolume: noiseVolumeValue,
+        filterFrequency: filterFreqValue,
       });
     }
 
@@ -1372,25 +1457,31 @@ export class AudioEngine {
           // Cold — minor feel
           arpNotes = [
             `${rootNote}${octave}`,
+            scaleNotes[Math.min(1, scaleNotes.length - 1)],
             scaleNotes[Math.min(2, scaleNotes.length - 1)],
+            scaleNotes[Math.min(3, scaleNotes.length - 1)],
             scaleNotes[Math.min(4, scaleNotes.length - 1)],
           ];
         } else if (patternSelect === 1) {
           // Moderate
           arpNotes = [
             `${rootNote}${octave}`,
+            scaleNotes[Math.min(1, scaleNotes.length - 1)],
             scaleNotes[Math.min(2, scaleNotes.length - 1)],
+            scaleNotes[Math.min(3, scaleNotes.length - 1)],
             scaleNotes[Math.min(4, scaleNotes.length - 1)],
           ];
         } else {
-          // Warm — complex
+          // Warm — complex, starts from 2nd degree
           arpNotes = [
             scaleNotes[Math.min(1, scaleNotes.length - 1)],
+            scaleNotes[Math.min(2, scaleNotes.length - 1)],
             scaleNotes[Math.min(4, scaleNotes.length - 1)],
+            scaleNotes[Math.min(scaleNotes.length - 1, 5)],
             scaleNotes[Math.min(scaleNotes.length - 1, 6)],
           ];
         }
-        nodes.pattern.values = expandArpShape(arpNotes, config.patternType ?? 'fadada');
+        nodes.pattern.values = expandArpShape(arpNotes, config.patternType ?? 'walk');
       }
     }
 
@@ -1399,11 +1490,16 @@ export class AudioEngine {
     if (noiseVolume !== undefined) {
       if (noiseVolume > -55) {
         if (!nodes.noise) {
+          const noiseType = config.noiseType ?? 'brown';
+          const toneNoiseType = noiseType === 'green' ? 'white' : noiseType;
           nodes.noiseFilter = new Tone.Filter({
-            frequency: 100, type: 'lowpass', rolloff: -48,
+            frequency: noiseType === 'green' ? 500 : 100,
+            type: noiseType === 'green' ? 'bandpass' : 'lowpass',
+            rolloff: -48,
+            Q: noiseType === 'green' ? 1.2 : undefined,
           });
           nodes.noiseFilter.connect(nodes.channel);
-          nodes.noise = new Tone.Noise('brown').connect(nodes.noiseFilter);
+          nodes.noise = new Tone.Noise(toneNoiseType as 'white' | 'pink' | 'brown').connect(nodes.noiseFilter);
           nodes.noise.start();
         }
         nodes.noise.volume.value = noiseVolume;
@@ -1413,6 +1509,16 @@ export class AudioEngine {
         nodes.noise = null;
         nodes.noiseFilter?.dispose();
         nodes.noiseFilter = null;
+      }
+    }
+
+    // Dynamic filter frequency from mapping (e.g. temperature → timbre)
+    if (typeof filterFreqValue === 'number' && nodes.insertEffects) {
+      for (const fx of nodes.insertEffects) {
+        if (fx instanceof Tone.Filter) {
+          fx.frequency.rampTo(filterFreqValue, 1.5);
+          break;
+        }
       }
     }
 
@@ -1537,6 +1643,11 @@ export class AudioEngine {
 
   getChannelAnalyzer(streamId: string): Tone.Analyser | null {
     return this.channelNodes.get(streamId)?.analyzer ?? null;
+  }
+
+  /** Get the last data point received for a stream (for UI display). */
+  getLastDataPoint(streamId: string): DataPoint | null {
+    return this.lastDataPointByStream.get(streamId) ?? null;
   }
 
   getMasterAnalyzer(): Tone.Analyser {

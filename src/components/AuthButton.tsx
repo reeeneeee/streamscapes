@@ -20,22 +20,67 @@ export default function AuthButton({ className = '' }: { className?: string }) {
 
   if (!session) {
     return (
-      <button
-        className={className}
-        onClick={(e) => { e.stopPropagation(); signIn('google'); }}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: 'rgba(245, 240, 235, 0.3)',
-          fontFamily: 'var(--font-body, var(--ff-body))',
-          fontSize: 12,
-          letterSpacing: '0.05em',
-          cursor: 'pointer',
-          padding: '4px 8px',
-        }}
-      >
-        sign in
-      </button>
+      <div ref={ref} style={{ position: 'relative' }} className={className}>
+        <button
+          onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'rgba(245, 240, 235, 0.3)',
+            fontFamily: 'var(--font-body, var(--ff-body))',
+            fontSize: 12,
+            letterSpacing: '0.05em',
+            cursor: 'pointer',
+            padding: '4px 8px',
+          }}
+        >
+          sign in
+        </button>
+        {open && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 8,
+              background: 'rgba(20, 20, 22, 0.95)',
+              border: '1px solid rgba(245, 240, 235, 0.1)',
+              borderRadius: 8,
+              padding: '8px',
+              minWidth: 160,
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            {[
+              { id: 'apple', label: 'Apple' },
+              { id: 'google', label: 'Google' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                onClick={() => signIn(p.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(245, 240, 235, 0.5)',
+                  fontFamily: 'var(--font-body, var(--ff-body))',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                  textAlign: 'left',
+                  borderRadius: 4,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(245, 240, 235, 0.06)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 

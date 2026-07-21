@@ -23,6 +23,7 @@ export type SynthType =
 export type SonificationMode = 'triggered' | 'continuous' | 'pattern';
 export type BehaviorType = 'ambient' | 'event' | 'hybrid';
 export type AmbientMode = 'arpeggio' | 'sustain' | 'sample';
+export type NoiseType = 'white' | 'pink' | 'brown' | 'green';
 export type EventArticulation = 'soft' | 'neutral' | 'punchy';
 export type PreMapStatistic = 'mean' | 'median';
 export type AlertTier = 'advisory' | 'abnormal' | 'critical';
@@ -31,6 +32,7 @@ export type EffectType =
   | 'reverb'
   | 'delay'
   | 'chorus'
+  | 'tremolo'
   | 'distortion'
   | 'filter'
   | 'compressor';
@@ -45,6 +47,8 @@ export interface EffectConfig {
 export interface ChannelConfig {
   readonly streamId: string;
   readonly enabled: boolean;
+  readonly soundEnabled?: boolean; // default true — set false to show visuals only
+  readonly visualEnabled?: boolean; // default true — set false to play sound only
   readonly mode: SonificationMode;
   readonly synthType: SynthType;
   readonly synthOptions: Record<string, unknown>;
@@ -85,6 +89,10 @@ export interface ChannelConfig {
   // Multiplexed plugin: sub-channels set this to the parent plugin id.
   // Orchestration skips connectStream() for channels with a parentPluginId.
   readonly parentPluginId?: string;
+  // Noise type for continuous noise channels (white, pink, brown, green)
+  readonly noiseType?: NoiseType;
+  // Per-stream intent — named sonic character applied from intent presets
+  readonly intent?: string;
 }
 
 export interface GlobalConfig {
