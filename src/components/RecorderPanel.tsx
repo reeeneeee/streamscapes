@@ -6,7 +6,8 @@ import type { AudioEngine } from '@/lib/audio-engine';
 
 interface Take {
   url: string;
-  name: string;
+  title: string;
+  ext: string;
   at: string;
 }
 
@@ -80,9 +81,9 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
 
     const ext = blob.type.includes('mp4') ? 'm4a' : 'webm';
     const stamp = new Date();
-    const name = `streamscapes-${stamp.toISOString().slice(0, 19).replace(/[T:]/g, '-')}.${ext}`;
+    const title = `streamscapes ${stamp.toISOString().slice(0, 16).replace('T', ' ')}`;
     setTakes((prev) => [
-      { url: URL.createObjectURL(blob), name, at: stamp.toLocaleTimeString() },
+      { url: URL.createObjectURL(blob), title, ext, at: stamp.toLocaleTimeString() },
       ...prev,
     ]);
   };
@@ -213,11 +214,25 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {takes.map((t) => (
-              <div key={t.url} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div key={t.url} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <input
+                  value={t.title}
+                  onChange={(e) => setTakes((prev) => prev.map((p) => p.url === t.url ? { ...p, title: e.target.value } : p))}
+                  aria-label="Take title"
+                  style={{
+                    background: 'none', border: 'none', outline: 'none',
+                    borderBottom: '1px dashed transparent',
+                    fontFamily: 'var(--font-body, var(--ff-body))',
+                    fontSize: 13, color: 'var(--text-primary)', padding: '2px 0',
+                  }}
+                  onFocus={(e) => { e.target.style.borderBottomColor = 'var(--border-strong)'; }}
+                  onBlur={(e) => { e.target.style.borderBottomColor = 'transparent'; }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <audio controls src={t.url} style={{ flex: 1, height: 36 }} />
                 <a
                   href={t.url}
-                  download={t.name}
+                  download={`${(t.title.trim() || 'streamscapes-take').replace(/[\\/:*?"<>|]/g, '-')}.${t.ext}`}
                   style={{ fontSize: 12, color: 'var(--accent, var(--text-primary))', textDecoration: 'none', whiteSpace: 'nowrap' }}
                 >
                   ↓ {t.at}
@@ -233,6 +248,7 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
                 >
                   ✕
                 </button>
+                </div>
               </div>
             ))}
           </div>
