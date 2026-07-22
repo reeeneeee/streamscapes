@@ -6,6 +6,7 @@ import type { AudioEngine } from '@/lib/audio-engine';
 import type { DataPoint } from '@/types/stream';
 import type { ProcessedFlight } from '@/types/flight';
 import { STREAM_COLORS, getStreamColor } from '@/lib/stream-constants';
+import { archivePlayer } from '@/lib/archive-player';
 import { useStore } from '@/store';
 
 interface WikiEdit {
@@ -108,7 +109,7 @@ const Visualizer = ({
     title: string;
     json: string;
     url?: string;
-    media?: Array<{ label: string; href: string }>;
+    media?: Array<{ label: string; href: string; playable?: boolean }>;
   } | null>(null);
   const activeStreams = useStore((s) => s.activeStreams);
   const channels = useStore((s) => s.channels);
@@ -658,8 +659,9 @@ const Visualizer = ({
               .filter((fl) => /MP3$|MPEG4$|h\.264/i.test(fl.format ?? ''))
               .slice(0, 3)
               .map((fl) => ({
-                label: `▶ ${fl.name}${fl.length ? ` · ${fl.length}` : ''}`,
+                label: `${fl.name}${fl.length ? ` · ${fl.length}` : ''}`,
                 href: `https://archive.org/download/${encodeURIComponent(blob.identifier)}/${encodeURIComponent(fl.name)}`,
+                playable: /MP3$/i.test(fl.format ?? ''),
               }));
             const desc = typeof meta.description === 'string'
               ? meta.description.slice(0, 300)
@@ -761,21 +763,34 @@ const Visualizer = ({
             {infoPanel.media && infoPanel.media.length > 0 && (
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {infoPanel.media.map((m) => (
-                  <a
-                    key={m.href}
-                    href={m.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontFamily: 'var(--font-geist-mono, monospace)',
-                      fontSize: 11,
-                      color: 'var(--accent, var(--text-primary))',
-                      textDecoration: 'none',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {m.label}
-                  </a>
+                  <div key={m.href} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {m.playable && (
+                      <button
+                        onClick={() => archivePlayer.play(m.href, infoPanel.title.replace(/^☞ /, ''))}
+                        aria-label={`Play ${m.label}`}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'var(--accent, var(--text-primary))', fontSize: 13, padding: 0, lineHeight: 1,
+                        }}
+                      >
+                        ▶
+                      </button>
+                    )}
+                    <a
+                      href={m.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontFamily: 'var(--font-geist-mono, monospace)',
+                        fontSize: 11,
+                        color: 'var(--accent, var(--text-primary))',
+                        textDecoration: 'none',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {m.label} ↗
+                    </a>
+                  </div>
                 ))}
               </div>
             )}

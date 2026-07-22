@@ -15,6 +15,7 @@ import ErrorFeed from './ErrorFeed';
 import PresetsPanel from './PresetsPanel';
 import ConnectionsPanel from './ConnectionsPanel';
 import RecorderPanel from './RecorderPanel';
+import NowPlayingBar from './NowPlayingBar';
 import InstallPrompt from './InstallPrompt';
 import AuthButton from './AuthButton';
 import type { DataPoint } from '@/types/stream';
@@ -446,6 +447,7 @@ export default function Main() {
 
       {/* Install prompt — web only, dismissable */}
       <InstallPrompt />
+      <NowPlayingBar />
 
       {/* Transport bar */}
       <TransportBar engine={engine} />

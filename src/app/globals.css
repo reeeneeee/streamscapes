@@ -400,3 +400,22 @@ select {
   transform: none;
   transition: filter 1s ease-out, transform 0.6s ease-out;
 }
+
+/* Record tab — take title inline editing */
+.take-title-input {
+  background: none;
+  border: none;
+  outline: none;
+  border-bottom: 1px dashed var(--border-strong, rgba(255, 255, 255, 0.2));
+  border-radius: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.take-title-input:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.take-title-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--accent, #B04A5A);
+  border-radius: 4px 4px 0 0;
+  caret-color: var(--accent, #B04A5A);
+}

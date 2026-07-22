@@ -216,17 +216,14 @@ export default function RecorderPanel({ engine }: { engine: AudioEngine | null }
             {takes.map((t) => (
               <div key={t.url} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <input
+                  className="take-title-input"
                   value={t.title}
                   onChange={(e) => setTakes((prev) => prev.map((p) => p.url === t.url ? { ...p, title: e.target.value } : p))}
                   aria-label="Take title"
                   style={{
-                    background: 'none', border: 'none', outline: 'none',
-                    borderBottom: '1px dashed transparent',
                     fontFamily: 'var(--font-body, var(--ff-body))',
-                    fontSize: 13, color: 'var(--text-primary)', padding: '2px 0',
+                    fontSize: 13, color: 'var(--text-primary)', padding: '2px 4px',
                   }}
-                  onFocus={(e) => { e.target.style.borderBottomColor = 'var(--border-strong)'; }}
-                  onBlur={(e) => { e.target.style.borderBottomColor = 'transparent'; }}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <audio controls src={t.url} style={{ flex: 1, height: 36 }} />
