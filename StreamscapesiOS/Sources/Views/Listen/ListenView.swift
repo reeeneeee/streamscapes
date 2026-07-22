@@ -60,11 +60,11 @@ struct ListenView: View {
             var hitLon = flight.lon + dLon
             if let prevLat = flight.prevLat, let prevLon = flight.prevLon, let prevTime = flight.prevTime {
                 let blendElapsed = now.timeIntervalSince(prevTime)
-                if blendElapsed < 1.0 {
-                    let t = blendElapsed
-                    let ease = 1 - (1 - t) * (1 - t) * (1 - t)
-                    hitLat = prevLat + (hitLat - prevLat) * ease
-                    hitLon = prevLon + (hitLon - prevLon) * ease
+                if blendElapsed < 2.0 {
+                    let t = blendElapsed / 2.0
+                    let residual = 1 - t * t * (3 - 2 * t) // 1 - smoothstep
+                    hitLat += (prevLat - flight.lat) * residual
+                    hitLon += (prevLon - flight.lon) * residual
                 }
             }
 
@@ -165,16 +165,17 @@ struct ListenView: View {
             var interpLat = flight.lat + dLat
             var interpLon = flight.lon + dLon
 
-            // Smooth blend from previous interpolated position over 1s to avoid jumps
+            // Offset-decay blend: render the live dead-reckoned target plus a
+            // correction offset that decays to zero — keeps the plane's own
+            // motion (and thus velocity) continuous through each poll.
             if let prevLat = flight.prevLat, let prevLon = flight.prevLon, let prevTime = flight.prevTime {
                 let blendElapsed = now.timeIntervalSince(prevTime)
-                let blendDuration = 1.0
+                let blendDuration = 2.0
                 if blendElapsed < blendDuration {
                     let t = blendElapsed / blendDuration
-                    // Ease-out cubic
-                    let ease = 1 - (1 - t) * (1 - t) * (1 - t)
-                    interpLat = prevLat + (interpLat - prevLat) * ease
-                    interpLon = prevLon + (interpLon - prevLon) * ease
+                    let residual = 1 - t * t * (3 - 2 * t) // 1 - smoothstep
+                    interpLat += (prevLat - flight.lat) * residual
+                    interpLon += (prevLon - flight.lon) * residual
                 }
             }
 

@@ -397,16 +397,19 @@ const Visualizer = ({
       let interpLat = flight.lat + dLat;
       let interpLon = flight.lon + dLon;
 
-      // Smooth blend from previous interpolated position over 1s to avoid jumps
+      // Offset-decay blend: always render the live dead-reckoned target, plus
+      // a correction offset (old projection minus new fix) that decays to zero.
+      // Unlike lerping prev→target, this never suppresses the plane's own
+      // motion, so velocity stays continuous through each poll (smoothstep has
+      // zero slope at both ends).
       if (flight.prevLat != null && flight.prevLon != null && flight.prevTime != null) {
         const blendElapsed = (nowMs - flight.prevTime) / 1000;
-        const BLEND_DURATION = 1.0;
+        const BLEND_DURATION = 2.0;
         if (blendElapsed < BLEND_DURATION) {
           const t = blendElapsed / BLEND_DURATION;
-          // Ease-out cubic
-          const ease = 1 - (1 - t) * (1 - t) * (1 - t);
-          interpLat = flight.prevLat + (interpLat - flight.prevLat) * ease;
-          interpLon = flight.prevLon + (interpLon - flight.prevLon) * ease;
+          const residual = 1 - t * t * (3 - 2 * t); // 1 - smoothstep
+          interpLat += (flight.prevLat - flight.lat) * residual;
+          interpLon += (flight.prevLon - flight.lon) * residual;
         }
       }
 
