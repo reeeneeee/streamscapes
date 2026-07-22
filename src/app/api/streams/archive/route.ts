@@ -39,7 +39,6 @@ interface BatchResponse {
 // In-memory fallback when Redis is not configured or unavailable (e.g.
 // rate-limited) — the stream degrades to per-instance state instead of dying.
 let memToken: string | undefined;
-let memInitialized = false;
 
 async function redisGet<T>(key: string): Promise<T | null> {
   if (!redis) return null;
@@ -74,17 +73,14 @@ export async function GET() {
     params.set('access', IAS3_ACCESS);
     params.set('secret', IAS3_SECRET);
 
-    // Prefer the shared Redis cursor, fall back to this instance's own
+    // Prefer the shared Redis cursor, fall back to this instance's own.
+    // With no cursor at all, omit start params entirely — the Changes API
+    // then starts at the head of the feed (~35 changes/min), which avoids
+    // replaying the same historical batch on every cold start.
     const storedToken = (await redisGet<string>(TOKEN_KEY)) ?? memToken;
-
     if (storedToken) {
       params.set('token', storedToken);
-    } else if (!memInitialized) {
-      // First call — start from yesterday to get an initial batch of changes
-      const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10).replace(/-/g, '');
-      params.set('start_date', yesterday);
     }
-    memInitialized = true;
 
     const res = await fetch('https://archive.org/services/changes.php', {
       method: 'POST',
