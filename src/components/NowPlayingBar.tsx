@@ -49,6 +49,21 @@ export default function NowPlayingBar() {
           <span aria-hidden="true">{now.title}</span>
         </div>
       </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <span aria-hidden="true" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          {now.volume === 0 ? '🔇' : '🔉'}
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={now.volume}
+          onChange={(e) => archivePlayer.setVolume(parseFloat(e.target.value))}
+          aria-label="Archive playback volume"
+          style={{ width: 72 }}
+        />
+      </div>
       <button
         onClick={() => archivePlayer.stop()}
         aria-label="Stop playback"

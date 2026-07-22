@@ -12,12 +12,20 @@ export interface NowPlaying {
   url: string;
   title: string;
   playing: boolean;
+  volume: number;
 }
+
+const VOLUME_KEY = 'streamscapes.archivePlayerVolume';
 
 class ArchivePlayer {
   private audio: HTMLAudioElement | null = null;
   private snapshot: NowPlaying | null = null;
   private listeners = new Set<() => void>();
+  private volume = (() => {
+    if (typeof localStorage === 'undefined') return 0.8;
+    const v = parseFloat(localStorage.getItem(VOLUME_KEY) ?? '');
+    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8;
+  })();
 
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn);
@@ -36,6 +44,7 @@ class ArchivePlayer {
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.src = url;
+    audio.volume = this.volume;
     this.audio = audio;
 
     try {
@@ -48,13 +57,20 @@ class ArchivePlayer {
       // Fall back to the element's direct output
     }
 
-    audio.onplay = () => { if (this.audio === audio) this.emit({ url, title, playing: true }); };
-    audio.onpause = () => { if (this.audio === audio && !audio.ended) this.emit({ url, title, playing: false }); };
+    audio.onplay = () => { if (this.audio === audio) this.emit({ url, title, playing: true, volume: this.volume }); };
+    audio.onpause = () => { if (this.audio === audio && !audio.ended) this.emit({ url, title, playing: false, volume: this.volume }); };
     audio.onended = () => { if (this.audio === audio) this.emit(null); };
     audio.onerror = () => { if (this.audio === audio) this.emit(null); };
 
-    this.emit({ url, title, playing: true });
+    this.emit({ url, title, playing: true, volume: this.volume });
     audio.play().catch(() => { if (this.audio === audio) this.emit(null); });
+  }
+
+  setVolume(v: number) {
+    this.volume = Math.min(1, Math.max(0, v));
+    try { localStorage.setItem(VOLUME_KEY, String(this.volume)); } catch { /* private mode */ }
+    if (this.audio) this.audio.volume = this.volume;
+    if (this.snapshot) this.emit({ ...this.snapshot, volume: this.volume });
   }
 
   toggle() {
