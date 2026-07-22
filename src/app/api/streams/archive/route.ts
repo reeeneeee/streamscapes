@@ -141,7 +141,7 @@ async function hydrate(identifiers: string[]): Promise<ArchiveItem[]> {
   const url =
     'https://archive.org/advancedsearch.php' +
     `?q=${encodeURIComponent(query)}` +
-    '&fl[]=identifier&fl[]=title&fl[]=mediatype&fl[]=collection&fl[]=publicdate&fl[]=downloads' +
+    '&fl[]=identifier&fl[]=title&fl[]=mediatype&fl[]=collection&fl[]=publicdate&fl[]=downloads&fl[]=oai_updatedate' +
     `&rows=${identifiers.length}&page=1&output=json`;
 
   let docs: Array<{
@@ -151,6 +151,7 @@ async function hydrate(identifiers: string[]): Promise<ArchiveItem[]> {
     collection?: string | string[];
     publicdate?: string;
     downloads?: number;
+    oai_updatedate?: string[];
   }> = [];
   let searchOk = false;
   try {
@@ -170,9 +171,20 @@ async function hydrate(identifiers: string[]): Promise<ArchiveItem[]> {
 
   const byId = new Map(docs.map((d) => [d.identifier, d]));
 
+  // A change event for an item whose last real edit (max oai_updatedate,
+  // which tracks the _meta.xml mtime) is old is internal catalog churn
+  // (re-index, derive sweep) — no publicly visible change, so no sound.
+  const RECENT_MS = 3 * 86_400_000;
+  const now = Date.now();
+
   return identifiers.flatMap((id) => {
     const doc = byId.get(id);
     if (!doc) return [];
+    const stamps = [...(doc.oai_updatedate ?? []), doc.publicdate]
+      .map((s) => (s ? Date.parse(s) : NaN))
+      .filter(Number.isFinite);
+    const lastEdit = stamps.length ? Math.max(...stamps) : NaN;
+    if (!Number.isFinite(lastEdit) || now - lastEdit > RECENT_MS) return [];
     return [{
       identifier: id,
       mediatype: doc.mediatype ?? 'unknown',
