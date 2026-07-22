@@ -35,13 +35,20 @@ export default function NowPlayingBar() {
       >
         {now.playing ? '⏸' : '▶'}
       </button>
-      <span style={{
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        fontFamily: 'var(--font-body, var(--ff-body))',
-        fontSize: 12, color: 'var(--text-secondary)',
-      }}>
-        {now.title}
-      </span>
+      <div className="now-playing-marquee">
+        <div
+          className="marquee-track"
+          style={{
+            fontFamily: 'var(--font-body, var(--ff-body))',
+            fontSize: 12, color: 'var(--text-secondary)',
+            animationDuration: `${Math.max(8, now.title.length * 0.4)}s`,
+            animationPlayState: now.playing ? 'running' : 'paused',
+          }}
+        >
+          <span>{now.title}</span>
+          <span aria-hidden="true">{now.title}</span>
+        </div>
+      </div>
       <button
         onClick={() => archivePlayer.stop()}
         aria-label="Stop playback"
