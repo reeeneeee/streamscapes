@@ -36,7 +36,14 @@ final class AppStore {
         }
     }
 
+    /// Bump when default channel mappings change — persisted channels are
+    /// reseeded from defaults on next launch (mirrors the web store's
+    /// wipe-on-version-bump migration).
+    private static let channelSeedVersion = 2
+    private static let seedVersionKey = "\(persistKey).seedVersion"
+
     private func loadFromDisk() {
+        defer { UserDefaults.standard.set(Self.channelSeedVersion, forKey: Self.seedVersionKey) }
         guard let data = UserDefaults.standard.data(forKey: Self.persistKey),
               let snapshot = try? JSONDecoder().decode(PersistedState.self, from: data)
         else { return }
@@ -45,6 +52,11 @@ final class AppStore {
         selectedChannelId = snapshot.selectedChannelId
         if let s = snapshot.stockSymbols { stockSymbols = s }
         if let r = snapshot.rssFeeds { rssFeeds = r }
+
+        if UserDefaults.standard.integer(forKey: Self.seedVersionKey) < Self.channelSeedVersion {
+            channels = Self.makeDefaultChannels()
+            return
+        }
 
         // Backfill any missing default channels (e.g. archive added after initial install)
         let defaults = Self.makeDefaultChannels()
@@ -428,7 +440,7 @@ final class AppStore {
             intent: "chimes"
         )
 
-        // Archive: triggered FMSynth kalimba — mediatype selects pitch, title length drives velocity
+        // Archive: triggered FMSynth kalimba — mediatype selects pitch, popularity drives velocity + sustain
         result["archive"] = ChannelConfig(
             streamId: "archive",
             enabled: true,
@@ -454,7 +466,8 @@ final class AppStore {
             ]),
             mappings: [
                 SonificationMapping(sourceField: "mediatypeIndex", targetParam: "scaleIndex", inputRange: [0, 7], outputRange: [0, 14], curve: .step, invert: false),
-                SonificationMapping(sourceField: "titleLength", targetParam: "velocity", inputRange: [1, 100], outputRange: [0.2, 0.7], curve: .log, invert: false),
+                SonificationMapping(sourceField: "downloads", targetParam: "velocity", inputRange: [1, 1_000_000], outputRange: [0.25, 0.9], curve: .log, invert: false),
+                SonificationMapping(sourceField: "downloads", targetParam: "duration", inputRange: [1, 1_000_000], outputRange: [0.7, 1.8], curve: .log, invert: false),
             ],
             effects: [],
             behaviorType: .event,

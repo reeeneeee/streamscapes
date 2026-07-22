@@ -32,12 +32,21 @@ struct ArchiveStreamPlugin: StreamPlugin {
                             let mIdx = Self.mediatypeIndex[mediatype] ?? 6
                             let title = item.title ?? item.identifier
 
+                            // Item age in years — unknown publicdate counts as brand new
+                            var ageYears: Double = 0
+                            if let pd = item.publicdate,
+                               let date = ISO8601DateFormatter().date(from: pd) {
+                                ageYears = max(0, Date().timeIntervalSince(date) / 31_557_600)
+                            }
+
                             let dp = DataPoint(
                                 streamId: "archive",
                                 timestamp: Date(),
                                 fields: [
                                     "mediatypeIndex": Double(mIdx),
                                     "titleLength": Double(title.count),
+                                    "downloads": item.downloads,
+                                    "ageYears": ageYears,
                                 ],
                                 metadata: [
                                     "identifier": item.identifier,
@@ -85,6 +94,8 @@ struct ArchiveStreamPlugin: StreamPlugin {
         let mediatype: String
         let title: String?
         let collection: String?
+        let downloads: Double
+        let publicdate: String?
     }
 
     private func poll() async throws -> [ArchiveItem] {
@@ -107,7 +118,9 @@ struct ArchiveStreamPlugin: StreamPlugin {
                 identifier: item["identifier"] as? String ?? "unknown",
                 mediatype: item["mediatype"] as? String ?? "unknown",
                 title: item["title"] as? String,
-                collection: item["collection"] as? String
+                collection: item["collection"] as? String,
+                downloads: (item["downloads"] as? NSNumber)?.doubleValue ?? 0,
+                publicdate: item["publicdate"] as? String
             )
         }
     }
