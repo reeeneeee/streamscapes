@@ -145,7 +145,8 @@ final class VisualizerData {
                 altitude: dp.fields["altitude"] ?? 0,
                 callsign: dp.metadata["callsign"] ?? "",
                 track: dp.fields["track"] ?? 0,
-                gspeed: dp.fields["speed"] ?? 0,
+                // Stream yields mph; dead-reckoning (gspeed / 216000) expects knots
+                gspeed: (dp.fields["speed"] ?? 0) / 1.15078,
                 lastSeen: now,
                 prevLat: prevLat,
                 prevLon: prevLon,
