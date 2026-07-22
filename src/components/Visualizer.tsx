@@ -258,7 +258,8 @@ const Visualizer = ({
   useEffect(() => {
     const interval = setInterval(() => {
       editsRef.current = editsRef.current
-        .map((e) => ({ ...e, age: e.age + 0.1 }))
+        // 0.045/tick at 30ms → expiry (age 30) lands at ~20s on screen
+        .map((e) => ({ ...e, age: e.age + 0.045 }))
         .filter((e) => e.age < 30);
 
       archiveBlobsRef.current = archiveBlobsRef.current

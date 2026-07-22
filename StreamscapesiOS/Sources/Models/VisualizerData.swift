@@ -93,12 +93,12 @@ final class VisualizerData {
 
     func startAging() {
         ageTimer?.invalidate()
-        // Match web: 30ms interval, +0.1 age per tick → ripples age ~3.3/sec and fade in ~9s
+        // Match web: 30ms interval, +0.045 age per tick → expiry (age 30) at ~20s
         ageTimer = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.wikiEdits = self.wikiEdits
-                    .map { var e = $0; e.age += 0.1; return e }
+                    .map { var e = $0; e.age += 0.045; return e }
                     .filter { $0.age < 30 }
 
                 if !self.ingestDrops.isEmpty {
