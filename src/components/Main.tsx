@@ -119,8 +119,10 @@ export default function Main() {
       const now = Date.now();
       setProcessedFlights((prev) => {
         const id = String(f.flightId);
-        // Prune flights not seen in 15s, then upsert
-        const fresh = prev.filter((p) => now - p.lastSeen < 15_000);
+        // Prune flights gone for 40s — must exceed the 15s poll interval plus
+        // latency, or every record gets pruned moments before its own update
+        // arrives and the smooth blend never gets a previous position.
+        const fresh = prev.filter((p) => now - p.lastSeen < 40_000);
         const existing = fresh.find((p) => p.fr24_id === id);
 
         // Capture previous interpolated position for smooth blending
@@ -141,7 +143,8 @@ export default function Main() {
           fr24_id: id,
           lat: f.lat as number,
           lon: f.lon as number,
-          gspeed: f.speed as number,
+          // Stream yields mph; dead-reckoning (gspeed / 216000) expects knots
+          gspeed: (f.speed as number) / 1.15078,
           distance: f.distance as number,
           frequency: f.frequency as number,
           callsign: f.callsign as string | undefined,

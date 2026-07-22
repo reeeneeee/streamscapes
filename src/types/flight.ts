@@ -2,7 +2,7 @@ export interface ProcessedFlight {
   fr24_id: string;
   lat: number;
   lon: number;
-  gspeed: number;
+  gspeed: number; // knots — dead-reckoning formulas depend on this unit
   distance: number;
   frequency: number;
   callsign?: string;
